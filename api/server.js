@@ -204,7 +204,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com", "https://api.razorpay.com", "https://unpkg.com"], // TODO: Remove unsafe-inline/eval gradually
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.googletagmanager.com", "https://www.google-analytics.com", "https://ssl.google-analytics.com", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com", "https://api.razorpay.com", "https://unpkg.com"], // TODO: Remove unsafe-inline/eval gradually
       "script-src-attr": ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
@@ -212,6 +212,9 @@ app.use(helmet({
         "'self'",
         process.env.R2_PUBLIC_URL || "https:",
         `https://${(process.env.R2_ENDPOINT || "").replace(/^https?:\/\//, "")}`,
+        "https://www.google-analytics.com",
+        "https://region1.google-analytics.com",
+        "https://www.googletagmanager.com",
         "https://cloudflareinsights.com",
         "https://*.livekit.cloud",
         "https://api.razorpay.com",
