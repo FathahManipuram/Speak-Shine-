@@ -10,6 +10,7 @@ import StreakRecord from "../../../models/streakRecordSchema.js";
 import { generateSVGPoster } from "../../../api/posterGenerator.js";
 import env from "../../config/env.js";
 import { getTodayVocabulary } from "../ai/vocabularyGenerator.js";
+import { getDurationLimits } from "../video/submitGate.js";
 
 /**
  * Get poster image - use bot's stored PNG if available, else generate SVG fallback
@@ -239,6 +240,14 @@ export async function getUserProfile(phone) {
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: status?.isStorySummaryDay || false,
       vocabulary: await vocabularyPromise,
+      vocabWordCount: status?.vocabWordCount ?? 5,
+      vocabRequiredCount: status?.vocabRequiredCount ?? 3,
+      durationLimits: getDurationLimits({
+        isMonthlyReflection: status?.isMonthlyReflectionDay || false,
+        isMonthlyGoals: status?.isMonthlyGoalsDay || false,
+        isWeeklyReflection: status?.isWeeklyReflectionDay || false,
+        isStorySummary: status?.isStorySummaryDay || false,
+      }, status || {}),
     },
     dailyReport: showReport ? dailyReport : null,
     showReport,
@@ -338,18 +347,36 @@ export async function getSettings() {
   return {
     posterSendTime: status.posterSendTime || "08:00",
     questionGenerateTime: status.questionGenerateTime || "07:00",
-    vocabWordCount: status.vocabWordCount ?? 3,
+    vocabWordCount: status.vocabWordCount ?? 5,
+    vocabRequiredCount: status.vocabRequiredCount ?? 3,
     vocabLevel: status.vocabLevel || "B2",
     storyWordCount: status.storyWordCount ?? 200,
     storyLevel: status.storyLevel || "B1",
     storyDay: status.storyDay ?? 6,
+    durationDefaultMax: status.durationDefaultMax ?? 300,
+    durationDefaultFull: status.durationDefaultFull ?? 300,
+    durationStoryMax: status.durationStoryMax ?? 180,
+    durationStoryFull: status.durationStoryFull ?? 180,
+    durationWeeklyMax: status.durationWeeklyMax ?? 420,
+    durationWeeklyFull: status.durationWeeklyFull ?? 300,
+    durationMonthlyReflectionMax: status.durationMonthlyReflectionMax ?? 420,
+    durationMonthlyReflectionFull: status.durationMonthlyReflectionFull ?? 420,
+    durationMonthlyGoalsMax: status.durationMonthlyGoalsMax ?? 600,
+    durationMonthlyGoalsFull: status.durationMonthlyGoalsFull ?? 420,
   };
 }
 
 /**
  * Update bot schedule settings (admin only)
  */
-export async function updateSettings(posterSendTime, questionGenerateTime, vocabWordCount, vocabLevel, storyWordCount, storyLevel, storyDay) {
+export async function updateSettings(
+  posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+  durationDefaultMax, durationDefaultFull,
+  durationStoryMax, durationStoryFull,
+  durationWeeklyMax, durationWeeklyFull,
+  durationMonthlyReflectionMax, durationMonthlyReflectionFull,
+  durationMonthlyGoalsMax, durationMonthlyGoalsFull
+) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
   
@@ -381,6 +408,28 @@ export async function updateSettings(posterSendTime, questionGenerateTime, vocab
     updates.vocabWordCount = count;
     // Clear today's vocab so it regenerates with new count
     updates.todayVocabulary = [];
+  }
+
+  if (vocabRequiredCount !== undefined) {
+    const required = parseInt(vocabRequiredCount, 10);
+    if (isNaN(required) || required < 1 || required > 10) {
+      const error = new Error("vocabRequiredCount must be between 1 and 10");
+      error.statusCode = 400;
+      throw error;
+    }
+    updates.vocabRequiredCount = required;
+  }
+
+  // Ensure required count never exceeds word count
+  if (updates.vocabRequiredCount !== undefined || updates.vocabWordCount !== undefined) {
+    const status = await Status.findOne().lean();
+    const finalWordCount = updates.vocabWordCount ?? status?.vocabWordCount ?? 5;
+    const finalRequiredCount = updates.vocabRequiredCount ?? status?.vocabRequiredCount ?? 3;
+    if (finalRequiredCount > finalWordCount) {
+      const error = new Error("vocabRequiredCount cannot exceed vocabWordCount");
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   if (vocabLevel !== undefined) {
@@ -424,6 +473,61 @@ export async function updateSettings(posterSendTime, questionGenerateTime, vocab
     }
     updates.storyDay = day;
   }
+
+  // Duration fields validation
+  const durationFields = [
+    { name: "durationDefaultMax", label: "Default Max Duration" },
+    { name: "durationDefaultFull", label: "Default Full Score Duration" },
+    { name: "durationStoryMax", label: "Story Max Duration" },
+    { name: "durationStoryFull", label: "Story Full Score Duration" },
+    { name: "durationWeeklyMax", label: "Weekly Max Duration" },
+    { name: "durationWeeklyFull", label: "Weekly Full Score Duration" },
+    { name: "durationMonthlyReflectionMax", label: "Monthly Reflection Max Duration" },
+    { name: "durationMonthlyReflectionFull", label: "Monthly Reflection Full Score Duration" },
+    { name: "durationMonthlyGoalsMax", label: "Monthly Goals Max Duration" },
+    { name: "durationMonthlyGoalsFull", label: "Monthly Goals Full Score Duration" },
+  ];
+
+  const durationArgs = {
+    durationDefaultMax, durationDefaultFull,
+    durationStoryMax, durationStoryFull,
+    durationWeeklyMax, durationWeeklyFull,
+    durationMonthlyReflectionMax, durationMonthlyReflectionFull,
+    durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+  };
+
+  for (const { name, label } of durationFields) {
+    const rawVal = durationArgs[name];
+    if (rawVal !== undefined) {
+      const val = parseInt(rawVal, 10);
+      if (isNaN(val) || val < 60 || val > 1200) {
+        const error = new Error(`${label} must be between 60 and 1200 seconds`);
+        error.statusCode = 400;
+        throw error;
+      }
+      updates[name] = val;
+    }
+  }
+
+  // Verify fullScoreSeconds <= maxSeconds relation checks
+  const status = await Status.findOne().lean();
+  const getVal = (key, def) => updates[key] !== undefined ? updates[key] : (status?.[key] ?? def);
+
+  const checkRelation = (groupLabel, maxKey, fullKey, maxDef, fullDef) => {
+    const maxVal = getVal(maxKey, maxDef);
+    const fullVal = getVal(fullKey, fullDef);
+    if (fullVal > maxVal) {
+      const error = new Error(`${groupLabel} Full Score Duration cannot exceed Max Duration`);
+      error.statusCode = 400;
+      throw error;
+    }
+  };
+
+  checkRelation("Default Daily", "durationDefaultMax", "durationDefaultFull", 300, 300);
+  checkRelation("Story Summary", "durationStoryMax", "durationStoryFull", 180, 180);
+  checkRelation("Weekly Reflection", "durationWeeklyMax", "durationWeeklyFull", 420, 300);
+  checkRelation("Monthly Reflection", "durationMonthlyReflectionMax", "durationMonthlyReflectionFull", 420, 420);
+  checkRelation("Monthly Goals", "durationMonthlyGoalsMax", "durationMonthlyGoalsFull", 600, 420);
 
   await Status.updateOne({}, { $set: updates }, { upsert: true });
   

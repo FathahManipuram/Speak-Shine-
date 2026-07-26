@@ -111,8 +111,46 @@ export async function getSettings(req, res) {
  */
 export async function updateSettings(req, res) {
   try {
-    const { posterSendTime, questionGenerateTime, vocabWordCount, vocabLevel, storyWordCount, storyLevel, storyDay } = req.body;
-    const result = await dashboardService.updateSettings(posterSendTime, questionGenerateTime, vocabWordCount, vocabLevel, storyWordCount, storyLevel, storyDay);
+    const {
+      posterSendTime,
+      questionGenerateTime,
+      vocabWordCount,
+      vocabRequiredCount,
+      vocabLevel,
+      storyWordCount,
+      storyLevel,
+      storyDay,
+      durationDefaultMax,
+      durationDefaultFull,
+      durationStoryMax,
+      durationStoryFull,
+      durationWeeklyMax,
+      durationWeeklyFull,
+      durationMonthlyReflectionMax,
+      durationMonthlyReflectionFull,
+      durationMonthlyGoalsMax,
+      durationMonthlyGoalsFull,
+    } = req.body;
+    const result = await dashboardService.updateSettings(
+      posterSendTime,
+      questionGenerateTime,
+      vocabWordCount,
+      vocabRequiredCount,
+      vocabLevel,
+      storyWordCount,
+      storyLevel,
+      storyDay,
+      durationDefaultMax,
+      durationDefaultFull,
+      durationStoryMax,
+      durationStoryFull,
+      durationWeeklyMax,
+      durationWeeklyFull,
+      durationMonthlyReflectionMax,
+      durationMonthlyReflectionFull,
+      durationMonthlyGoalsMax,
+      durationMonthlyGoalsFull
+    );
     res.json(result);
   } catch (error) {
     if (error.statusCode) {

@@ -500,8 +500,13 @@ function getGreeting() {
 }
 
 // ── Vocabulary Words Card ────────────────────────────────────────────────────
-function VocabularyWords({ words }) {
+function VocabularyWords({ words, requiredCount, totalCount }) {
   if (!words || words.length === 0) return null;
+  const required = requiredCount ?? 3;
+  const total = totalCount ?? words.length;
+  const hint = total > required
+    ? `Use at least ${required} of today's ${total} vocabulary words naturally in your speaking video!`
+    : "Try to use these words naturally in your speaking video today!";
   return (
     <div style={{
       marginTop: "1.25rem",
@@ -535,7 +540,7 @@ function VocabularyWords({ words }) {
         ))}
       </div>
       <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
-        ✨ Try to use these words naturally in your speaking video today!
+        ✨ {hint}
       </div>
     </div>
   );
@@ -607,7 +612,11 @@ function buildGuestData() {
         { word: "Resilience",   meaning: "The ability to recover quickly from setbacks",         example: "Her resilience helped her bounce back after every failure." },
         { word: "Perseverance", meaning: "Continued effort despite difficulty",                   example: "With perseverance, he finally mastered public speaking." },
         { word: "Articulate",   meaning: "Able to express thoughts clearly",                      example: "She was articulate and confident during the presentation." },
+        { word: "Proficiency",  meaning: "A high degree of skill or competence",                  example: "He reached proficiency in English after years of practice." },
+        { word: "Ambition",     meaning: "A strong desire to achieve something",                  example: "Her ambition drove her to learn a new skill every year." },
       ],
+      vocabWordCount: 5,
+      vocabRequiredCount: 3,
     },
     stats: { total: 87, completed: 23, pending: 64, totalFreeze: 12 },
     topStreak: [
@@ -925,7 +934,11 @@ export default function UserDashboard() {
 
           {/* Vocabulary words — all day types */}
           {Array.isArray(data.today.vocabulary) && data.today.vocabulary.length > 0 && (
-            <VocabularyWords words={data.today.vocabulary} />
+            <VocabularyWords
+              words={data.today.vocabulary}
+              requiredCount={data.today.vocabRequiredCount}
+              totalCount={data.today.vocabWordCount}
+            />
           )}
 
           {/* CTA Button */}

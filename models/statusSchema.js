@@ -25,7 +25,8 @@ const statusSchema = new mongoose.Schema({
     default: [],
   },
   // Vocabulary challenge settings (admin-configurable)
-  vocabWordCount: { type: Number, default: 3, min: 1, max: 10 }, // how many words per day
+  vocabWordCount: { type: Number, default: 5, min: 1, max: 10 }, // how many words shown per day
+  vocabRequiredCount: { type: Number, default: 3, min: 1, max: 10 }, // how many words user must use
   vocabLevel: { type: String, default: "B2", enum: ["A1", "A2", "B1", "B2", "C1", "C2"] }, // CEFR level
   // Story Summary settings (admin-configurable)
   storyWordCount: { type: Number, default: 200, min: 100, max: 400 },
@@ -33,6 +34,17 @@ const statusSchema = new mongoose.Schema({
   storyLevel: { type: String, default: "B1", enum: ["A2", "B1", "B2", "C1"] },
   // Which day of the week auto-story runs (0=Sun, 1=Mon, ... 6=Sat). Default: 6 (Saturday)
   storyDay: { type: Number, default: 6, min: 0, max: 6 },
+  // Duration scoring settings (admin-configurable)
+  durationDefaultMax: { type: Number, default: 300, min: 60, max: 1200 },
+  durationDefaultFull: { type: Number, default: 300, min: 60, max: 1200 },
+  durationStoryMax: { type: Number, default: 180, min: 60, max: 1200 },
+  durationStoryFull: { type: Number, default: 180, min: 60, max: 1200 },
+  durationWeeklyMax: { type: Number, default: 420, min: 60, max: 1200 },
+  durationWeeklyFull: { type: Number, default: 300, min: 60, max: 1200 },
+  durationMonthlyReflectionMax: { type: Number, default: 420, min: 60, max: 1200 },
+  durationMonthlyReflectionFull: { type: Number, default: 420, min: 60, max: 1200 },
+  durationMonthlyGoalsMax: { type: Number, default: 600, min: 60, max: 1200 },
+  durationMonthlyGoalsFull: { type: Number, default: 420, min: 60, max: 1200 },
   // Monthly reflection
   isMonthlyReflectionDay: { type: Boolean, default: false },
   isMonthlyGoalsDay: { type: Boolean, default: false },

@@ -9,7 +9,7 @@ import { getSharedSocket } from "../hooks/useSocket.js";
 import { useNoiseCancellation } from "../hooks/useNoiseCancellation.js";
 import { useBackgroundBlur } from "../hooks/useBackgroundBlur.js";
 import { useVideoFrameHash } from "../hooks/useVideoFrameHash.js";
-import { evaluateSubmitGate } from "../utils/videoSubmitGate.js";
+import { evaluateSubmitGate, getDurationLimits } from "../utils/videoSubmitGate.js";
 import { saveDraft, loadDraft, clearDraft } from "../utils/videoDraftDB.js";
 
 // ── Mode toggle ──────────────────────────────────────────────────────────────
@@ -36,10 +36,13 @@ export default function VideoAnalysis() {
 
   const [todayQuestion, setTodayQuestion] = useState(null);
   const [todayVocabulary, setTodayVocabulary] = useState([]);
+  const [vocabWordCount, setVocabWordCount] = useState(5);
+  const [vocabRequiredCount, setVocabRequiredCount] = useState(3);
   const [isMonthlyReflection, setIsMonthlyReflection] = useState(false);
   const [isMonthlyGoals, setIsMonthlyGoals] = useState(false);
   const [isWeeklyReflection, setIsWeeklyReflection] = useState(false);
   const [isStorySummary, setIsStorySummary] = useState(false);
+  const [durationLimits, setDurationLimits] = useState(null);
 
   // shared state
   const [reportId, setReportId]       = useState(null);
@@ -59,6 +62,9 @@ export default function VideoAnalysis() {
         const t = r.data?.today;
         if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType });
         if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
+        if (t?.vocabWordCount) setVocabWordCount(t.vocabWordCount);
+        if (t?.vocabRequiredCount) setVocabRequiredCount(t.vocabRequiredCount);
+        if (t?.durationLimits) setDurationLimits(t.durationLimits);
       }).catch(() => {});
       return;
     }
@@ -72,6 +78,9 @@ export default function VideoAnalysis() {
       if (t?.isWeeklyReflection) setIsWeeklyReflection(true);
       if (t?.isStorySummary || t?.contentType === "story_audio") setIsStorySummary(true);
       if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
+      if (t?.vocabWordCount) setVocabWordCount(t.vocabWordCount);
+      if (t?.vocabRequiredCount) setVocabRequiredCount(t.vocabRequiredCount);
+      if (t?.durationLimits) setDurationLimits(t.durationLimits);
     }).catch(() => {});
   }, [isGuest]);
 
@@ -486,7 +495,11 @@ export default function VideoAnalysis() {
 
             {/* Vocabulary words */}
             {todayVocabulary.length > 0 && (
-              <VocabularyWords words={todayVocabulary} />
+              <VocabularyWords
+                words={todayVocabulary}
+                requiredCount={vocabRequiredCount}
+                totalCount={vocabWordCount}
+              />
             )}
           </div>
         )}
@@ -510,8 +523,8 @@ export default function VideoAnalysis() {
         </div>
 
         {mode === "upload"
-          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} isGuest={isGuest} />
-          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} isGuest={isGuest} />
+          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} />
+          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} />
         }
 
         {/* Report Section */}
@@ -1097,8 +1110,16 @@ function SubmitGatePanel({ gate }) {
 // ── Vocabulary Words Component ───────────────────────────────────────────────
 // compact=true → chips only (used during active recording)
 // compact=false (default) → full card with word + meaning + example
-function VocabularyWords({ words, compact = false }) {
+function VocabularyWords({ words, compact = false, requiredCount, totalCount }) {
   if (!words || words.length === 0) return null;
+  const required = requiredCount ?? 3;
+  const total = totalCount ?? words.length;
+  const hint = total > required
+    ? `Use at least ${required} of today's ${total} vocabulary words in your video!`
+    : "Try to use these words in your video today!";
+  const fullHint = total > required
+    ? `Use at least ${required} of today's ${total} vocabulary words naturally in your speaking video!`
+    : "Try to use these words naturally in your speaking video today!";
 
   if (compact) {
     return (
@@ -1133,7 +1154,7 @@ function VocabularyWords({ words, compact = false }) {
           ))}
         </div>
         <div style={{ marginTop: "0.6rem", fontSize: "0.72rem", color: "rgba(255,255,255,0.35)" }}>
-          ✨ Try to use these words in your video today!
+          ✨ {hint}
         </div>
       </div>
     );
@@ -1174,14 +1195,14 @@ function VocabularyWords({ words, compact = false }) {
         ))}
       </div>
       <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
-        ✨ Try to use these words naturally in your speaking video today!
+        ✨ {fullHint}
       </div>
     </div>
   );
 }
 
 // ── Upload Card (direct-to-R2 flow) ─────────────────────────────────────────
-function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], isGuest = false }) {
+function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits }) {
   const [file, setFile]           = useState(null);
   const [fileDuration, setFileDuration] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1195,6 +1216,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   const { generateHashAndFrames, cacheResult, isHashing, hashProgress } = useVideoFrameHash();
 
   const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary };
+  const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
@@ -1206,12 +1228,12 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   };
 
   const uploadGate = file
-    ? evaluateSubmitGate({ durationSeconds: fileDuration, fileSizeBytes: file.size, flags: gateFlags, canCompress: CAN_COMPRESS })
+    ? evaluateSubmitGate({ durationSeconds: fileDuration, fileSizeBytes: file.size, flags: gateFlags, canCompress: CAN_COMPRESS, customLimits: durationLimits })
     : null;
 
   const handleUpload = async () => {
     if (!file) { setError("Please select a video file"); return; }
-    const gate = evaluateSubmitGate({ durationSeconds: fileDuration, fileSizeBytes: file.size, flags: gateFlags, canCompress: CAN_COMPRESS });
+    const gate = evaluateSubmitGate({ durationSeconds: fileDuration, fileSizeBytes: file.size, flags: gateFlags, canCompress: CAN_COMPRESS, customLimits: durationLimits });
     if (!gate.passed) {
       setError(gate.checks.find((c) => c.status === "fail")?.message || "Video does not meet requirements.");
       return;
@@ -1254,7 +1276,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
           // If original file is too large and compression failed, show clear error
           if (file.size > 200 * 1024 * 1024) {
             setUploading(false);
-            setError(`Video compression failed (browser memory limit). Your file is ${(file.size/1024/1024).toFixed(1)}MB (max 200MB without compression). Please:\n• Record a shorter video (max ${isMonthlyReflection || isMonthlyGoals ? "10" : isWeeklyReflection ? "7" : "5"} min)\n• Or use a lower resolution when recording`);
+            setError(`Video compression failed (browser memory limit). Your file is ${(file.size/1024/1024).toFixed(1)}MB (max 200MB without compression). Please:\n• Record a shorter video (max ${isMonthlyReflection || isWeeklyReflection ? "7" : isMonthlyGoals ? "10" : isStorySummary ? "3" : "5"} min)\n• Or use a lower resolution when recording`);
             return;
           }
         }
@@ -1435,7 +1457,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
     <div className="card">
       <div className="section-title">📹 Upload Video for Analysis</div>
       <p style={{ color: "var(--muted)", marginBottom: "1rem" }}>
-        Minimum 1 minute · Max {isMonthlyReflection || isMonthlyGoals ? "10" : isWeeklyReflection ? "7" : "5"} minutes · Up to 500MB · MP4, MOV, AVI, WEBM, 3GP · Reports stored 18 hours
+        Minimum {durationLimits.minLabel} · Full score at {durationLimits.fullScoreLabel} · Max {durationLimits.maxLabel} · Up to 500MB · MP4, MOV, AVI, WEBM, 3GP · Reports stored 18 hours
       </p>
       <div className="upload-area">
         <input id="video-input" type="file"
@@ -1509,7 +1531,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         {uploadGate && <SubmitGatePanel gate={uploadGate} />}
         {/* Vocabulary challenge */}
         {vocabulary.length > 0 && (
-          <VocabularyWords words={vocabulary} />
+          <VocabularyWords words={vocabulary} requiredCount={vocabRequiredCount} totalCount={vocabWordCount} />
         )}
         <button className="btn-primary" onClick={handleUpload} disabled={!file || uploading || (uploadGate && !uploadGate.passed) || isGuest} style={{ width: "100%", position: "relative" }}>
           {uploading ?
@@ -1535,7 +1557,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
 // ── Record Card ──────────────────────────────────────────────────────────────
 // States: "setup" → "countdown" → "recording" → "preview" → "uploading"
 
-function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], isGuest = false }) {
+function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits }) {
   const navigate = useNavigate();
   const [step, setStep]             = useState("setup");
   const [cameras, setCameras]       = useState([]);
@@ -1607,8 +1629,10 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
   }, []);
 
   // Dynamic time limits based on question type
-  const MAX_SECONDS = isMonthlyReflection || isMonthlyGoals 
-    ? 600  // 10 minutes for monthly reflection/goals
+  const MAX_SECONDS = isMonthlyReflection
+    ? 420  // 7 minutes for monthly reflection
+    : isMonthlyGoals
+    ? 600  // 10 minutes for monthly goals
     : isWeeklyReflection 
     ? 420  // 7 minutes for weekly reflection
     : isStorySummary
@@ -2057,6 +2081,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
   };
 
   const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary };
+  const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
 
   const submitRecording = async () => {
     if (!recordedBlob) return;
@@ -2065,6 +2090,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
       fileSizeBytes: recordedBlob.size,
       flags: gateFlags,
       canCompress: CAN_COMPRESS,
+      customLimits: durationLimits,
     });
     if (!gate.passed) {
       setError(gate.checks.find((c) => c.status === "fail")?.message || "Recording does not meet requirements.");
@@ -2283,6 +2309,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
         fileSizeBytes: recordedBlob.size,
         flags: gateFlags,
         canCompress: CAN_COMPRESS,
+        customLimits: durationLimits,
       })
     : null;
 
@@ -2294,7 +2321,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
       {step === "setup" && (
         <div>
           <p style={{ color: "var(--muted)", marginBottom: "1.25rem", fontSize: "0.9rem" }}>
-            Minimum 1 min · Max {isMonthlyReflection || isMonthlyGoals ? "10" : isWeeklyReflection ? "7" : "5"} min · Speak clearly to the camera
+            Minimum {durationLimits.minLabel} · Full score at {durationLimits.fullScoreLabel} · Max {durationLimits.maxLabel} · Speak clearly to the camera
           </p>
           
           {/* Recording stability notice for long recordings */}
@@ -2514,7 +2541,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
 
           {/* Vocabulary challenge */}
           {vocabulary.length > 0 && (
-            <VocabularyWords words={vocabulary} />
+            <VocabularyWords words={vocabulary} requiredCount={vocabRequiredCount} totalCount={vocabWordCount} />
           )}
 
           <button className="btn-primary" onClick={startCountdown} style={{ width: "100%" }}>
@@ -2779,7 +2806,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
             {vocabulary.length > 0 && (
               <div style={{ borderTop: "1px solid var(--border2)", paddingTop: "0.75rem" }}>
                 <div style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(124,111,255,0.8)", marginBottom: "0.5rem" }}>
-                  📚 Use these words
+                  📚 Use at least {Math.min(vocabRequiredCount, vocabulary.length)} of {vocabWordCount || vocabulary.length} words
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                   {vocabulary.map((w, i) => (
@@ -3060,9 +3087,13 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining }) {
     if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
       improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Your speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout the video for full duration points`, gap: lenGap });
     } else if (lenGap > 2) {
-      improvementTips.push({ icon: "⏱️", label: "Record longer", detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the max time limit`, gap: lenGap });
+      improvementTips.push({ icon: "⏱️", label: "Record longer", detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`, gap: lenGap });
     }
-    if (vocGap > 2)  improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — try using all the daily vocabulary words`, gap: vocGap });
+    if (vocGap > 2) {
+      const requiredVocabWords = bd.requiredVocabWords || 3;
+      const totalVocabWords = bd.totalVocabWords || 5;
+      improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`, gap: vocGap });
+    }
     if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`, gap: topGap });
     if (comGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve communication", detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`, gap: comGap });
     improvementTips.sort((x, y) => y.gap - x.gap);

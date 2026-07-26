@@ -784,13 +784,15 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
     const isWeeklyReflection = status?.isWeeklyReflectionDay || false;
     const isStorySummary = status?.isStorySummaryDay || false;
     
-    const maxDuration = (isMonthlyReflection || isMonthlyGoals) 
-      ? 605  // 10 minutes + 5 sec tolerance
+    const maxDuration = isMonthlyReflection
+      ? (status?.durationMonthlyReflectionMax ?? 420) + 5
+      : isMonthlyGoals
+      ? (status?.durationMonthlyGoalsMax ?? 600) + 5
       : isWeeklyReflection 
-      ? 425  // 7 minutes + 5 sec tolerance
+      ? (status?.durationWeeklyMax ?? 420) + 5
       : isStorySummary
-      ? 185  // 3 minutes + 5 sec tolerance
-      : 305; // 5 minutes + 5 sec tolerance
+      ? (status?.durationStoryMax ?? 180) + 5
+      : (status?.durationDefaultMax ?? 300) + 5;
     
     const maxMinutes = Math.floor((maxDuration - 5) / 60);
     
