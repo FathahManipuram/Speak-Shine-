@@ -3,9 +3,11 @@
  */
 
 export function getDurationLimits({ isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary } = {}) {
-  const maxSeconds = isMonthlyReflection || isMonthlyGoals ? 600 : isWeeklyReflection ? 420 : isStorySummary ? 180 : 300;
+  const maxSeconds = isMonthlyReflection ? 420 : isMonthlyGoals ? 600 : isWeeklyReflection ? 420 : isStorySummary ? 180 : 300;
+  const fullScoreSeconds = isMonthlyReflection ? 420 : isMonthlyGoals ? 420 : isWeeklyReflection ? 300 : 180;
   const maxLabel = maxSeconds >= 600 ? "10 min" : maxSeconds >= 420 ? "7 min" : maxSeconds >= 300 ? "5 min" : "3 min";
-  return { minSeconds: 60, maxSeconds, minLabel: "1 min", maxLabel };
+  const fullScoreLabel = fullScoreSeconds >= 600 ? "10 min" : fullScoreSeconds >= 420 ? "7 min" : fullScoreSeconds >= 300 ? "5 min" : "3 min";
+  return { minSeconds: 60, maxSeconds, fullScoreSeconds, minLabel: "1 min", maxLabel, fullScoreLabel };
 }
 
 function fmtDuration(sec) {
@@ -13,8 +15,8 @@ function fmtDuration(sec) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function evaluateSubmitGate({ durationSeconds, fileSizeBytes, frameCount, flags, canCompress = false }) {
-  const { minSeconds, maxSeconds, minLabel, maxLabel } = getDurationLimits(flags);
+export function evaluateSubmitGate({ durationSeconds, fileSizeBytes, frameCount, flags, canCompress = false, customLimits = null }) {
+  const { minSeconds, maxSeconds, fullScoreSeconds, minLabel, maxLabel } = customLimits || getDurationLimits(flags);
   const checks = [];
   const hasDuration = !!durationSeconds && durationSeconds > 0;
 
@@ -58,5 +60,5 @@ export function evaluateSubmitGate({ durationSeconds, fileSizeBytes, frameCount,
 
   const failed = checks.some((c) => c.status === "fail");
   const passed = !failed && hasDuration;
-  return { passed, readyToSubmit: passed, checks, limits: { minSeconds, maxSeconds } };
+  return { passed, readyToSubmit: passed, checks, limits: { minSeconds, maxSeconds, fullScoreSeconds } };
 }

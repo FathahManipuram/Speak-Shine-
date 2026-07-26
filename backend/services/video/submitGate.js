@@ -11,15 +11,35 @@ export const GATE_FRAME_IDEAL = 16;
 /**
  * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean }} flags
  */
-export function getDurationLimits(flags = {}) {
-  const maxSeconds = flags.isMonthlyReflection || flags.isMonthlyGoals
-    ? 600
+export function getDurationLimits(flags = {}, settings = {}) {
+  const maxSeconds = flags.isMonthlyReflection
+    ? (settings.durationMonthlyReflectionMax ?? 420)
+    : flags.isMonthlyGoals
+    ? (settings.durationMonthlyGoalsMax ?? 600)
     : flags.isWeeklyReflection
-      ? 420
+      ? (settings.durationWeeklyMax ?? 420)
       : flags.isStorySummary
-      ? 180
-      : 300;
-  return { minSeconds: 60, maxSeconds, minLabel: "1 min", maxLabel: formatMaxLabel(maxSeconds) };
+      ? (settings.durationStoryMax ?? 180)
+      : (settings.durationDefaultMax ?? 300);
+
+  const fullScoreSeconds = flags.isMonthlyReflection
+    ? (settings.durationMonthlyReflectionFull ?? 420)
+    : flags.isMonthlyGoals
+    ? (settings.durationMonthlyGoalsFull ?? 420)
+    : flags.isWeeklyReflection
+      ? (settings.durationWeeklyFull ?? 300)
+      : flags.isStorySummary
+      ? (settings.durationStoryFull ?? 180)
+      : (settings.durationDefaultFull ?? 300);
+
+  return {
+    minSeconds: 60,
+    maxSeconds,
+    fullScoreSeconds,
+    minLabel: "1 min",
+    maxLabel: formatMaxLabel(maxSeconds),
+    fullScoreLabel: formatMaxLabel(fullScoreSeconds),
+  };
 }
 
 function formatMaxLabel(sec) {
@@ -164,7 +184,7 @@ export function evaluateSubmitGate(input) {
  *
  * Regular days (4 parts):
  *   Part 1 — Effective speaking time : (duration × speechRatio / maxDuration) × 33.33 → max 33.33
- *   Part 2 — Vocabulary used         : (wordsUsed / totalWords) × 33.33              → max 33.33
+ *   Part 2 — Vocabulary used         : (wordsUsed / requiredWords) × 33.33             → max 33.33
  *   Part 3 — Topic relevance         : (topicRelevance / 10) × 16.67                 → max 16.67
  *   Part 4 — Communication           : (commAvg / 10) × 16.67                        → max 16.67
  *
@@ -179,9 +199,10 @@ export function evaluateSubmitGate(input) {
  *
  * @param {object} params
  * @param {number}   params.durationSeconds     - actual video duration
- * @param {number}   params.maxDurationSeconds  - max allowed duration for this day type
+ * @param {number}   params.maxDurationSeconds  - duration needed for full duration credit
  * @param {string[]} params.vocabularyUsed      - words from today's list found in transcript
- * @param {number}   params.totalVocabWords     - total words in today's list
+ * @param {number}   params.totalVocabWords     - total words in today's list (shown)
+ * @param {number}   params.requiredVocabWords  - minimum words required for full credit
  * @param {number|null} params.topicRelevance   - AI score 0–10, null on special days
  * @param {object}   params.analysis            - full analysis object for comm scores + speech stats
  * @returns {{ score: number, breakdown: object }}
@@ -190,7 +211,8 @@ export function calculateCompositeScore({
   durationSeconds,
   maxDurationSeconds,
   vocabularyUsed = [],
-  totalVocabWords = 3,
+  totalVocabWords = 5,
+  requiredVocabWords = 3,
   topicRelevance = null,
   analysis = {},
 }) {
@@ -238,23 +260,28 @@ export function calculateCompositeScore({
   const lengthScore = baseLengthScore * speechMultiplier;
 
   // ── Part 2: Vocabulary used ──────────────────────────────────────────────
-  // Same fair formula as duration:
-  //   0 words used  → 0 pts
-  //   1 word used   → base 50% (16.67) — rewarded for trying
-  //   all words used → full 33.33
+  // Users see totalVocabWords but only need requiredVocabWords for full credit.
+  //   0 words used       → 0 pts
+  //   1 word used        → base 50% (16.67) — rewarded for trying
+  //   required words met → full 33.33 (extra words beyond required don't add bonus)
   // If no vocab words exist today (special days), award full marks automatically.
   const usedCount = Array.isArray(vocabularyUsed) ? vocabularyUsed.length : 0;
   const total = totalVocabWords > 0 ? totalVocabWords : 0;
+  const required = requiredVocabWords > 0
+    ? Math.min(requiredVocabWords, total || requiredVocabWords)
+    : total;
   let vocabUsedScore;
   if (total === 0) {
     // No vocab challenge today (special day) — full marks, not penalised
     vocabUsedScore = 33.33;
   } else if (usedCount === 0) {
     vocabUsedScore = 0;
+  } else if (usedCount >= required) {
+    vocabUsedScore = 33.33;
   } else {
-    // base 50% for using at least 1 word + proportional bonus up to all words
-    const rangeScore = total > 1
-      ? (usedCount - 1) / (total - 1)
+    // base 50% for using at least 1 word + proportional bonus up to required count
+    const rangeScore = required > 1
+      ? (usedCount - 1) / (required - 1)
       : 1;
     vocabUsedScore = (0.5 + 0.5 * rangeScore) * 33.33;
   }
@@ -292,6 +319,9 @@ export function calculateCompositeScore({
       comm:            Math.round(commScore      * 100) / 100,
       speechRatio:     typeof rawSpeechRatio === "number" ? rawSpeechRatio : null,
       speechMultiplier: Math.round(speechMultiplier * 100), // 0–100 %
+      fullScoreDurationSeconds: maxDur,
+      requiredVocabWords: required,
+      totalVocabWords: total,
       isSpecialDay,
     },
   };

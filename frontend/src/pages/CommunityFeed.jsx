@@ -163,8 +163,12 @@ function DetailedReport({ a }) {
     const vocGap = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
     const topGap = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
     const comGap = (bd.maxComm    || 16.67) - (bd.comm      || 0);
-    if (lenGap > 2) improvementTips.push({ icon: "⏱️", label: "Record longer",          detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the max time limit`,                      gap: lenGap });
-    if (vocGap > 2) improvementTips.push({ icon: "📚", label: "Use more vocab words",    detail: `+${vocGap.toFixed(1)} pts possible — try using all 5 daily vocabulary words`,                  gap: vocGap });
+    if (lenGap > 2) improvementTips.push({ icon: "⏱️", label: "Record longer",          detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`,                      gap: lenGap });
+    if (vocGap > 2) {
+      const requiredVocabWords = bd.requiredVocabWords || 3;
+      const totalVocabWords = bd.totalVocabWords || 5;
+      improvementTips.push({ icon: "📚", label: "Use more vocab words",    detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`,                  gap: vocGap });
+    }
     if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`,             gap: topGap });
     if (comGap > 2) improvementTips.push({ icon: "🗣️", label: "Improve communication",  detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`,     gap: comGap });
     improvementTips.sort((x, y) => y.gap - x.gap);

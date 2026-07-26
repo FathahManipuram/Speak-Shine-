@@ -36,8 +36,27 @@ export default function AdminDashboard() {
   const [modal, setModal] = useState(null);
   const [fineInput, setFineInput] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [settings, setSettings] = useState({ posterSendTime: "08:00", questionGenerateTime: "07:00", vocabWordCount: 3, vocabLevel: "B2", storyWordCount: 200, storyLevel: "B1", storyDay: 6 });
-  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settings, setSettings] = useState({
+    posterSendTime: "08:00",
+    questionGenerateTime: "07:00",
+    vocabWordCount: 5,
+    vocabRequiredCount: 3,
+    vocabLevel: "B2",
+    storyWordCount: 200,
+    storyLevel: "B1",
+    storyDay: 6,
+    durationDefaultMax: 300,
+    durationDefaultFull: 300,
+    durationStoryMax: 180,
+    durationStoryFull: 180,
+    durationWeeklyMax: 420,
+    durationWeeklyFull: 300,
+    durationMonthlyReflectionMax: 420,
+    durationMonthlyReflectionFull: 420,
+    durationMonthlyGoalsMax: 600,
+    durationMonthlyGoalsFull: 420,
+  });
+  const [savingSection, setSavingSection] = useState(null); // null, "schedule", "vocab", "duration"
   const [resetting, setResetting] = useState("");
   const [publishQ, setPublishQ] = useState(null); // selected question for webapp publish
   const [publishCustom, setPublishCustom] = useState({ topic:"", question:"", category:"" }); // manual entry
@@ -185,11 +204,22 @@ export default function AdminDashboard() {
       setSettings({
         posterSendTime: s.data.posterSendTime || "08:00",
         questionGenerateTime: s.data.questionGenerateTime || "07:00",
-        vocabWordCount: s.data.vocabWordCount ?? 3,
+        vocabWordCount: s.data.vocabWordCount ?? 5,
+        vocabRequiredCount: s.data.vocabRequiredCount ?? 3,
         vocabLevel: s.data.vocabLevel || "B2",
         storyWordCount: s.data.storyWordCount ?? 200,
         storyLevel: s.data.storyLevel || "B1",
         storyDay: s.data.storyDay ?? 6,
+        durationDefaultMax: s.data.durationDefaultMax ?? 300,
+        durationDefaultFull: s.data.durationDefaultFull ?? 300,
+        durationStoryMax: s.data.durationStoryMax ?? 180,
+        durationStoryFull: s.data.durationStoryFull ?? 180,
+        durationWeeklyMax: s.data.durationWeeklyMax ?? 420,
+        durationWeeklyFull: s.data.durationWeeklyFull ?? 300,
+        durationMonthlyReflectionMax: s.data.durationMonthlyReflectionMax ?? 420,
+        durationMonthlyReflectionFull: s.data.durationMonthlyReflectionFull ?? 420,
+        durationMonthlyGoalsMax: s.data.durationMonthlyGoalsMax ?? 600,
+        durationMonthlyGoalsFull: s.data.durationMonthlyGoalsFull ?? 420,
       });
       setDataLoaded(prev => ({ ...prev, settings: true }));
     } catch (err) {
@@ -348,9 +378,9 @@ export default function AdminDashboard() {
   };
   const startEdit = (q) => { setEditQ(q); setQForm({category:q.category,topic:q.topic,question:q.question}); window.scrollTo({top:0,behavior:"smooth"}); };
 
-  const saveSettings = async (e) => {
+  const saveSettings = async (e, section) => {
     e.preventDefault();
-    setSettingsSaving(true);
+    setSavingSection(section);
     try {
       await api.patch("/dashboard/settings", settings);
       // Re-fetch fresh values to update state (bypasses 30s GET cache)
@@ -359,17 +389,28 @@ export default function AdminDashboard() {
         ...s,
         posterSendTime: fresh.data.posterSendTime || "08:00",
         questionGenerateTime: fresh.data.questionGenerateTime || "07:00",
-        vocabWordCount: fresh.data.vocabWordCount ?? 3,
+        vocabWordCount: fresh.data.vocabWordCount ?? 5,
+        vocabRequiredCount: fresh.data.vocabRequiredCount ?? 3,
         vocabLevel: fresh.data.vocabLevel || "B2",
         storyWordCount: fresh.data.storyWordCount ?? 200,
         storyLevel: fresh.data.storyLevel || "B1",
         storyDay: fresh.data.storyDay ?? 6,
+        durationDefaultMax: fresh.data.durationDefaultMax ?? 300,
+        durationDefaultFull: fresh.data.durationDefaultFull ?? 300,
+        durationStoryMax: fresh.data.durationStoryMax ?? 180,
+        durationStoryFull: fresh.data.durationStoryFull ?? 180,
+        durationWeeklyMax: fresh.data.durationWeeklyMax ?? 420,
+        durationWeeklyFull: fresh.data.durationWeeklyFull ?? 300,
+        durationMonthlyReflectionMax: fresh.data.durationMonthlyReflectionMax ?? 420,
+        durationMonthlyReflectionFull: fresh.data.durationMonthlyReflectionFull ?? 420,
+        durationMonthlyGoalsMax: fresh.data.durationMonthlyGoalsMax ?? 600,
+        durationMonthlyGoalsFull: fresh.data.durationMonthlyGoalsFull ?? 420,
       }));
       msg("Settings saved!");
     } catch (err) {
       msg(err?.response?.data?.error || "Failed to save settings", "danger");
     } finally {
-      setSettingsSaving(false);
+      setSavingSection(null);
     }
   };
 
@@ -1618,248 +1659,489 @@ export default function AdminDashboard() {
 
       {/* SETTINGS */}
       {tab==="settings" && (
-        <>
-        <div className="card" style={{maxWidth:480}}>
-          <div className="section-title">⚙️ Bot Schedule Settings</div>
-          <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-            Configure when the WhatsApp bot sends the daily poster and pre-generates questions. Times are in IST (24-hour format). Changes apply within 1 minute.
-          </p>
-          <form onSubmit={saveSettings}>
-            <div className="form-group" style={{marginBottom:"1.25rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                🖼️ Poster Send Time
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(daily question sent to WhatsApp group)</span>
-              </label>
-              <input
-                className="form-input"
-                type="time"
-                value={settings.posterSendTime}
-                onChange={e=>setSettings(s=>({...s,posterSendTime:e.target.value}))}
-                required
-                style={{width:160,fontSize:"1.1rem"}}
-              />
-              <div style={{color:"var(--muted)",fontSize:"0.78rem",marginTop:"0.35rem"}}>
-                Currently: <strong style={{color:"var(--accent)"}}>{settings.posterSendTime} IST</strong>
+        <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+          {/* Column 1 */}
+          <div style={{ flex: "1 1 480px", maxWidth: 480, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            
+            {/* Bot Schedule Settings */}
+            <div className="card" style={{ margin: 0 }}>
+              <div className="section-title">⚙️ Bot Schedule Settings</div>
+              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
+                Configure when the WhatsApp bot sends the daily poster and pre-generates questions. Times are in IST (24-hour format). Changes apply within 1 minute.
+              </p>
+              <form onSubmit={e => saveSettings(e, "schedule")}>
+                <div className="form-group" style={{marginBottom:"1.25rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🖼️ Poster Send Time
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(daily question sent to WhatsApp group)</span>
+                  </label>
+                  <input
+                    className="form-input"
+                    type="time"
+                    value={settings.posterSendTime}
+                    onChange={e=>setSettings(s=>({...s,posterSendTime:e.target.value}))}
+                    required
+                    style={{width:160,fontSize:"1.1rem"}}
+                  />
+                  <div style={{color:"var(--muted)",fontSize:"0.78rem",marginTop:"0.35rem"}}>
+                    Currently: <strong style={{color:"var(--accent)"}}>{settings.posterSendTime} IST</strong>
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🤖 Question Generate Time
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(auto-generate questions if stock is low)</span>
+                  </label>
+                  <input
+                    className="form-input"
+                    type="time"
+                    value={settings.questionGenerateTime}
+                    onChange={e=>setSettings(s=>({...s,questionGenerateTime:e.target.value}))}
+                    required
+                    style={{width:160,fontSize:"1.1rem"}}
+                  />
+                  <div style={{color:"var(--muted)",fontSize:"0.78rem",marginTop:"0.35rem"}}>
+                    Currently: <strong style={{color:"var(--accent)"}}>{settings.questionGenerateTime} IST</strong>
+                  </div>
+                </div>
+                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
+                  {savingSection === "schedule" ? "Saving…" : "💾 Save Schedule"}
+                </button>
+              </form>
+              <div style={{marginTop:"1.5rem",padding:"0.75rem 1rem",background:"rgba(124,111,255,0.08)",borderRadius:10,border:"1px solid rgba(124,111,255,0.2)",fontSize:"0.82rem",color:"var(--muted)"}}>
+                <strong style={{color:"var(--accent)"}}>ℹ️ How it works:</strong><br/>
+                The bot checks for time changes every minute. After saving, the new schedule takes effect automatically — no restart needed.
               </div>
             </div>
-            <div className="form-group" style={{marginBottom:"1.5rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                🤖 Question Generate Time
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(auto-generate questions if stock is low)</span>
-              </label>
-              <input
-                className="form-input"
-                type="time"
-                value={settings.questionGenerateTime}
-                onChange={e=>setSettings(s=>({...s,questionGenerateTime:e.target.value}))}
-                required
-                style={{width:160,fontSize:"1.1rem"}}
-              />
-              <div style={{color:"var(--muted)",fontSize:"0.78rem",marginTop:"0.35rem"}}>
-                Currently: <strong style={{color:"var(--accent)"}}>{settings.questionGenerateTime} IST</strong>
-              </div>
-            </div>
-            <button type="submit" className="btn-primary" disabled={settingsSaving}>
-              {settingsSaving ? "Saving…" : "💾 Save Schedule"}
-            </button>
-          </form>
-          <div style={{marginTop:"1.5rem",padding:"0.75rem 1rem",background:"rgba(124,111,255,0.08)",borderRadius:10,border:"1px solid rgba(124,111,255,0.2)",fontSize:"0.82rem",color:"var(--muted)"}}>
-            <strong style={{color:"var(--accent)"}}>ℹ️ How it works:</strong><br/>
-            The bot checks for time changes every minute. After saving, the new schedule takes effect automatically — no restart needed.
-          </div>
-        </div>
 
-        {/* Vocabulary Challenge Settings */}
-        <div className="card" style={{maxWidth:480,marginTop:"1rem"}}>
-          <div className="section-title">📚 Vocabulary Challenge Settings</div>
-          <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-            Control the difficulty and number of vocabulary words shown to users each day. Changes clear today's words and regenerate them on next dashboard load.
-          </p>
-          <form onSubmit={saveSettings}>
-            <div className="form-group" style={{marginBottom:"1.25rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                🔢 Words Per Day
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(1–10 words)</span>
-              </label>
-              <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={1} max={10}
-                  value={settings.vocabWordCount}
-                  onChange={e=>setSettings(s=>({...s,vocabWordCount:parseInt(e.target.value)||3}))}
-                  required
-                  style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
-                />
-                <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>words per day (currently <strong style={{color:"var(--accent)"}}>{settings.vocabWordCount}</strong>)</span>
+            {/* Vocabulary Challenge Settings */}
+            <div className="card" style={{ margin: 0 }}>
+              <div className="section-title">📚 Vocabulary Challenge Settings</div>
+              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
+                Control the difficulty and number of vocabulary words shown to users each day. Users must use a minimum number of words for full credit. Changes clear today's words and regenerate them on next dashboard load.
+              </p>
+              <form onSubmit={e => saveSettings(e, "vocab")}>
+                <div className="form-group" style={{marginBottom:"1.25rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🔢 Words Per Day
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(1–10 words)</span>
+                  </label>
+                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={1} max={10}
+                      value={settings.vocabWordCount}
+                      onChange={e=>setSettings(s=>{
+                        const vocabWordCount = parseInt(e.target.value)||5;
+                        return {
+                          ...s,
+                          vocabWordCount,
+                          vocabRequiredCount: Math.min(s.vocabRequiredCount, vocabWordCount),
+                        };
+                      })}
+                      required
+                      style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
+                    />
+                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>words shown per day (currently <strong style={{color:"var(--accent)"}}>{settings.vocabWordCount}</strong>)</span>
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.25rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    ✅ Words Required
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(must use at least this many)</span>
+                  </label>
+                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={1}
+                      max={settings.vocabWordCount}
+                      value={settings.vocabRequiredCount}
+                      onChange={e=>setSettings(s=>({
+                        ...s,
+                        vocabRequiredCount: Math.min(parseInt(e.target.value)||3, s.vocabWordCount),
+                      }))}
+                      required
+                      style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
+                    />
+                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
+                      of {settings.vocabWordCount} words for full vocab points
+                    </span>
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    📊 CEFR Level
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(word difficulty)</span>
+                  </label>
+                  <select
+                    className="form-input"
+                    value={settings.vocabLevel}
+                    onChange={e=>setSettings(s=>({...s,vocabLevel:e.target.value}))}
+                    style={{width:120,fontSize:"1rem"}}
+                  >
+                    {["A1","A2","B1","B2","C1","C2"].map(l=>(
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                  <div style={{marginTop:"0.5rem",display:"flex",flexDirection:"column",gap:"0.2rem"}}>
+                    {[
+                      {l:"A1",d:"Beginner — very basic everyday words"},
+                      {l:"A2",d:"Elementary — simple practical words"},
+                      {l:"B1",d:"Intermediate — common useful words"},
+                      {l:"B2",d:"Upper-intermediate — richer, precise words ✓ recommended"},
+                      {l:"C1",d:"Advanced — sophisticated fluent-speaker words"},
+                      {l:"C2",d:"Proficient — complex academic vocabulary"},
+                    ].map(({l,d})=>(
+                      <div key={l} style={{fontSize:"0.75rem",color:settings.vocabLevel===l?"var(--accent)":"var(--muted)",fontWeight:settings.vocabLevel===l?600:400}}>
+                        {settings.vocabLevel===l?"▶":""} <strong>{l}</strong> — {d}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🎧 Story Audio Length
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(target word count for AI-generated stories)</span>
+                  </label>
+                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={100} max={400} step={10}
+                      value={settings.storyWordCount}
+                      onChange={e=>setSettings(s=>({...s,storyWordCount:parseInt(e.target.value)||200}))}
+                      style={{width:90,fontSize:"1.1rem",textAlign:"center"}}
+                    />
+                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
+                      words &nbsp;·&nbsp; ≈ <strong style={{color:"var(--accent)"}}>{Math.round(settings.storyWordCount / 130 * 60)}s</strong> audio
+                      &nbsp;<span style={{opacity:0.6}}>(130 wpm avg)</span>
+                    </span>
+                  </div>
+                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
+                    100 words ≈ 45s &nbsp;·&nbsp; 200 words ≈ 1:30 min &nbsp;·&nbsp; 260 words ≈ 2 min
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🎓 Story Difficulty Level
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(CEFR level for story day)</span>
+                  </label>
+                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+                    {[
+                      { l:"A2", desc:"Beginner" },
+                      { l:"B1", desc:"Intermediate" },
+                      { l:"B2", desc:"Upper-Intermediate" },
+                      { l:"C1", desc:"Advanced" },
+                    ].map(({l, desc}) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => setSettings(s => ({...s, storyLevel: l}))}
+                        style={{
+                          padding:"0.4rem 0.9rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
+                          border: settings.storyLevel === l ? "2px solid #7c6fff" : "1px solid var(--border)",
+                          background: settings.storyLevel === l ? "rgba(124,111,255,0.18)" : "var(--bg-secondary)",
+                          color: settings.storyLevel === l ? "#a78bfa" : "var(--muted)",
+                          cursor:"pointer",
+                        }}
+                      >
+                        <strong>{l}</strong> — {desc}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    📅 Story Day
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(day of week auto-story runs)</span>
+                  </label>
+                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+                    {[
+                      {d:0,label:"Sun"},
+                      {d:1,label:"Mon"},
+                      {d:2,label:"Tue"},
+                      {d:3,label:"Wed"},
+                      {d:4,label:"Thu"},
+                      {d:5,label:"Fri"},
+                      {d:6,label:"Sat"},
+                    ].map(({d, label}) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSettings(s => ({...s, storyDay: d}))}
+                        style={{
+                          padding:"0.4rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
+                          border: settings.storyDay === d ? "2px solid #7c6fff" : "1px solid var(--border)",
+                          background: settings.storyDay === d ? "rgba(124,111,255,0.18)" : "var(--bg-secondary)",
+                          color: settings.storyDay === d ? "#a78bfa" : "var(--muted)",
+                          cursor:"pointer",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
+                    Currently: <strong style={{color:"var(--accent)"}}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
+                  </div>
+                </div>
+                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
+                  {savingSection === "vocab" ? "Saving…" : "💾 Save Vocabulary & Story Settings"}
+                </button>
+              </form>
+              <div style={{marginTop:"1rem",padding:"0.75rem 1rem",background:"rgba(124,111,255,0.08)",borderRadius:10,border:"1px solid rgba(124,111,255,0.2)",fontSize:"0.82rem",color:"var(--muted)"}}>
+                ℹ️ Changing level or count clears today's words — they regenerate automatically when any user loads the dashboard.
               </div>
             </div>
-            <div className="form-group" style={{marginBottom:"1.5rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                📊 CEFR Level
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(word difficulty)</span>
-              </label>
-              <select
-                className="form-input"
-                value={settings.vocabLevel}
-                onChange={e=>setSettings(s=>({...s,vocabLevel:e.target.value}))}
-                style={{width:120,fontSize:"1rem"}}
-              >
-                {["A1","A2","B1","B2","C1","C2"].map(l=>(
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-              <div style={{marginTop:"0.5rem",display:"flex",flexDirection:"column",gap:"0.2rem"}}>
+
+          </div>
+
+          {/* Column 2 */}
+          <div style={{ flex: "1 1 480px", maxWidth: 480, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            
+            {/* Duration Scoring Settings */}
+            <div className="card" style={{ margin: 0 }}>
+              <div className="section-title">⏱️ Duration Scoring Settings</div>
+              <p style={{ color: "var(--muted)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
+                Configure duration targets and max limits in seconds (60s to 1200s).
+                Users earn full length points when meeting the "Full Score" duration, and can record up to "Max" limit.
+              </p>
+              <form onSubmit={e => saveSettings(e, "duration")}>
+                {/* 1. Default Daily */}
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>📅 Default Daily Questions</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationDefaultFull}
+                        onChange={e => setSettings(s => ({ ...s, durationDefaultFull: parseInt(e.target.value) || 300 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationDefaultFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationDefaultMax}
+                        onChange={e => setSettings(s => ({ ...s, durationDefaultMax: parseInt(e.target.value) || 300 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationDefaultMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Story Summary */}
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>📚 Story Summary Day</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationStoryFull}
+                        onChange={e => setSettings(s => ({ ...s, durationStoryFull: parseInt(e.target.value) || 180 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationStoryFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationStoryMax}
+                        onChange={e => setSettings(s => ({ ...s, durationStoryMax: parseInt(e.target.value) || 180 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationStoryMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Weekly Reflection */}
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>🔍 Weekly Reflection Day</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationWeeklyFull}
+                        onChange={e => setSettings(s => ({ ...s, durationWeeklyFull: parseInt(e.target.value) || 300 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationWeeklyFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationWeeklyMax}
+                        onChange={e => setSettings(s => ({ ...s, durationWeeklyMax: parseInt(e.target.value) || 420 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationWeeklyMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Monthly Reflection */}
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>💬 Monthly Reflection Day</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationMonthlyReflectionFull}
+                        onChange={e => setSettings(s => ({ ...s, durationMonthlyReflectionFull: parseInt(e.target.value) || 420 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationMonthlyReflectionFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationMonthlyReflectionMax}
+                        onChange={e => setSettings(s => ({ ...s, durationMonthlyReflectionMax: parseInt(e.target.value) || 420 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationMonthlyReflectionMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Monthly Goals */}
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>🎯 Monthly Goals Day</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationMonthlyGoalsFull}
+                        onChange={e => setSettings(s => ({ ...s, durationMonthlyGoalsFull: parseInt(e.target.value) || 420 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationMonthlyGoalsFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationMonthlyGoalsMax}
+                        onChange={e => setSettings(s => ({ ...s, durationMonthlyGoalsMax: parseInt(e.target.value) || 600 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationMonthlyGoalsMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
+                  {savingSection === "duration" ? "Saving…" : "💾 Save Duration Settings"}
+                </button>
+              </form>
+            </div>
+
+            {/* Reset Controls */}
+            <div className="card" style={{ margin: 0 }}>
+              <div className="section-title">🔄 Reset Controls</div>
+              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
+                Manually trigger resets. These are normally done automatically by the bot at midnight.
+              </p>
+              <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
                 {[
-                  {l:"A1",d:"Beginner — very basic everyday words"},
-                  {l:"A2",d:"Elementary — simple practical words"},
-                  {l:"B1",d:"Intermediate — common useful words"},
-                  {l:"B2",d:"Upper-intermediate — richer, precise words ✓ recommended"},
-                  {l:"C1",d:"Advanced — sophisticated fluent-speaker words"},
-                  {l:"C2",d:"Proficient — complex academic vocabulary"},
-                ].map(({l,d})=>(
-                  <div key={l} style={{fontSize:"0.75rem",color:settings.vocabLevel===l?"var(--accent)":"var(--muted)",fontWeight:settings.vocabLevel===l?600:400}}>
-                    {settings.vocabLevel===l?"▶":""} <strong>{l}</strong> — {d}
+                  { label:"🌅 Reset Day", desc:"Clears today's submissions & question status", key:"day", endpoint:"/users/reset/day", role:"both" },
+                  { label:"📅 Reset Weekly", desc:"Resets weekly submission counts to 0", key:"weekly", endpoint:"/users/reset/weekly", role:"both" },
+                  { label:"📆 Reset Monthly", desc:"Resets monthly submission counts to 0", key:"monthly", endpoint:"/users/reset/monthly", role:"both" },
+                ].map(({label,desc,key,endpoint})=>(
+                  <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0.75rem 1rem",background:"var(--bg-secondary)",borderRadius:10,border:"1px solid var(--border)"}}>
+                    <div>
+                      <div style={{fontWeight:600,fontSize:"0.9rem"}}>{label}</div>
+                      <div style={{color:"var(--muted)",fontSize:"0.78rem"}}>{desc}</div>
+                    </div>
+                    <button
+                      className="btn-ghost danger"
+                      style={{fontSize:"0.82rem",whiteSpace:"nowrap"}}
+                      disabled={resetting===key}
+                      onClick={()=>setModal({
+                        type:"danger", title:label,
+                        message:`${desc}. This cannot be undone. Continue?`,
+                        confirmText:"Yes, Reset",
+                        onConfirm: async()=>{
+                          setModal(null); setResetting(key);
+                          try{ await api.post(endpoint); msg(`${label} done!`); load(); }
+                          catch(e){ msg(e?.response?.data?.error||"Failed","danger"); }
+                          finally{ setResetting(""); }
+                        },
+                      })}
+                    >
+                      {resetting===key?"Resetting…":"Reset"}
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="form-group" style={{marginBottom:"1.5rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                🎧 Story Audio Length
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(target word count for AI-generated stories)</span>
-              </label>
-              <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={100} max={400} step={10}
-                  value={settings.storyWordCount}
-                  onChange={e=>setSettings(s=>({...s,storyWordCount:parseInt(e.target.value)||200}))}
-                  style={{width:90,fontSize:"1.1rem",textAlign:"center"}}
-                />
-                <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
-                  words &nbsp;·&nbsp; ≈ <strong style={{color:"var(--accent)"}}>{Math.round(settings.storyWordCount / 130 * 60)}s</strong> audio
-                  &nbsp;<span style={{opacity:0.6}}>(130 wpm avg)</span>
-                </span>
-              </div>
-              <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
-                100 words ≈ 45s &nbsp;·&nbsp; 200 words ≈ 1:30 min &nbsp;·&nbsp; 260 words ≈ 2 min
-              </div>
-            </div>
-            <div className="form-group" style={{marginBottom:"1.5rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                🎓 Story Difficulty Level
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(CEFR level for story day)</span>
-              </label>
-              <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
-                {[
-                  { l:"A2", desc:"Beginner" },
-                  { l:"B1", desc:"Intermediate" },
-                  { l:"B2", desc:"Upper-Intermediate" },
-                  { l:"C1", desc:"Advanced" },
-                ].map(({l, desc}) => (
-                  <button
-                    key={l}
-                    type="button"
-                    onClick={() => setSettings(s => ({...s, storyLevel: l}))}
-                    style={{
-                      padding:"0.4rem 0.9rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
-                      border: settings.storyLevel === l ? "2px solid #7c6fff" : "1px solid var(--border)",
-                      background: settings.storyLevel === l ? "rgba(124,111,255,0.18)" : "var(--bg-secondary)",
-                      color: settings.storyLevel === l ? "#a78bfa" : "var(--muted)",
-                      cursor:"pointer",
-                    }}
-                  >
-                    <strong>{l}</strong> — {desc}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="form-group" style={{marginBottom:"1.5rem"}}>
-              <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                📅 Story Day
-                <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(day of week auto-story runs)</span>
-              </label>
-              <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
-                {[
-                  {d:0,label:"Sun"},
-                  {d:1,label:"Mon"},
-                  {d:2,label:"Tue"},
-                  {d:3,label:"Wed"},
-                  {d:4,label:"Thu"},
-                  {d:5,label:"Fri"},
-                  {d:6,label:"Sat"},
-                ].map(({d, label}) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setSettings(s => ({...s, storyDay: d}))}
-                    style={{
-                      padding:"0.4rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
-                      border: settings.storyDay === d ? "2px solid #7c6fff" : "1px solid var(--border)",
-                      background: settings.storyDay === d ? "rgba(124,111,255,0.18)" : "var(--bg-secondary)",
-                      color: settings.storyDay === d ? "#a78bfa" : "var(--muted)",
-                      cursor:"pointer",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
-                Currently: <strong style={{color:"var(--accent)"}}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
-              </div>
-            </div>
-            <button type="submit" className="btn-primary" disabled={settingsSaving}>
-              {settingsSaving ? "Saving…" : "💾 Save Vocabulary & Story Settings"}
-            </button>
-          </form>
-          <div style={{marginTop:"1rem",padding:"0.75rem 1rem",background:"rgba(124,111,255,0.08)",borderRadius:10,border:"1px solid rgba(124,111,255,0.2)",fontSize:"0.82rem",color:"var(--muted)"}}>
-            ℹ️ Changing level or count clears today's words — they regenerate automatically when any user loads the dashboard.
-          </div>
-        </div>
 
-        {/* Reset Controls */}
-        <div className="card" style={{maxWidth:480,marginTop:"1rem"}}>
-          <div className="section-title">🔄 Reset Controls</div>
-          <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-            Manually trigger resets. These are normally done automatically by the bot at midnight.
-          </p>
-          <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-            {[
-              { label:"🌅 Reset Day", desc:"Clears today's submissions & question status", key:"day", endpoint:"/users/reset/day", role:"both" },
-              { label:"📅 Reset Weekly", desc:"Resets weekly submission counts to 0", key:"weekly", endpoint:"/users/reset/weekly", role:"both" },
-              { label:"📆 Reset Monthly", desc:"Resets monthly submission counts to 0", key:"monthly", endpoint:"/users/reset/monthly", role:"both" },
-            ].map(({label,desc,key,endpoint})=>(
-              <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0.75rem 1rem",background:"var(--bg-secondary)",borderRadius:10,border:"1px solid var(--border)"}}>
-                <div>
-                  <div style={{fontWeight:600,fontSize:"0.9rem"}}>{label}</div>
-                  <div style={{color:"var(--muted)",fontSize:"0.78rem"}}>{desc}</div>
-                </div>
-                <button
-                  className="btn-ghost danger"
-                  style={{fontSize:"0.82rem",whiteSpace:"nowrap"}}
-                  disabled={resetting===key}
-                  onClick={()=>setModal({
-                    type:"danger", title:label,
-                    message:`${desc}. This cannot be undone. Continue?`,
-                    confirmText:"Yes, Reset",
-                    onConfirm: async()=>{
-                      setModal(null); setResetting(key);
-                      try{ await api.post(endpoint); msg(`${label} done!`); load(); }
-                      catch(e){ msg(e?.response?.data?.error||"Failed","danger"); }
-                      finally{ setResetting(""); }
-                    },
-                  })}
-                >
-                  {resetting===key?"Resetting…":"Reset"}
-                </button>
-              </div>
-            ))}
           </div>
         </div>
-        </>
       )}
 
       {/* LIVE SESSIONS */}

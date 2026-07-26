@@ -26,7 +26,7 @@ const LEVEL_DESCRIPTORS = {
  * @param {string} level - CEFR level string e.g. "B2"
  * @returns {Array<{word, meaning, example}>|null}
  */
-async function generateVocabularyWords(topic, question, count = 3, level = "B2") {
+async function generateVocabularyWords(topic, question, count = 5, level = "B2") {
   const levelDesc = LEVEL_DESCRIPTORS[level] || LEVEL_DESCRIPTORS["B2"];
 
   const prompt = `You are an English vocabulary teacher.
@@ -149,11 +149,11 @@ export async function ensureTodayVocabulary() {
     const status = await Status.findOne().lean();
 
     // Read dynamic settings (admin-configurable)
-    const wordCount = Math.max(1, Math.min(10, status?.vocabWordCount ?? 3));
+    const wordCount = Math.max(1, Math.min(10, status?.vocabWordCount ?? 5));
     const level     = status?.vocabLevel || "B2";
 
     // Already have enough words for today — return them
-    if (status?.todayVocabulary && status.todayVocabulary.length >= Math.min(wordCount, 2)) {
+    if (status?.todayVocabulary && status.todayVocabulary.length >= wordCount) {
       return status.todayVocabulary;
     }
 

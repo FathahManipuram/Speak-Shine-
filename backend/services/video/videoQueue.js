@@ -297,7 +297,13 @@ async function processJob(job) {
       const transcript = result.analysis?.transcription || "";
       if (todayVocab.length > 0 && transcript) {
         vocabularyUsed = matchVocabularyInTranscript(transcript, todayVocab);
-        vocabularyScore = Math.round((vocabularyUsed.length / todayVocab.length) * 10 * 10) / 10; // 0–10
+        const requiredCount = Math.min(
+          status?.vocabRequiredCount ?? 3,
+          todayVocab.length
+        );
+        vocabularyScore = Math.round(
+          (Math.min(vocabularyUsed.length, requiredCount) / requiredCount) * 10 * 10
+        ) / 10; // 0–10
       }
     } catch (vocabErr) {
       console.warn("[Queue] Vocabulary matching failed (non-fatal):", vocabErr.message);
@@ -313,17 +319,19 @@ async function processJob(job) {
         isWeeklyReflection:  status?.isWeeklyReflectionDay  || false,
         isStorySummary:      status?.isStorySummaryDay      || false,
       };
-      const { maxSeconds } = getDurationLimits(gateFlags);
+      const { fullScoreSeconds } = getDurationLimits(gateFlags, status || {});
       const todayVocab = status?.todayVocabulary || [];
-      // Use actual word count from status setting as fallback (not hardcoded 5)
-      const configuredWordCount = status?.vocabWordCount ?? 3;
+      const configuredWordCount = status?.vocabWordCount ?? 5;
+      const configuredRequiredCount = status?.vocabRequiredCount ?? 3;
       const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
+      const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
 
       const { score, breakdown } = calculateCompositeScore({
         durationSeconds:    durationToSave || 0,
-        maxDurationSeconds: maxSeconds,
+        maxDurationSeconds: fullScoreSeconds,
         vocabularyUsed,
         totalVocabWords:    effectiveTotalWords,
+        requiredVocabWords: effectiveRequiredWords,
         topicRelevance:     result.analysis?.topicRelevance ?? null,
         analysis:           result.analysis,
       });
