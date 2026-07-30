@@ -576,6 +576,7 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
   );
 
   // Create report with recorded duration if provided
+  const allowPrivateVideos = (await Status.findOne().lean())?.allowPrivateVideos ?? true;
   const reportData = {
     userId,
     phone,
@@ -583,7 +584,8 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
     status: "processing",
     videoUrl: publicUrl,
     videoKey: key,
-    isPublic: isPublic === true || isPublic === "true",
+    // Never trust the client with visibility. Admins can force all new videos public.
+    isPublic: !allowPrivateVideos || (isPublic === true || isPublic === "true"),
     uploaderName: userDoc?.name || phone,
   };
 
@@ -851,6 +853,7 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       }
     );
 
+    const allowPrivateVideos = (await Status.findOne().lean())?.allowPrivateVideos ?? true;
     const report = await VideoReport.create({
       userId,
       phone,
@@ -859,7 +862,8 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       status: "processing",
       videoUrl,
       videoKey,
-      isPublic: isPublic === "true" || isPublic === true,
+      // Never trust the client with visibility. Admins can force all new videos public.
+      isPublic: !allowPrivateVideos || (isPublic === "true" || isPublic === true),
       uploaderName: userDoc?.name || phone,
     });
 

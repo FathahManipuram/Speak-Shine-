@@ -1617,7 +1617,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         {vocabulary.length > 0 && (
           <VocabularyWords words={vocabulary} requiredCount={vocabRequiredCount} totalCount={vocabWordCount} />
         )}
-        {file && !uploading && (
+        {allowPrivateVideos && file && !uploading && (
           <div style={{
             display: "flex",
             alignItems: "center",
@@ -1680,7 +1680,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
 // ── Record Card ──────────────────────────────────────────────────────────────
 // States: "setup" → "countdown" → "recording" → "preview" → "uploading"
 
-function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits }) {
+function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const navigate = useNavigate();
   const [step, setStep]             = useState("setup");
   const [cameras, setCameras]       = useState([]);
@@ -3050,7 +3050,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
             </div>
           )}
 
-          {recordedBlob && (
+          {allowPrivateVideos && recordedBlob && (
             <div style={{
               display: "flex",
               alignItems: "center",
