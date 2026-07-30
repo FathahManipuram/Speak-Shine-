@@ -565,7 +565,7 @@ export default function VideoAnalysis() {
                 flexWrap: "wrap",
                 gap: "0.5rem"
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <span style={{ fontSize: "1.2rem" }}>{report.isPublic ? "🌐" : "🔒"}</span>
                   <div>
                     <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)" }}>
@@ -578,13 +578,37 @@ export default function VideoAnalysis() {
                     </div>
                   </div>
                 </div>
-                <button 
-                  className="btn-secondary" 
+                {/* Toggle switch */}
+                <div
                   onClick={() => toggleReportVisibility(reportId || report._id || report.reportId)}
-                  style={{ padding: "0.4rem 0.85rem", fontSize: "0.82rem", width: "auto" }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.6rem",
+                    cursor: "pointer", userSelect: "none",
+                    background: report.isPublic ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
+                    border: `1px solid ${report.isPublic ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+                    borderRadius: 12, padding: "0.5rem 0.85rem",
+                    transition: "all 0.2s",
+                  }}
                 >
-                  {report.isPublic ? "Make Private" : "Make Public"}
-                </button>
+                  <div style={{
+                    width: 40, height: 22, borderRadius: 99, flexShrink: 0,
+                    background: report.isPublic ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                    border: `1px solid ${report.isPublic ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+                    position: "relative", transition: "all 0.2s",
+                  }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: "50%",
+                      background: report.isPublic ? "#4ade80" : "#f87171",
+                      position: "absolute", top: 2,
+                      left: report.isPublic ? 20 : 2,
+                      transition: "left 0.2s, background 0.2s",
+                      boxShadow: `0 0 6px ${report.isPublic ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+                    }} />
+                  </div>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: report.isPublic ? "#4ade80" : "#f87171", whiteSpace: "nowrap" }}>
+                    {report.isPublic ? "Public" : "Private"}
+                  </span>
+                </div>
               </div>
             )}
             {(report.status === "loading" || report.status === "processing") && (
@@ -1597,24 +1621,37 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
             alignItems: "center",
             gap: "0.5rem",
             margin: "1rem 0",
-            background: "rgba(255, 255, 255, 0.03)",
-            border: "1px solid var(--border2)",
-            borderRadius: "8px",
+            background: isPublic ? "rgba(74,222,128,0.05)" : "rgba(248,113,113,0.05)",
+            border: `1px solid ${isPublic ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+            borderRadius: "12px",
             padding: "0.75rem 1rem",
-            cursor: "pointer"
+            cursor: "pointer",
+            transition: "all 0.2s",
           }} onClick={() => setIsPublic(!isPublic)}>
-            <input 
-              type="checkbox" 
-              checked={!isPublic} 
-              onChange={() => {}} // handled by click on container
-              style={{ cursor: "pointer", width: "16px", height: "16px" }} 
-            />
-            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
-              🔒 Make this video private
-            </span>
-            <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: "auto" }}>
-              Only you and admin can see it
-            </span>
+            {/* Toggle switch */}
+            <div style={{
+              width: 40, height: 22, borderRadius: 99, flexShrink: 0,
+              background: isPublic ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+              border: `1px solid ${isPublic ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+              position: "relative", transition: "all 0.2s",
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: "50%",
+                background: isPublic ? "#4ade80" : "#f87171",
+                position: "absolute", top: 2,
+                left: isPublic ? 20 : 2,
+                transition: "left 0.2s, background 0.2s",
+                boxShadow: `0 0 6px ${isPublic ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+              }} />
+            </div>
+            <div>
+              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: isPublic ? "#4ade80" : "#f87171" }}>
+                {isPublic ? "🌐 Public" : "🔒 Private"}
+              </span>
+              <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.1rem" }}>
+                {isPublic ? "Visible to everyone in the Community Feed" : "Only you and admin can see this"}
+              </div>
+            </div>
           </div>
         )}
         <button className="btn-primary" onClick={handleUpload} disabled={!file || uploading || (uploadGate && !uploadGate.passed) || isGuest} style={{ width: "100%", position: "relative" }}>
@@ -3015,26 +3052,39 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
             <div style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem",
+              gap: "0.75rem",
               margin: "1rem 0",
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid var(--border2)",
-              borderRadius: "8px",
+              background: isPublic ? "rgba(74,222,128,0.05)" : "rgba(248,113,113,0.05)",
+              border: `1px solid ${isPublic ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+              borderRadius: "12px",
               padding: "0.75rem 1rem",
-              cursor: "pointer"
+              cursor: "pointer",
+              transition: "all 0.2s",
             }} onClick={() => setIsPublic(!isPublic)}>
-              <input 
-                type="checkbox" 
-                checked={!isPublic} 
-                onChange={() => {}} // handled by click on container
-                style={{ cursor: "pointer", width: "16px", height: "16px" }} 
-              />
-              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
-                🔒 Make this video private
-              </span>
-              <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: "auto" }}>
-                Only you and admin can see it
-              </span>
+              {/* Toggle switch */}
+              <div style={{
+                width: 40, height: 22, borderRadius: 99, flexShrink: 0,
+                background: isPublic ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                border: `1px solid ${isPublic ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+                position: "relative", transition: "all 0.2s",
+              }}>
+                <div style={{
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: isPublic ? "#4ade80" : "#f87171",
+                  position: "absolute", top: 2,
+                  left: isPublic ? 20 : 2,
+                  transition: "left 0.2s, background 0.2s",
+                  boxShadow: `0 0 6px ${isPublic ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+                }} />
+              </div>
+              <div>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: isPublic ? "#4ade80" : "#f87171" }}>
+                  {isPublic ? "🌐 Public" : "🔒 Private"}
+                </span>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.1rem" }}>
+                  {isPublic ? "Visible to everyone in the Community Feed" : "Only you and admin can see this"}
+                </div>
+              </div>
             </div>
           )}
           <div style={{ display: "flex", gap: "0.75rem" }}>
