@@ -1188,9 +1188,29 @@ export async function getUserReports(authId) {
   })
     .sort({ submittedAt: -1 })
     .limit(10)
-    .select("-analysis.transcription");
+    .select("-analysis.transcription")
+    .lean();
 
-  return { reports };
+  // R2 objects are private in production. The stored videoUrl is the public
+  // CDN URL used for public videos, so it cannot be used for a private report.
+  // Return the same short-lived signed URL used by the report-detail and
+  // community-feed endpoints. Without this, the owner sees the report but
+  // the browser receives a 401/403 when it tries to play the video.
+  const annotatedReports = await Promise.all(reports.map(async (report) => {
+    let videoUrl = report.videoUrl;
+    if (!report.isPublic && report.videoKey) {
+      try {
+        videoUrl = await getPresignedDownloadUrl(report.videoKey, 3600);
+      } catch (err) {
+        console.error(`[VideoService] Failed to generate report signed URL for ${report._id}:`, err.message);
+        videoUrl = null;
+      }
+    }
+
+    return { ...report, videoUrl };
+  }));
+
+  return { reports: annotatedReports };
 }
 
 /**
