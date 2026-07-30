@@ -32,6 +32,7 @@ const statusSchema = new mongoose.Schema({
   storyWordCount: { type: Number, default: 200, min: 100, max: 400 },
   usedStoryThemes: { type: [String], default: [] },
   storyLevel: { type: String, default: "B1", enum: ["A2", "B1", "B2", "C1"] },
+  allowPrivateVideos: { type: Boolean, default: true }, // admin can disable to force all videos public
   // Which day of the week auto-story runs (0=Sun, 1=Mon, ... 6=Sat). Default: 6 (Saturday)
   storyDay: { type: Number, default: 6, min: 0, max: 6 },
   // Duration scoring settings (admin-configurable)

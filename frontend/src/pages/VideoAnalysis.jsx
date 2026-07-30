@@ -42,6 +42,7 @@ export default function VideoAnalysis() {
   const [isMonthlyGoals, setIsMonthlyGoals] = useState(false);
   const [isWeeklyReflection, setIsWeeklyReflection] = useState(false);
   const [isStorySummary, setIsStorySummary] = useState(false);
+  const [allowPrivateVideos, setAllowPrivateVideos] = useState(true);
   const [durationLimits, setDurationLimits] = useState(null);
 
   // shared state
@@ -80,6 +81,7 @@ export default function VideoAnalysis() {
       if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
       if (t?.vocabWordCount) setVocabWordCount(t.vocabWordCount);
       if (t?.vocabRequiredCount) setVocabRequiredCount(t.vocabRequiredCount);
+      if (r.data?.today?.allowPrivateVideos !== undefined) setAllowPrivateVideos(r.data.today.allowPrivateVideos);
       if (t?.durationLimits) setDurationLimits(t.durationLimits);
     }).catch(() => {});
   }, [isGuest]);
@@ -539,8 +541,8 @@ export default function VideoAnalysis() {
         </div>
 
         {mode === "upload"
-          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} />
-          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} />
+          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
+          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
         }
 
         {/* Report Section */}
@@ -1282,7 +1284,7 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
 }
 
 // ── Upload Card (direct-to-R2 flow) ─────────────────────────────────────────
-function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits }) {
+function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const [file, setFile]           = useState(null);
   const [fileDuration, setFileDuration] = useState(null);
   const [uploading, setUploading] = useState(false);

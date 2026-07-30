@@ -1075,6 +1075,15 @@ export async function toggleVideoVisibility(reportId, authId) {
   }
 
   report.isPublic = !report.isPublic;
+
+  // If admin has disabled private videos, force public
+  const statusDoc = await Status.findOne().lean();
+  if (!(statusDoc?.allowPrivateVideos ?? true) && !report.isPublic) {
+    const error = new Error("Private videos are currently disabled by the admin");
+    error.statusCode = 403;
+    throw error;
+  }
+
   await report.save();
   
   return { isPublic: report.isPublic };
