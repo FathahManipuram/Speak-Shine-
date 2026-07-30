@@ -222,7 +222,7 @@ async function assertReportOwner(req, reportId) {
     throw err;
   }
 
-  if (auth.role === "admin") {
+  if (auth.role === "admin" || auth.role === "admins") {
     return report;
   }
 

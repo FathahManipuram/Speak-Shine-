@@ -951,7 +951,7 @@ export async function getVideoReport(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
+  if (report.userId.toString() !== user._id.toString() && !["admin", "admins"].includes(auth.role)) {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
@@ -986,12 +986,17 @@ export async function getVideoReport(reportId, authId) {
  */
 export async function getCommunityFeed(myPhone, myRole = "user") {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const phoneCandidates = [...new Set([
+    myPhone,
+    myPhone?.replace(/^\+91/, ""),
+    myPhone?.replace(/^91/, ""),
+  ].filter(Boolean))];
 
   // Admins and trainers can see all videos (public + private)
-  // Regular users only see public videos
-  const visibilityFilter = (myRole === "admin" || myRole === "trainer")
+  // Regular users see public videos plus their own private videos.
+  const visibilityFilter = (myRole === "admin" || myRole === "admins" || myRole === "trainer")
     ? {}
-    : { isPublic: true };
+    : { $or: [{ isPublic: true }, { phone: { $in: phoneCandidates } }] };
 
   const feed = await VideoReport.find({
     status: "completed",
@@ -1002,32 +1007,47 @@ export async function getCommunityFeed(myPhone, myRole = "user") {
   })
     .sort({ submittedAt: -1 })
     .limit(20)
-    .select("uploaderName submittedAt videoDuration videoUrl analysis expiresAt likes dislikes comments isPublic")
+    .select("uploaderName submittedAt videoDuration videoUrl videoKey phone analysis expiresAt likes dislikes comments isPublic")
     .lean();
 
-  // Annotate each item with the caller's reaction
-  const annotated = feed.map(item => ({
-    ...item,
-    likeCount:    item.likes?.length    || 0,
-    dislikeCount: item.dislikes?.length || 0,
-    userReaction: item.likes?.includes(myPhone)
-      ? "like"
-      : item.dislikes?.includes(myPhone)
-      ? "dislike"
-      : null,
-    // Strip phone numbers from comments for privacy
-    comments: (item.comments || []).map(c => ({
-      _id:       c._id,
-      name:      c.name,
-      role:      c.role,
-      text:      c.text,
-      createdAt: c.createdAt,
-      isOwn:     c.phone === myPhone,
-    })),
-    isPublic: item.isPublic ?? true,
-    // Don't expose raw like/dislike phone arrays to clients
-    likes:    undefined,
-    dislikes: undefined,
+  // Private objects are not readable through the public CDN URL. Generate a
+  // short-lived URL for every private item the query allowed through.
+  const annotated = await Promise.all(feed.map(async item => {
+    let videoUrl = item.videoUrl;
+    if (!item.isPublic && item.videoKey) {
+      try {
+        videoUrl = await getPresignedDownloadUrl(item.videoKey, 3600);
+      } catch (err) {
+        console.error("[VideoService] Failed to generate community signed URL:", err);
+      }
+    }
+
+    return {
+      _id: item._id,
+      uploaderName: item.uploaderName,
+      submittedAt: item.submittedAt,
+      videoDuration: item.videoDuration,
+      videoUrl,
+      analysis: item.analysis,
+      expiresAt: item.expiresAt,
+      likeCount:    item.likes?.length    || 0,
+      dislikeCount: item.dislikes?.length || 0,
+      userReaction: item.likes?.includes(myPhone)
+        ? "like"
+        : item.dislikes?.includes(myPhone)
+        ? "dislike"
+        : null,
+      // Strip phone numbers from comments for privacy
+      comments: (item.comments || []).map(c => ({
+        _id:       c._id,
+        name:      c.name,
+        role:      c.role,
+        text:      c.text,
+        createdAt: c.createdAt,
+        isOwn:     c.phone === myPhone,
+      })),
+      isPublic: item.isPublic ?? true,
+    };
   }));
 
   return { feed: annotated };
@@ -1066,7 +1086,7 @@ export async function toggleVideoVisibility(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
+  if (report.userId.toString() !== user._id.toString() && !["admin", "admins"].includes(auth.role)) {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
@@ -1162,7 +1182,7 @@ export async function deleteVideoReport(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
+  if (report.userId.toString() !== user._id.toString() && !["admin", "admins"].includes(auth.role)) {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
