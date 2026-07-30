@@ -181,9 +181,9 @@ export default function VideoAnalysis() {
     } catch {}
   };
 
-  const onAnalysisStarted = (id) => {
+  const onAnalysisStarted = (id, isPublic = false) => {
     setReportId(id);
-    setReport({ status: "processing" });
+    setReport({ status: "processing", reportId: id, isPublic });
     setProgressStage("Preparing your video…");
     setProgressStageKey("download");
     setCompletedSteps([]);
@@ -191,6 +191,22 @@ export default function VideoAnalysis() {
     setQueueInfo(null);
     loadMyReports();
     setTimeout(() => document.getElementById("report-section")?.scrollIntoView({ behavior: "smooth" }), 200);
+  };
+
+  const toggleReportVisibility = async (id) => {
+    try {
+      const res = await api.patch(`/video/report/${id}/visibility`);
+      setReport(prev => prev ? { ...prev, isPublic: res.data.isPublic } : null);
+      loadMyReports();
+    } catch (err) {
+      setModal({
+        type: "alert",
+        title: "Error",
+        message: err.response?.data?.error || "Failed to update visibility",
+        confirmText: "OK",
+        onConfirm: () => setModal(null)
+      });
+    }
   };
 
   const viewReport = async (id) => {
@@ -536,6 +552,41 @@ export default function VideoAnalysis() {
               {report.status === "completed"  && "✅ Analysis Complete"}
               {report.status === "failed"     && "❌ Analysis Failed"}
             </div>
+            {report.status !== "loading" && report.status !== "failed" && (
+              <div style={{
+                margin: "1.25rem 0",
+                padding: "0.85rem 1rem",
+                borderRadius: 12,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid var(--border2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "0.5rem"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontSize: "1.2rem" }}>{report.isPublic ? "🌐" : "🔒"}</span>
+                  <div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)" }}>
+                      Video is {report.isPublic ? "Public" : "Private"}
+                    </div>
+                    <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                      {report.isPublic 
+                        ? "Visible to other users in the Community Feed." 
+                        : "Only you and the admin can see this video."}
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => toggleReportVisibility(reportId || report._id || report.reportId)}
+                  style={{ padding: "0.4rem 0.85rem", fontSize: "0.82rem", width: "auto" }}
+                >
+                  {report.isPublic ? "Make Private" : "Make Public"}
+                </button>
+              </div>
+            )}
             {(report.status === "loading" || report.status === "processing") && (
               <ProcessingProgress
                 stage={progressStage}
@@ -594,7 +645,7 @@ export default function VideoAnalysis() {
                       <td style={{ color: "var(--muted)" }}>
                         {new Date(r.submittedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </td>
-                      <td>{r.videoFileName}</td>
+                      <td>{r.videoFileName} {r.isPublic ? "🌐" : "🔒"}</td>
                       <td>
                         {r.status === "processing" && "⏳ Processing"}
                         {r.status === "completed"  && "✅ Ready"}
@@ -1212,6 +1263,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   const [uploadSpeed, setUploadSpeed] = useState(null); // MB/s
   const [uploadEta, setUploadEta]     = useState(null); // seconds
   const [compressProgress, setCompressProgress] = useState(0);
+  const [isPublic, setIsPublic]   = useState(false);
   const uploadStartRef = useRef(null);
   const { generateHashAndFrames, cacheResult, isHashing, hashProgress } = useVideoFrameHash();
 
@@ -1432,7 +1484,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         key:       presign.key,
         publicUrl: presign.publicUrl,
         mimeType:  fileToUpload.type || "video/mp4",
-        isPublic:  true,
+        isPublic:  isPublic,
         videoHash: videoHash, // Send hash for cache checking
         frameKeys: frameKeys, // Send frame keys if uploaded
         ...(recordedDuration ? { recordedDuration } : {}),
@@ -1443,7 +1495,8 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         cacheResult(videoHash, { passed: true });
       }
 
-      onAnalysisStarted(data.reportId);
+      onAnalysisStarted(data.reportId, isPublic);
+      setIsPublic(false);
       setFile(null);
       document.getElementById("video-input").value = "";
     } catch (err) {
@@ -1533,6 +1586,32 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         {vocabulary.length > 0 && (
           <VocabularyWords words={vocabulary} requiredCount={vocabRequiredCount} totalCount={vocabWordCount} />
         )}
+        {file && !uploading && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            margin: "1rem 0",
+            background: "rgba(255, 255, 255, 0.03)",
+            border: "1px solid var(--border2)",
+            borderRadius: "8px",
+            padding: "0.75rem 1rem",
+            cursor: "pointer"
+          }} onClick={() => setIsPublic(!isPublic)}>
+            <input 
+              type="checkbox" 
+              checked={!isPublic} 
+              onChange={() => {}} // handled by click on container
+              style={{ cursor: "pointer", width: "16px", height: "16px" }} 
+            />
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
+              🔒 Make this video private
+            </span>
+            <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: "auto" }}>
+              Only you and admin can see it
+            </span>
+          </div>
+        )}
         <button className="btn-primary" onClick={handleUpload} disabled={!file || uploading || (uploadGate && !uploadGate.passed) || isGuest} style={{ width: "100%", position: "relative" }}>
           {uploading ?
             (stage === "hashing" ? `Analyzing ${hashProgress}%…` :
@@ -1580,6 +1659,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
   const [backgroundBlur, setBackgroundBlur] = useState(false); // Background blur toggle
   const [blurStrength, setBlurStrength] = useState(20); // Blur strength in pixels (10-40)
   const [ncStatus, setNcStatus]     = useState("idle");
+  const [isPublic, setIsPublic]     = useState(false);
   const [previewAspect, setPreviewAspect] = useState(null);
   const [draftRestored, setDraftRestored] = useState(false); // true when draft loaded from IndexedDB
 
@@ -2272,7 +2352,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
         key:       presign.key,
         publicUrl: presign.publicUrl,
         mimeType:  fileToUpload.type,
-        isPublic:  true,
+        isPublic:  isPublic,
         recordedDuration: elapsed,
         videoHash: videoHash,
         frameKeys: frameKeys,
@@ -2285,7 +2365,8 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
       console.log(`[Upload] Analysis started with reportId: ${data.reportId}`);
       // ── Clear the draft — video has been submitted successfully ──
       clearDraft().catch(() => {});
-      onAnalysisStarted(data.reportId);
+      onAnalysisStarted(data.reportId, isPublic);
+      setIsPublic(false);
       setStep("setup");
       setRecordedBlob(null);
       setElapsed(0);
@@ -2925,6 +3006,32 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
             </div>
           )}
 
+          {recordedBlob && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              margin: "1rem 0",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid var(--border2)",
+              borderRadius: "8px",
+              padding: "0.75rem 1rem",
+              cursor: "pointer"
+            }} onClick={() => setIsPublic(!isPublic)}>
+              <input 
+                type="checkbox" 
+                checked={!isPublic} 
+                onChange={() => {}} // handled by click on container
+                style={{ cursor: "pointer", width: "16px", height: "16px" }} 
+              />
+              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
+                🔒 Make this video private
+              </span>
+              <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: "auto" }}>
+                Only you and admin can see it
+              </span>
+            </div>
+          )}
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <button className="btn-secondary" onClick={retake} style={{ flex: 1 }}>🔄 Retake</button>
             <button

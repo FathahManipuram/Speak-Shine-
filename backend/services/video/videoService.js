@@ -947,7 +947,7 @@ export async function getVideoReport(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString()) {
+  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
@@ -1055,7 +1055,7 @@ export async function toggleVideoVisibility(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString()) {
+  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
@@ -1142,7 +1142,7 @@ export async function deleteVideoReport(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString()) {
+  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;

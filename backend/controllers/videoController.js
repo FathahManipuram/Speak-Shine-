@@ -152,7 +152,7 @@ export async function preCheckSubmit(req, res) {
  */
 export async function confirmUpload(req, res) {
   try {
-    const { key, publicUrl, mimeType = "video/webm", isPublic = true, recordedDuration, videoHash, frameKeys } = req.body;
+    const { key, publicUrl, mimeType = "video/webm", isPublic = false, recordedDuration, videoHash, frameKeys } = req.body;
     
     const result = await videoService.confirmDirectUpload(
       key,
@@ -220,6 +220,10 @@ async function assertReportOwner(req, reportId) {
     const err = new Error("Access denied");
     err.statusCode = 403;
     throw err;
+  }
+
+  if (auth.role === "admin") {
+    return report;
   }
 
   const stripped = auth.phone.replace(/^(\+91|91)/, "");
