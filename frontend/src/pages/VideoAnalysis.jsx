@@ -181,7 +181,7 @@ export default function VideoAnalysis() {
     } catch {}
   };
 
-  const onAnalysisStarted = (id, isPublic = false) => {
+  const onAnalysisStarted = (id, isPublic = true) => {
     setReportId(id);
     setReport({ status: "processing", reportId: id, isPublic });
     setProgressStage("Preparing your video…");
@@ -1263,7 +1263,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   const [uploadSpeed, setUploadSpeed] = useState(null); // MB/s
   const [uploadEta, setUploadEta]     = useState(null); // seconds
   const [compressProgress, setCompressProgress] = useState(0);
-  const [isPublic, setIsPublic]   = useState(false);
+  const [isPublic, setIsPublic]   = useState(true);
   const uploadStartRef = useRef(null);
   const { generateHashAndFrames, cacheResult, isHashing, hashProgress } = useVideoFrameHash();
 
@@ -1496,7 +1496,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
       }
 
       onAnalysisStarted(data.reportId, isPublic);
-      setIsPublic(false);
+      setIsPublic(true);
       setFile(null);
       document.getElementById("video-input").value = "";
     } catch (err) {
@@ -1659,7 +1659,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
   const [backgroundBlur, setBackgroundBlur] = useState(false); // Background blur toggle
   const [blurStrength, setBlurStrength] = useState(20); // Blur strength in pixels (10-40)
   const [ncStatus, setNcStatus]     = useState("idle");
-  const [isPublic, setIsPublic]     = useState(false);
+  const [isPublic, setIsPublic]     = useState(true);
   const [previewAspect, setPreviewAspect] = useState(null);
   const [draftRestored, setDraftRestored] = useState(false); // true when draft loaded from IndexedDB
 
@@ -2366,7 +2366,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
       // ── Clear the draft — video has been submitted successfully ──
       clearDraft().catch(() => {});
       onAnalysisStarted(data.reportId, isPublic);
-      setIsPublic(false);
+      setIsPublic(true);
       setStep("setup");
       setRecordedBlob(null);
       setElapsed(0);
