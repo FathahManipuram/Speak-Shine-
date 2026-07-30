@@ -537,7 +537,7 @@ export async function getReport(req, res) {
  */
 export async function getCommunityFeed(req, res) {
   try {
-    const result = await videoService.getCommunityFeed(req.user.phone);
+    const result = await videoService.getCommunityFeed(req.user.phone, req.user.role);
     res.json(result);
   } catch (error) {
     console.error("[CommunityFeed] Error:", error.message);

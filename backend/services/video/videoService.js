@@ -980,19 +980,25 @@ export async function getVideoReport(reportId, authId) {
 /**
  * Get community feed (public videos from last 24h)
  */
-export async function getCommunityFeed(myPhone) {
+export async function getCommunityFeed(myPhone, myRole = "user") {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  
+
+  // Admins and trainers can see all videos (public + private)
+  // Regular users only see public videos
+  const visibilityFilter = (myRole === "admin" || myRole === "trainer")
+    ? {}
+    : { isPublic: true };
+
   const feed = await VideoReport.find({
     status: "completed",
-    isPublic: true,
     videoUrl: { $ne: null },
     submittedAt: { $gte: since },
     expiresAt: { $gt: new Date() },
+    ...visibilityFilter,
   })
     .sort({ submittedAt: -1 })
     .limit(20)
-    .select("uploaderName submittedAt videoDuration videoUrl analysis expiresAt likes dislikes comments")
+    .select("uploaderName submittedAt videoDuration videoUrl analysis expiresAt likes dislikes comments isPublic")
     .lean();
 
   // Annotate each item with the caller's reaction
@@ -1014,6 +1020,7 @@ export async function getCommunityFeed(myPhone) {
       createdAt: c.createdAt,
       isOwn:     c.phone === myPhone,
     })),
+    isPublic: item.isPublic ?? true,
     // Don't expose raw like/dislike phone arrays to clients
     likes:    undefined,
     dislikes: undefined,
