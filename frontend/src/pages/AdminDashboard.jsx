@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     vocabLevel: "B2",
     storyWordCount: 200,
     storyLevel: "B1",
+    allowPrivateVideos: true,
     storyDay: 6,
     durationDefaultMax: 300,
     durationDefaultFull: 300,
@@ -209,6 +210,7 @@ export default function AdminDashboard() {
         vocabLevel: s.data.vocabLevel || "B2",
         storyWordCount: s.data.storyWordCount ?? 200,
         storyLevel: s.data.storyLevel || "B1",
+        allowPrivateVideos: s.data.allowPrivateVideos ?? true,
         storyDay: s.data.storyDay ?? 6,
         durationDefaultMax: s.data.durationDefaultMax ?? 300,
         durationDefaultFull: s.data.durationDefaultFull ?? 300,
@@ -1885,6 +1887,47 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
                     Currently: <strong style={{color:"var(--accent)"}}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
+                  </div>
+                </div>
+                {/* Allow Private Videos toggle */}
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🔒 Allow Private Videos
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(users can hide their videos from the community feed)</span>
+                  </label>
+                  <div
+                    onClick={() => setSettings(s => ({...s, allowPrivateVideos: !s.allowPrivateVideos}))}
+                    style={{
+                      display:"flex", alignItems:"center", gap:"0.75rem",
+                      cursor:"pointer", userSelect:"none",
+                      background: settings.allowPrivateVideos ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
+                      border: `1px solid ${settings.allowPrivateVideos ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+                      borderRadius:12, padding:"0.65rem 1rem", transition:"all 0.2s",
+                    }}
+                  >
+                    <div style={{
+                      width:40, height:22, borderRadius:99, flexShrink:0,
+                      background: settings.allowPrivateVideos ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                      border:`1px solid ${settings.allowPrivateVideos ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+                      position:"relative", transition:"all 0.2s",
+                    }}>
+                      <div style={{
+                        width:16, height:16, borderRadius:"50%",
+                        background: settings.allowPrivateVideos ? "#4ade80" : "#f87171",
+                        position:"absolute", top:2,
+                        left: settings.allowPrivateVideos ? 20 : 2,
+                        transition:"left 0.2s, background 0.2s",
+                        boxShadow:`0 0 6px ${settings.allowPrivateVideos ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+                      }} />
+                    </div>
+                    <div>
+                      <div style={{fontSize:"0.88rem", fontWeight:700, color: settings.allowPrivateVideos ? "#4ade80" : "#f87171"}}>
+                        {settings.allowPrivateVideos ? "Enabled — users can make videos private" : "Disabled — all videos are forced public"}
+                      </div>
+                      <div style={{fontSize:"0.72rem", color:"var(--muted)", marginTop:"0.1rem"}}>
+                        {settings.allowPrivateVideos ? "Users can choose to hide their video from the community feed" : "All videos will be visible to everyone regardless of user preference"}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <button type="submit" className="btn-primary" disabled={savingSection !== null}>

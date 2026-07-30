@@ -576,6 +576,7 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
   );
 
   // Create report with recorded duration if provided
+  const allowPrivateVideos = (await Status.findOne().lean())?.allowPrivateVideos ?? true;
   const reportData = {
     userId,
     phone,
@@ -583,7 +584,8 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
     status: "processing",
     videoUrl: publicUrl,
     videoKey: key,
-    isPublic: isPublic === true || isPublic === "true",
+    // Never trust the client with visibility. Admins can force all new videos public.
+    isPublic: !allowPrivateVideos || (isPublic === true || isPublic === "true"),
     uploaderName: userDoc?.name || phone,
   };
 
@@ -851,6 +853,7 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       }
     );
 
+    const allowPrivateVideos = (await Status.findOne().lean())?.allowPrivateVideos ?? true;
     const report = await VideoReport.create({
       userId,
       phone,
@@ -859,7 +862,8 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       status: "processing",
       videoUrl,
       videoKey,
-      isPublic: isPublic === "true" || isPublic === true,
+      // Never trust the client with visibility. Admins can force all new videos public.
+      isPublic: !allowPrivateVideos || (isPublic === "true" || isPublic === true),
       uploaderName: userDoc?.name || phone,
     });
 
@@ -947,7 +951,7 @@ export async function getVideoReport(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString()) {
+  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
@@ -980,19 +984,25 @@ export async function getVideoReport(reportId, authId) {
 /**
  * Get community feed (public videos from last 24h)
  */
-export async function getCommunityFeed(myPhone) {
+export async function getCommunityFeed(myPhone, myRole = "user") {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  
+
+  // Admins and trainers can see all videos (public + private)
+  // Regular users only see public videos
+  const visibilityFilter = (myRole === "admin" || myRole === "trainer")
+    ? {}
+    : { isPublic: true };
+
   const feed = await VideoReport.find({
     status: "completed",
-    isPublic: true,
     videoUrl: { $ne: null },
     submittedAt: { $gte: since },
     expiresAt: { $gt: new Date() },
+    ...visibilityFilter,
   })
     .sort({ submittedAt: -1 })
     .limit(20)
-    .select("uploaderName submittedAt videoDuration videoUrl analysis expiresAt likes dislikes comments")
+    .select("uploaderName submittedAt videoDuration videoUrl analysis expiresAt likes dislikes comments isPublic")
     .lean();
 
   // Annotate each item with the caller's reaction
@@ -1014,6 +1024,7 @@ export async function getCommunityFeed(myPhone) {
       createdAt: c.createdAt,
       isOwn:     c.phone === myPhone,
     })),
+    isPublic: item.isPublic ?? true,
     // Don't expose raw like/dislike phone arrays to clients
     likes:    undefined,
     dislikes: undefined,
@@ -1055,7 +1066,7 @@ export async function toggleVideoVisibility(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString()) {
+  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;
@@ -1068,6 +1079,15 @@ export async function toggleVideoVisibility(reportId, authId) {
   }
 
   report.isPublic = !report.isPublic;
+
+  // If admin has disabled private videos, force public
+  const statusDoc = await Status.findOne().lean();
+  if (!(statusDoc?.allowPrivateVideos ?? true) && !report.isPublic) {
+    const error = new Error("Private videos are currently disabled by the admin");
+    error.statusCode = 403;
+    throw error;
+  }
+
   await report.save();
   
   return { isPublic: report.isPublic };
@@ -1142,7 +1162,7 @@ export async function deleteVideoReport(reportId, authId) {
     throw error;
   }
   
-  if (report.userId.toString() !== user._id.toString()) {
+  if (report.userId.toString() !== user._id.toString() && auth.role !== "admin") {
     const error = new Error("Access denied");
     error.statusCode = 403;
     throw error;

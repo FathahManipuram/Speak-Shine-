@@ -42,6 +42,7 @@ export default function VideoAnalysis() {
   const [isMonthlyGoals, setIsMonthlyGoals] = useState(false);
   const [isWeeklyReflection, setIsWeeklyReflection] = useState(false);
   const [isStorySummary, setIsStorySummary] = useState(false);
+  const [allowPrivateVideos, setAllowPrivateVideos] = useState(true);
   const [durationLimits, setDurationLimits] = useState(null);
 
   // shared state
@@ -80,6 +81,7 @@ export default function VideoAnalysis() {
       if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
       if (t?.vocabWordCount) setVocabWordCount(t.vocabWordCount);
       if (t?.vocabRequiredCount) setVocabRequiredCount(t.vocabRequiredCount);
+      if (r.data?.today?.allowPrivateVideos !== undefined) setAllowPrivateVideos(r.data.today.allowPrivateVideos);
       if (t?.durationLimits) setDurationLimits(t.durationLimits);
     }).catch(() => {});
   }, [isGuest]);
@@ -181,9 +183,9 @@ export default function VideoAnalysis() {
     } catch {}
   };
 
-  const onAnalysisStarted = (id) => {
+  const onAnalysisStarted = (id, isPublic = true) => {
     setReportId(id);
-    setReport({ status: "processing" });
+    setReport({ status: "processing", reportId: id, isPublic });
     setProgressStage("Preparing your video…");
     setProgressStageKey("download");
     setCompletedSteps([]);
@@ -191,6 +193,22 @@ export default function VideoAnalysis() {
     setQueueInfo(null);
     loadMyReports();
     setTimeout(() => document.getElementById("report-section")?.scrollIntoView({ behavior: "smooth" }), 200);
+  };
+
+  const toggleReportVisibility = async (id) => {
+    try {
+      const res = await api.patch(`/video/report/${id}/visibility`);
+      setReport(prev => prev ? { ...prev, isPublic: res.data.isPublic } : null);
+      loadMyReports();
+    } catch (err) {
+      setModal({
+        type: "alert",
+        title: "Error",
+        message: err.response?.data?.error || "Failed to update visibility",
+        confirmText: "OK",
+        onConfirm: () => setModal(null)
+      });
+    }
   };
 
   const viewReport = async (id) => {
@@ -523,8 +541,8 @@ export default function VideoAnalysis() {
         </div>
 
         {mode === "upload"
-          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} />
-          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} />
+          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
+          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
         }
 
         {/* Report Section */}
@@ -536,6 +554,65 @@ export default function VideoAnalysis() {
               {report.status === "completed"  && "✅ Analysis Complete"}
               {report.status === "failed"     && "❌ Analysis Failed"}
             </div>
+            {report.status !== "loading" && report.status !== "failed" && (
+              <div style={{
+                margin: "1.25rem 0",
+                padding: "0.85rem 1rem",
+                borderRadius: 12,
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid var(--border2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "0.5rem"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <span style={{ fontSize: "1.2rem" }}>{report.isPublic ? "🌐" : "🔒"}</span>
+                  <div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)" }}>
+                      Video is {report.isPublic ? "Public" : "Private"}
+                    </div>
+                    <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                      {report.isPublic 
+                        ? "Visible to other users in the Community Feed." 
+                        : "Only you and the admin can see this video."}
+                    </div>
+                  </div>
+                </div>
+                {/* Toggle switch */}
+                <div
+                  onClick={() => toggleReportVisibility(reportId || report._id || report.reportId)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "0.6rem",
+                    cursor: "pointer", userSelect: "none",
+                    background: report.isPublic ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
+                    border: `1px solid ${report.isPublic ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+                    borderRadius: 12, padding: "0.5rem 0.85rem",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 22, borderRadius: 99, flexShrink: 0,
+                    background: report.isPublic ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                    border: `1px solid ${report.isPublic ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+                    position: "relative", transition: "all 0.2s",
+                  }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: "50%",
+                      background: report.isPublic ? "#4ade80" : "#f87171",
+                      position: "absolute", top: 2,
+                      left: report.isPublic ? 20 : 2,
+                      transition: "left 0.2s, background 0.2s",
+                      boxShadow: `0 0 6px ${report.isPublic ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+                    }} />
+                  </div>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: report.isPublic ? "#4ade80" : "#f87171", whiteSpace: "nowrap" }}>
+                    {report.isPublic ? "Public" : "Private"}
+                  </span>
+                </div>
+              </div>
+            )}
             {(report.status === "loading" || report.status === "processing") && (
               <ProcessingProgress
                 stage={progressStage}
@@ -574,7 +651,12 @@ export default function VideoAnalysis() {
               </div>
             )}
             {report.status === "completed" && report.analysis && (
-              <ReportView analysis={report.analysis} expiresAt={report.expiresAt} formatTimeRemaining={formatTimeRemaining} />
+              <ReportView 
+                analysis={report.analysis} 
+                expiresAt={report.expiresAt} 
+                formatTimeRemaining={formatTimeRemaining} 
+                videoUrl={report.videoUrl} 
+              />
             )}
           </div>
         )}
@@ -594,7 +676,7 @@ export default function VideoAnalysis() {
                       <td style={{ color: "var(--muted)" }}>
                         {new Date(r.submittedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </td>
-                      <td>{r.videoFileName}</td>
+                      <td>{r.videoFileName} {r.isPublic ? "🌐" : "🔒"}</td>
                       <td>
                         {r.status === "processing" && "⏳ Processing"}
                         {r.status === "completed"  && "✅ Ready"}
@@ -1202,7 +1284,7 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
 }
 
 // ── Upload Card (direct-to-R2 flow) ─────────────────────────────────────────
-function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits }) {
+function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const [file, setFile]           = useState(null);
   const [fileDuration, setFileDuration] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1212,6 +1294,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   const [uploadSpeed, setUploadSpeed] = useState(null); // MB/s
   const [uploadEta, setUploadEta]     = useState(null); // seconds
   const [compressProgress, setCompressProgress] = useState(0);
+  const [isPublic, setIsPublic]   = useState(true);
   const uploadStartRef = useRef(null);
   const { generateHashAndFrames, cacheResult, isHashing, hashProgress } = useVideoFrameHash();
 
@@ -1432,7 +1515,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         key:       presign.key,
         publicUrl: presign.publicUrl,
         mimeType:  fileToUpload.type || "video/mp4",
-        isPublic:  true,
+        isPublic:  isPublic,
         videoHash: videoHash, // Send hash for cache checking
         frameKeys: frameKeys, // Send frame keys if uploaded
         ...(recordedDuration ? { recordedDuration } : {}),
@@ -1443,7 +1526,8 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         cacheResult(videoHash, { passed: true });
       }
 
-      onAnalysisStarted(data.reportId);
+      onAnalysisStarted(data.reportId, isPublic);
+      setIsPublic(true);
       setFile(null);
       document.getElementById("video-input").value = "";
     } catch (err) {
@@ -1533,6 +1617,45 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
         {vocabulary.length > 0 && (
           <VocabularyWords words={vocabulary} requiredCount={vocabRequiredCount} totalCount={vocabWordCount} />
         )}
+        {allowPrivateVideos && file && !uploading && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            margin: "1rem 0",
+            background: isPublic ? "rgba(74,222,128,0.05)" : "rgba(248,113,113,0.05)",
+            border: `1px solid ${isPublic ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+            borderRadius: "12px",
+            padding: "0.75rem 1rem",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }} onClick={() => setIsPublic(!isPublic)}>
+            {/* Toggle switch */}
+            <div style={{
+              width: 40, height: 22, borderRadius: 99, flexShrink: 0,
+              background: isPublic ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+              border: `1px solid ${isPublic ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+              position: "relative", transition: "all 0.2s",
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: "50%",
+                background: isPublic ? "#4ade80" : "#f87171",
+                position: "absolute", top: 2,
+                left: isPublic ? 20 : 2,
+                transition: "left 0.2s, background 0.2s",
+                boxShadow: `0 0 6px ${isPublic ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+              }} />
+            </div>
+            <div>
+              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: isPublic ? "#4ade80" : "#f87171" }}>
+                {isPublic ? "🌐 Public" : "🔒 Private"}
+              </span>
+              <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.1rem" }}>
+                {isPublic ? "Visible to everyone in the Community Feed" : "Only you and admin can see this"}
+              </div>
+            </div>
+          </div>
+        )}
         <button className="btn-primary" onClick={handleUpload} disabled={!file || uploading || (uploadGate && !uploadGate.passed) || isGuest} style={{ width: "100%", position: "relative" }}>
           {uploading ?
             (stage === "hashing" ? `Analyzing ${hashProgress}%…` :
@@ -1557,7 +1680,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
 // ── Record Card ──────────────────────────────────────────────────────────────
 // States: "setup" → "countdown" → "recording" → "preview" → "uploading"
 
-function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits }) {
+function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const navigate = useNavigate();
   const [step, setStep]             = useState("setup");
   const [cameras, setCameras]       = useState([]);
@@ -1580,6 +1703,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
   const [backgroundBlur, setBackgroundBlur] = useState(false); // Background blur toggle
   const [blurStrength, setBlurStrength] = useState(20); // Blur strength in pixels (10-40)
   const [ncStatus, setNcStatus]     = useState("idle");
+  const [isPublic, setIsPublic]     = useState(true);
   const [previewAspect, setPreviewAspect] = useState(null);
   const [draftRestored, setDraftRestored] = useState(false); // true when draft loaded from IndexedDB
 
@@ -2272,7 +2396,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
         key:       presign.key,
         publicUrl: presign.publicUrl,
         mimeType:  fileToUpload.type,
-        isPublic:  true,
+        isPublic:  isPublic,
         recordedDuration: elapsed,
         videoHash: videoHash,
         frameKeys: frameKeys,
@@ -2285,7 +2409,8 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
       console.log(`[Upload] Analysis started with reportId: ${data.reportId}`);
       // ── Clear the draft — video has been submitted successfully ──
       clearDraft().catch(() => {});
-      onAnalysisStarted(data.reportId);
+      onAnalysisStarted(data.reportId, isPublic);
+      setIsPublic(true);
       setStep("setup");
       setRecordedBlob(null);
       setElapsed(0);
@@ -2925,6 +3050,45 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
             </div>
           )}
 
+          {allowPrivateVideos && recordedBlob && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              margin: "1rem 0",
+              background: isPublic ? "rgba(74,222,128,0.05)" : "rgba(248,113,113,0.05)",
+              border: `1px solid ${isPublic ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+              borderRadius: "12px",
+              padding: "0.75rem 1rem",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }} onClick={() => setIsPublic(!isPublic)}>
+              {/* Toggle switch */}
+              <div style={{
+                width: 40, height: 22, borderRadius: 99, flexShrink: 0,
+                background: isPublic ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                border: `1px solid ${isPublic ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
+                position: "relative", transition: "all 0.2s",
+              }}>
+                <div style={{
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: isPublic ? "#4ade80" : "#f87171",
+                  position: "absolute", top: 2,
+                  left: isPublic ? 20 : 2,
+                  transition: "left 0.2s, background 0.2s",
+                  boxShadow: `0 0 6px ${isPublic ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
+                }} />
+              </div>
+              <div>
+                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: isPublic ? "#4ade80" : "#f87171" }}>
+                  {isPublic ? "🌐 Public" : "🔒 Private"}
+                </span>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.1rem" }}>
+                  {isPublic ? "Visible to everyone in the Community Feed" : "Only you and admin can see this"}
+                </div>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: "0.75rem" }}>
             <button className="btn-secondary" onClick={retake} style={{ flex: 1 }}>🔄 Retake</button>
             <button
@@ -3063,7 +3227,7 @@ function Section({ title, children }) {
   );
 }
 
-function ReportView({ analysis: a, expiresAt, formatTimeRemaining }) {
+function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
   const s = a.stats || {};
   const tierColor = {
     excellent: "#4ade80",
@@ -3101,6 +3265,36 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining }) {
 
   return (
     <div className="report-content">
+
+      {/* ── Video Player ── */}
+      {videoUrl && (
+        <div style={{
+          marginBottom: "1.5rem",
+          padding: "1rem",
+          borderRadius: 16,
+          border: "1px solid var(--border2)",
+          background: "var(--card2)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+        }}>
+          <div style={{ fontSize: "0.85rem", color: "var(--muted)", fontWeight: 700, marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            📼 Your Submitted Video
+          </div>
+          <video 
+            src={videoUrl} 
+            controls 
+            controlsList="nodownload" 
+            playsInline
+            style={{ 
+              width: "100%", 
+              borderRadius: "12px", 
+              background: "#000", 
+              aspectRatio: "16/9",
+              display: "block",
+              border: "1px solid rgba(255,255,255,0.05)"
+            }} 
+          />
+        </div>
+      )}
 
       {/* ── Sunday bonus banner ── */}
       {a.sundayBonus && (

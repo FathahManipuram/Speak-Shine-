@@ -1195,6 +1195,7 @@ export default function CommunityFeed() {
                     <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                       {item.uploaderName || "Anonymous"}
                       {item.isDemo && <span style={{ fontSize: "0.62rem", background: "rgba(124,111,255,0.15)", color: "#a78bfa", borderRadius: 20, padding: "0.1rem 0.45rem", fontWeight: 700 }}>DEMO</span>}
+                      {item.isPublic === false && <span style={{ fontSize: "0.62rem", background: "rgba(248,113,113,0.12)", color: "#f87171", borderRadius: 20, padding: "0.1rem 0.45rem", fontWeight: 700 }}>🔒 Private</span>}
                     </div>
                     <div style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
                       {fmtTime(item.submittedAt)}{item.videoDuration ? ` · ${fmtDur(item.videoDuration)}` : ""}

@@ -222,6 +222,10 @@ async function assertReportOwner(req, reportId) {
     throw err;
   }
 
+  if (auth.role === "admin") {
+    return report;
+  }
+
   const stripped = auth.phone.replace(/^(\+91|91)/, "");
   const user = await User.findOne({ phone: { $in: [auth.phone, stripped] } });
   if (!user) {
@@ -533,7 +537,7 @@ export async function getReport(req, res) {
  */
 export async function getCommunityFeed(req, res) {
   try {
-    const result = await videoService.getCommunityFeed(req.user.phone);
+    const result = await videoService.getCommunityFeed(req.user.phone, req.user.role);
     res.json(result);
   } catch (error) {
     console.error("[CommunityFeed] Error:", error.message);

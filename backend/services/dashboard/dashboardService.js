@@ -240,6 +240,7 @@ export async function getUserProfile(phone) {
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: status?.isStorySummaryDay || false,
       vocabulary: await vocabularyPromise,
+      allowPrivateVideos: status?.allowPrivateVideos ?? true,
       vocabWordCount: status?.vocabWordCount ?? 5,
       vocabRequiredCount: status?.vocabRequiredCount ?? 3,
       durationLimits: getDurationLimits({
@@ -352,6 +353,7 @@ export async function getSettings() {
     vocabLevel: status.vocabLevel || "B2",
     storyWordCount: status.storyWordCount ?? 200,
     storyLevel: status.storyLevel || "B1",
+    allowPrivateVideos: status.allowPrivateVideos ?? true,
     storyDay: status.storyDay ?? 6,
     durationDefaultMax: status.durationDefaultMax ?? 300,
     durationDefaultFull: status.durationDefaultFull ?? 300,
@@ -375,7 +377,8 @@ export async function updateSettings(
   durationStoryMax, durationStoryFull,
   durationWeeklyMax, durationWeeklyFull,
   durationMonthlyReflectionMax, durationMonthlyReflectionFull,
-  durationMonthlyGoalsMax, durationMonthlyGoalsFull
+  durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+  allowPrivateVideos
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -528,6 +531,10 @@ export async function updateSettings(
   checkRelation("Weekly Reflection", "durationWeeklyMax", "durationWeeklyFull", 420, 300);
   checkRelation("Monthly Reflection", "durationMonthlyReflectionMax", "durationMonthlyReflectionFull", 420, 420);
   checkRelation("Monthly Goals", "durationMonthlyGoalsMax", "durationMonthlyGoalsFull", 600, 420);
+
+  if (allowPrivateVideos !== undefined) {
+    updates.allowPrivateVideos = allowPrivateVideos === true || allowPrivateVideos === "true";
+  }
 
   await Status.updateOne({}, { $set: updates }, { upsert: true });
   
