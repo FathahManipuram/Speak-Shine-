@@ -625,7 +625,12 @@ export default function VideoAnalysis() {
               </div>
             )}
             {report.status === "completed" && report.analysis && (
-              <ReportView analysis={report.analysis} expiresAt={report.expiresAt} formatTimeRemaining={formatTimeRemaining} />
+              <ReportView 
+                analysis={report.analysis} 
+                expiresAt={report.expiresAt} 
+                formatTimeRemaining={formatTimeRemaining} 
+                videoUrl={report.videoUrl} 
+              />
             )}
           </div>
         )}
@@ -3170,7 +3175,7 @@ function Section({ title, children }) {
   );
 }
 
-function ReportView({ analysis: a, expiresAt, formatTimeRemaining }) {
+function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
   const s = a.stats || {};
   const tierColor = {
     excellent: "#4ade80",
@@ -3208,6 +3213,36 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining }) {
 
   return (
     <div className="report-content">
+
+      {/* ── Video Player ── */}
+      {videoUrl && (
+        <div style={{
+          marginBottom: "1.5rem",
+          padding: "1rem",
+          borderRadius: 16,
+          border: "1px solid var(--border2)",
+          background: "var(--card2)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+        }}>
+          <div style={{ fontSize: "0.85rem", color: "var(--muted)", fontWeight: 700, marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            📼 Your Submitted Video
+          </div>
+          <video 
+            src={videoUrl} 
+            controls 
+            controlsList="nodownload" 
+            playsInline
+            style={{ 
+              width: "100%", 
+              borderRadius: "12px", 
+              background: "#000", 
+              aspectRatio: "16/9",
+              display: "block",
+              border: "1px solid rgba(255,255,255,0.05)"
+            }} 
+          />
+        </div>
+      )}
 
       {/* ── Sunday bonus banner ── */}
       {a.sundayBonus && (
