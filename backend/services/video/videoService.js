@@ -1057,6 +1057,7 @@ export async function getCommunityFeed(myPhone, myRole = "user") {
  * Toggle video visibility
  */
 export async function toggleVideoVisibility(reportId, authId) {
+  const VISIBILITY_TOGGLE_COOLDOWN_MS = 10 * 1000;
   const report = await VideoReport.findById(reportId);
   
   if (!report) {
@@ -1098,19 +1099,45 @@ export async function toggleVideoVisibility(reportId, authId) {
     throw error;
   }
 
-  report.isPublic = !report.isPublic;
-
   // If admin has disabled private videos, force public
   const statusDoc = await Status.findOne().lean();
-  if (!(statusDoc?.allowPrivateVideos ?? true) && !report.isPublic) {
+  const nextIsPublic = !report.isPublic;
+  if (!(statusDoc?.allowPrivateVideos ?? true) && !nextIsPublic) {
     const error = new Error("Private videos are currently disabled by the admin");
     error.statusCode = 403;
     throw error;
   }
 
-  await report.save();
+  const cooldownCutoff = new Date(Date.now() - VISIBILITY_TOGGLE_COOLDOWN_MS);
+  // Match the current value as well as the cooldown window. This makes two
+  // simultaneous requests race safely: only one can flip this report.
+  const updated = await VideoReport.findOneAndUpdate(
+    {
+      _id: report._id,
+      isPublic: report.isPublic,
+      $or: [
+        { visibilityChangedAt: null },
+        { visibilityChangedAt: { $exists: false } },
+        { visibilityChangedAt: { $lte: cooldownCutoff } },
+      ],
+    },
+    {
+      $set: {
+        isPublic: nextIsPublic,
+        visibilityChangedAt: new Date(),
+      },
+    },
+    { new: true }
+  );
+
+  if (!updated) {
+    const error = new Error("Please wait a few seconds before changing visibility again");
+    error.statusCode = 429;
+    error.retryAfterSeconds = Math.ceil(VISIBILITY_TOGGLE_COOLDOWN_MS / 1000);
+    throw error;
+  }
   
-  return { isPublic: report.isPublic };
+  return { isPublic: updated.isPublic };
 }
 
 /**

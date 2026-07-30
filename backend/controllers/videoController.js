@@ -557,6 +557,9 @@ export async function toggleVisibility(req, res) {
     res.json(result);
   } catch (error) {
     if (error.statusCode) {
+      if (error.retryAfterSeconds) {
+        res.set("Retry-After", String(error.retryAfterSeconds));
+      }
       return res.status(error.statusCode).json({ error: error.message });
     }
     console.error("[ToggleVisibility] Error:", error.message);
