@@ -55,6 +55,7 @@ export default function VideoAnalysis() {
   const [queueInfo, setQueueInfo]     = useState(null);
   const [myReports, setMyReports]     = useState([]);
   const [modal, setModal]             = useState(null);
+  const [visibilityUpdating, setVisibilityUpdating] = useState(false);
 
   useEffect(() => {
     if (isGuest) {
@@ -196,6 +197,8 @@ export default function VideoAnalysis() {
   };
 
   const toggleReportVisibility = async (id) => {
+    if (visibilityUpdating) return;
+    setVisibilityUpdating(true);
     try {
       const res = await api.patch(`/video/report/${id}/visibility`);
       setReport(prev => prev ? { ...prev, isPublic: res.data.isPublic } : null);
@@ -208,6 +211,8 @@ export default function VideoAnalysis() {
         confirmText: "OK",
         onConfirm: () => setModal(null)
       });
+    } finally {
+      setVisibilityUpdating(false);
     }
   };
 
@@ -583,9 +588,12 @@ export default function VideoAnalysis() {
                 {/* Toggle switch */}
                 <div
                   onClick={() => toggleReportVisibility(reportId || report._id || report.reportId)}
+                  aria-disabled={visibilityUpdating}
                   style={{
                     display: "flex", alignItems: "center", gap: "0.6rem",
-                    cursor: "pointer", userSelect: "none",
+                    cursor: visibilityUpdating ? "wait" : "pointer", userSelect: "none",
+                    pointerEvents: visibilityUpdating ? "none" : "auto",
+                    opacity: visibilityUpdating ? 0.65 : 1,
                     background: report.isPublic ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
                     border: `1px solid ${report.isPublic ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
                     borderRadius: 12, padding: "0.5rem 0.85rem",
