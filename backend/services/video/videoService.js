@@ -7,6 +7,7 @@ import VideoReport from "../../../models/videoReportSchema.js";
 import User from "../../../models/userSchema.js";
 import Status from "../../../models/statusSchema.js";
 import UploadAudit from "../../../models/uploadAuditSchema.js";
+import mongoose from "mongoose";
 import { uploadToR2, uploadBufferToR2, deleteFromR2, getR2Key, getPresignedUploadUrl, getPresignedDownloadUrl } from "../../config/storage.js";
 import { enqueue, pushProgressById, pushPipelineStep, recordSecurityEvent, trackReportPhone } from "./videoQueue.js";
 import { getVideoDuration } from "../ai/videoProcessor.js";
@@ -984,8 +985,16 @@ export async function getVideoReport(reportId, authId) {
 /**
  * Get community feed (public videos from last 24h)
  */
-export async function getCommunityFeed(myPhone, myRole = "user") {
+export async function getCommunityFeed(authIdOrPhone, myRole = "user") {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const Auth = (await import("../../../models/authSchema.js")).default;
+  const auth = mongoose.isValidObjectId(authIdOrPhone)
+    ? await Auth.findById(authIdOrPhone).select("phone").lean()
+    : null;
+  const myPhone = auth?.phone || authIdOrPhone;
+  const linkedUser = auth
+    ? await User.findOne({ phone: { $in: [myPhone, myPhone?.replace(/^(\+91|91)/, "")] } }).select("_id").lean()
+    : null;
   const phoneCandidates = [...new Set([
     myPhone,
     myPhone?.replace(/^\+91/, ""),
@@ -993,10 +1002,18 @@ export async function getCommunityFeed(myPhone, myRole = "user") {
   ].filter(Boolean))];
 
   // Admins and trainers can see all videos (public + private)
-  // Regular users see public videos plus their own private videos.
+  // Regular users see public videos plus their own private videos. Match the
+  // linked User._id first; phone matching remains for reports created before
+  // the user relationship was made consistent.
   const visibilityFilter = (myRole === "admin" || myRole === "admins" || myRole === "trainer")
     ? {}
-    : { $or: [{ isPublic: true }, { phone: { $in: phoneCandidates } }] };
+    : {
+        $or: [
+          { isPublic: true },
+          ...(linkedUser?._id ? [{ userId: linkedUser._id }] : []),
+          { phone: { $in: phoneCandidates } },
+        ],
+      };
 
   const feed = await VideoReport.find({
     status: "completed",
