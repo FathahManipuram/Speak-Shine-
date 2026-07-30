@@ -537,7 +537,10 @@ export async function getReport(req, res) {
  */
 export async function getCommunityFeed(req, res) {
   try {
-    const result = await videoService.getCommunityFeed(req.user.phone, req.user.role);
+    // Pass the authenticated account ID as the primary identity. Phone numbers
+    // are not a stable ownership key because older records may use different
+    // country-code formats.
+    const result = await videoService.getCommunityFeed(req.user.id, req.user.role);
     res.json(result);
   } catch (error) {
     console.error("[CommunityFeed] Error:", error.message);
