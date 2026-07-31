@@ -921,8 +921,14 @@ function readVideoBlobDuration(blob) {
       }
 
       // Some MediaRecorder WebM blobs report Infinity/NaN until the browser seeks.
-      video.ontimeupdate = () => finish(video.duration);
-      video.currentTime = Number.MAX_SAFE_INTEGER;
+      video.ontimeupdate = () => {
+        if (isFinite(video.duration) && video.duration > 0) {
+          finish(video.duration);
+        }
+      };
+      try {
+        video.currentTime = 1e6;
+      } catch {}
     };
 
     video.src = url;
