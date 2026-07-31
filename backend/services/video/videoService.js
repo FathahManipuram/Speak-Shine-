@@ -1000,30 +1000,38 @@ export async function getVideoReport(reportId, authId) {
 export async function getCommunityFeed(authIdOrPhone, myRole = "user") {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const Auth = (await import("../../../models/authSchema.js")).default;
-  const auth = mongoose.isValidObjectId(authIdOrPhone)
-    ? await Auth.findById(authIdOrPhone).select("phone").lean()
-    : null;
-  const myPhone = auth?.phone || authIdOrPhone;
-  const linkedUser = auth
+  
+  let authPhone = null;
+  let userDoc = null;
+
+  if (mongoose.isValidObjectId(authIdOrPhone)) {
+    const authDoc = await Auth.findById(authIdOrPhone).select("phone").lean();
+    userDoc = await User.findById(authIdOrPhone).select("_id phone").lean();
+    authPhone = authDoc?.phone || userDoc?.phone || null;
+  }
+
+  const myPhone = authPhone || (typeof authIdOrPhone === "string" ? authIdOrPhone : null);
+  const linkedUser = userDoc || (myPhone
     ? await User.findOne({ phone: { $in: [myPhone, myPhone?.replace(/^(\+91|91)/, "")] } }).select("_id").lean()
-    : null;
+    : null);
+
   const phoneCandidates = [...new Set([
     myPhone,
     myPhone?.replace(/^\+91/, ""),
     myPhone?.replace(/^91/, ""),
   ].filter(Boolean))];
 
-  // Admins and trainers can see all videos (public + private)
-  // Regular users see public videos plus their own private videos. Match the
-  // linked User._id first; phone matching remains for reports created before
-  // the user relationship was made consistent.
-  const visibilityFilter = (myRole === "admin" || myRole === "admins" || myRole === "trainer")
+  // MINIMAL PRIVATE VIDEO RULE:
+  // - Admins / Trainers: see ALL videos (public + private)
+  // - Regular Users: see PUBLIC videos ({ isPublic: true }) + THEIR OWN private videos
+  const isAdmin = myRole === "admin" || myRole === "admins" || myRole === "trainer";
+  const visibilityFilter = isAdmin
     ? {}
     : {
         $or: [
           { isPublic: true },
           ...(linkedUser?._id ? [{ userId: linkedUser._id }] : []),
-          { phone: { $in: phoneCandidates } },
+          ...(phoneCandidates.length > 0 ? [{ phone: { $in: phoneCandidates } }] : []),
         ],
       };
 
