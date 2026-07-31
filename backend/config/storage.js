@@ -105,26 +105,28 @@ function getR2Client() {
 }
 
 /**
- * S3 client WITHOUT forcePathStyle — for presigned URL generation.
- * Presigned URLs for R2 MUST use virtual-hosted style (bucket in subdomain).
- * Path-style presigned URLs always fail with "SignatureDoesNotMatch" on R2.
+ * S3 client for presigned URL generation.
+ * Cloudflare R2 requires forcePathStyle: true for presigned URLs too —
+ * the endpoint is account-scoped (ACCOUNT.r2.cloudflarestorage.com),
+ * so the bucket MUST be in the path. Virtual-hosted style would generate
+ * a subdomain (BUCKET.ACCOUNT.r2.cloudflarestorage.com) that doesn't resolve.
  */
 function getR2PresignClient() {
   if (_r2Presign) return _r2Presign;
 
   const { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = _initEnv();
 
-  console.log("[R2] Initialising presign S3 client (virtual-hosted style):", {
+  console.log("[R2] Initialising presign S3 client:", {
     endpoint: R2_ENDPOINT,
     bucket: _bucket,
     accessKeyId: R2_ACCESS_KEY_ID.substring(0, 8) + "...",
-    forcePathStyle: false,
+    forcePathStyle: true,
   });
 
   _r2Presign = new S3Client({
     region: "auto",
     endpoint: R2_ENDPOINT,
-    // No forcePathStyle — presigned URLs must use virtual-hosted style
+    forcePathStyle: true,  // Required — R2 uses path-style, not virtual-hosted
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
     credentials: {
