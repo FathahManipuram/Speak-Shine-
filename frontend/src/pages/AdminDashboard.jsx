@@ -1005,8 +1005,8 @@ export default function AdminDashboard() {
                     <button
                       onClick={async()=>{
                         try {
-                          const {data} = await api.patch(`/payments/admin/toggle-paid/${u.phone}`);
-                          setUsers(prev => prev.map(x => x.phone===u.phone ? {...x, paid: data.paid} : x));
+                          const {data} = await api.patch(`/payments/admin/toggle-paid/${encodeURIComponent(u.phone)}`);
+                          setUsers(prev => prev.map(x => x.phone===u.phone ? {...x, paid: data.paid, paidAt: data.paidAt} : x));
                           msg(`${u.registeredName||u.name||u.phone} marked as ${data.paid?"✅ Paid":"❌ Unpaid"}`);
                         } catch(e) { msg(e?.response?.data?.error||"Failed","danger"); }
                       }}

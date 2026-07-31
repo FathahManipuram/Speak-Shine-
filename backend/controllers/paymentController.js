@@ -31,6 +31,14 @@ async function findUserByPhone(phone) {
   return user;
 }
 
+function getRequestPhone(rawPhone = "") {
+  try {
+    return decodeURIComponent(String(rawPhone)).trim();
+  } catch {
+    return String(rawPhone).trim();
+  }
+}
+
 /**
  * POST /api/payments/create-order
  */
@@ -176,8 +184,10 @@ export async function verifyPayment(req, res) {
  */
 export async function adminTogglePaid(req, res) {
   try {
-    const { phone } = req.params;
+    const phone = getRequestPhone(req.params.phone);
     const { note } = req.body;
+
+    if (!phone) return res.status(400).json({ error: "Phone number is required" });
 
     const user = await findUserByPhone(phone);
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -185,27 +195,33 @@ export async function adminTogglePaid(req, res) {
     user.paid = !user.paid;
     if (user.paid && !user.paidAt) {
       user.paidAt = new Date();
+    } else if (!user.paid) {
+      user.paidAt = null;
     }
     await user.save();
 
     // Log admin manual transaction
     if (user.paid) {
-      await Transaction.create({
-        phone,
-        name:   user.name || null,
-        userId: user.userId || null,
-        amount: 0,
-        status: "manual",
-        source: "admin",
-        note:   note || `Manually activated by admin`,
-      });
+      try {
+        await Transaction.create({
+          phone: user.phone || phone,
+          name:   user.name || null,
+          userId: user.userId || null,
+          amount: 0,
+          status: "manual",
+          source: "admin",
+          note:   note || "Manually activated by admin",
+        });
+      } catch (logErr) {
+        console.warn("[Payment] manual transaction log failed:", logErr.message);
+      }
     }
 
     console.log(`[Payment] Admin toggled paid=${user.paid} for ${phone}`);
-    res.json({ success: true, paid: user.paid });
+    res.json({ success: true, paid: user.paid, paidAt: user.paidAt });
   } catch (err) {
-    console.error("[Payment] admin toggle-paid error:", err.message);
-    res.status(500).json({ error: "Failed to toggle payment status" });
+    console.error("[Payment] admin toggle-paid error:", err);
+    res.status(500).json({ error: err.message || "Failed to toggle payment status" });
   }
 }
 
