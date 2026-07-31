@@ -180,16 +180,17 @@ export default function Login({ loginFor = "user" }) {
     setServerError("");
     try {
       const { data } = await api.post("/auth/login", form);
-      if (loginFor === "admin" && data.role !== "admin") {
+      if (loginFor === "admin" && !["admin", "admins"].includes(data.role)) {
         setServerError("Admin credentials required.");
         return;
       }
-      if (loginFor === "trainer" && !["trainer", "admin"].includes(data.role)) {
+      if (loginFor === "trainer" && !["trainer", "admin", "admins"].includes(data.role)) {
         setServerError("Trainer credentials required.");
         return;
       }      // Store both access token and refresh token
       login({ phone: data.phone, role: data.role, name: data.name, paid: data.paid ?? false });
-      if (data.role === "admin")        navigate("/admin",     { replace: true });
+      if (loginFor === "trainer" && ["admin", "admins"].includes(data.role)) navigate("/trainer", { replace: true });
+      else if (data.role === "admin" || data.role === "admins") navigate("/admin", { replace: true });
       else if (data.role === "trainer") navigate("/trainer",   { replace: true });
       else                              navigate("/dashboard", { replace: true });
     } catch (err) {

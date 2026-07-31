@@ -165,12 +165,12 @@ function AppRoutes() {
             <Route path="/community" element={<CommunityFeed />} />
             <Route path="/payment" element={<PaymentWall />} />
             <Route path="/payment-history" element={
-              <ProtectedRoute roles={["user","admin","trainer"]} loginPath="/login">
+              <ProtectedRoute roles={["user","admin","admins","trainer"]} loginPath="/login">
                 <PaymentHistory />
               </ProtectedRoute>
             } />
             <Route path="/live/:id" element={
-              <ProtectedRoute roles={["user","admin","trainer"]} loginPath="/login">
+              <ProtectedRoute roles={["user","admin","admins","trainer"]} loginPath="/login">
                 <LiveSession />
               </ProtectedRoute>
             } />
@@ -180,7 +180,7 @@ function AppRoutes() {
               </ProtectedRoute>
             } />
             <Route path="/trainer" element={
-              <ProtectedRoute roles={["trainer","admin","viewer"]} loginPath="/trainer/login">
+              <ProtectedRoute roles={["trainer","admin","admins","viewer"]} loginPath="/trainer/login">
                 <TrainerDashboard />
               </ProtectedRoute>
             } />

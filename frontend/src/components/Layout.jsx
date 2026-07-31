@@ -109,7 +109,7 @@ export default function Layout({ children, title }) {
     setShowLogoutModal(false);
     setMenuOpen(false);
     logout();
-    if (user?.role === "admin") navigate("/admin/login");
+    if (user?.role === "admin" || user?.role === "admins") navigate("/admin/login");
     else if (user?.role === "trainer") navigate("/trainer/login");
     else navigate("/login");
   };
@@ -122,7 +122,7 @@ export default function Layout({ children, title }) {
       { to: "/video-analysis", label: "📹 Try It" },
       { to: "/community",      label: "👥 Community" },
     ];
-    if (user?.role === "admin") return [
+    if (user?.role === "admin" || user?.role === "admins") return [
       { to: "/admin",     label: "🛡️ Admin" },
       { to: "/trainer",   label: "🎓 Trainer" },
       { to: "/dashboard", label: "👤 User View" },
