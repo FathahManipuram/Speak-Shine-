@@ -7,6 +7,7 @@ import express from "express";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import {
   createOrder,
+  getPaymentConfig,
   verifyPayment,
   adminTogglePaid,
   getMyTransactions,
@@ -17,6 +18,7 @@ const router = express.Router();
 
 // ── User endpoints ────────────────────────────────────────────────────────────
 router.post("/create-order", authMiddleware, createOrder);
+router.get("/config", getPaymentConfig);
 router.post("/verify",       authMiddleware, verifyPayment);
 router.get("/my-transactions", authMiddleware, getMyTransactions);
 

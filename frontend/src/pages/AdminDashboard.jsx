@@ -46,6 +46,7 @@ export default function AdminDashboard() {
     storyLevel: "B1",
     allowPrivateVideos: true,
     storyDay: 6,
+    paymentAmount: 5,
     durationDefaultMax: 300,
     durationDefaultFull: 300,
     durationStoryMax: 180,
@@ -212,6 +213,7 @@ export default function AdminDashboard() {
         storyLevel: s.data.storyLevel || "B1",
         allowPrivateVideos: s.data.allowPrivateVideos ?? true,
         storyDay: s.data.storyDay ?? 6,
+        paymentAmount: s.data.paymentAmount ?? 5,
         durationDefaultMax: s.data.durationDefaultMax ?? 300,
         durationDefaultFull: s.data.durationDefaultFull ?? 300,
         durationStoryMax: s.data.durationStoryMax ?? 180,
@@ -397,6 +399,7 @@ export default function AdminDashboard() {
         storyWordCount: fresh.data.storyWordCount ?? 200,
         storyLevel: fresh.data.storyLevel || "B1",
         storyDay: fresh.data.storyDay ?? 6,
+        paymentAmount: fresh.data.paymentAmount ?? 5,
         durationDefaultMax: fresh.data.durationDefaultMax ?? 300,
         durationDefaultFull: fresh.data.durationDefaultFull ?? 300,
         durationStoryMax: fresh.data.durationStoryMax ?? 180,
@@ -1714,6 +1717,42 @@ export default function AdminDashboard() {
                 <strong style={{color:"var(--accent)"}}>ℹ️ How it works:</strong><br/>
                 The bot checks for time changes every minute. After saving, the new schedule takes effect automatically — no restart needed.
               </div>
+            </div>
+
+            {/* Payment Settings */}
+            <div className="card" style={{ margin: 0 }}>
+              <div className="section-title">Payment Settings</div>
+              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
+                Set the one-time premium membership amount shown on the payment page and charged through Razorpay.
+              </p>
+              <form onSubmit={e => saveSettings(e, "payment")}>
+                <div className="form-group" style={{marginBottom:"1.25rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    Premium Membership Amount
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(INR)</span>
+                  </label>
+                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem",flexWrap:"wrap"}}>
+                    <span style={{fontSize:"1.2rem",fontWeight:800,color:"var(--accent)"}}>₹</span>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={1}
+                      max={100000}
+                      step="0.01"
+                      value={settings.paymentAmount}
+                      onChange={e=>setSettings(s=>({...s,paymentAmount:e.target.value}))}
+                      required
+                      style={{width:140,fontSize:"1.1rem"}}
+                    />
+                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
+                      currently <strong style={{color:"var(--accent)"}}>₹{settings.paymentAmount || 5}</strong>
+                    </span>
+                  </div>
+                </div>
+                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
+                  {savingSection === "payment" ? "Saving…" : "Save Payment Amount"}
+                </button>
+              </form>
             </div>
 
             {/* Vocabulary Challenge Settings */}

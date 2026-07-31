@@ -35,6 +35,8 @@ const statusSchema = new mongoose.Schema({
   allowPrivateVideos: { type: Boolean, default: true }, // admin can disable to force all videos public
   // Which day of the week auto-story runs (0=Sun, 1=Mon, ... 6=Sat). Default: 6 (Saturday)
   storyDay: { type: Number, default: 6, min: 0, max: 6 },
+  // Payment settings (admin-configurable)
+  paymentAmount: { type: Number, default: 5, min: 1, max: 100000 },
   // Duration scoring settings (admin-configurable)
   durationDefaultMax: { type: Number, default: 300, min: 60, max: 1200 },
   durationDefaultFull: { type: Number, default: 300, min: 60, max: 1200 },

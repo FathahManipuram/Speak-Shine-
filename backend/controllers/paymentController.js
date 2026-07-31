@@ -9,6 +9,7 @@ import crypto from "crypto";
 import User from "../../models/userSchema.js";
 import Transaction from "../../models/transactionSchema.js";
 import Auth from "../../models/authSchema.js";
+import Status from "../../models/statusSchema.js";
 import { escapeRegex } from "../utils/phoneUtils.js";
 
 function getRazorpay() {
@@ -39,6 +40,25 @@ function getRequestPhone(rawPhone = "") {
   }
 }
 
+async function getPaymentAmount() {
+  const status = await Status.findOne().select("paymentAmount").lean();
+  const amount = Number(status?.paymentAmount ?? 5);
+  return Number.isFinite(amount) && amount >= 1 ? Math.round(amount * 100) / 100 : 5;
+}
+
+/**
+ * GET /api/payments/config
+ */
+export async function getPaymentConfig(req, res) {
+  try {
+    const amount = await getPaymentAmount();
+    res.json({ amount, currency: "INR" });
+  } catch (err) {
+    console.error("[Payment] config error:", err.message);
+    res.status(500).json({ error: "Failed to fetch payment settings" });
+  }
+}
+
 /**
  * POST /api/payments/create-order
  */
@@ -46,7 +66,7 @@ export async function createOrder(req, res) {
   try {
     const razorpay = getRazorpay();
 
-    const amountINR = Number(req.body.amount) || 499;
+    const amountINR = await getPaymentAmount();
     const amountPaise = Math.round(amountINR * 100);
 
     if (amountPaise < 100) {

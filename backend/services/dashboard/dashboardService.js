@@ -355,6 +355,7 @@ export async function getSettings() {
     storyLevel: status.storyLevel || "B1",
     allowPrivateVideos: status.allowPrivateVideos ?? true,
     storyDay: status.storyDay ?? 6,
+    paymentAmount: status.paymentAmount ?? 5,
     durationDefaultMax: status.durationDefaultMax ?? 300,
     durationDefaultFull: status.durationDefaultFull ?? 300,
     durationStoryMax: status.durationStoryMax ?? 180,
@@ -373,6 +374,7 @@ export async function getSettings() {
  */
 export async function updateSettings(
   posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+  paymentAmount,
   durationDefaultMax, durationDefaultFull,
   durationStoryMax, durationStoryFull,
   durationWeeklyMax, durationWeeklyFull,
@@ -475,6 +477,16 @@ export async function updateSettings(
       throw error;
     }
     updates.storyDay = day;
+  }
+
+  if (paymentAmount !== undefined) {
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
+      const error = new Error("paymentAmount must be between ₹1 and ₹100000");
+      error.statusCode = 400;
+      throw error;
+    }
+    updates.paymentAmount = Math.round(amount * 100) / 100;
   }
 
   // Duration fields validation

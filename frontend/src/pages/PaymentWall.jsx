@@ -22,15 +22,25 @@ function loadRazorpayScript() {
   });
 }
 
-const PLAN_AMOUNT = 5; // INR
+const DEFAULT_PLAN_AMOUNT = 5; // INR
 
 export default function PaymentWall({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [paid, setPaid] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [planAmount, setPlanAmount] = useState(DEFAULT_PLAN_AMOUNT);
   const navigate = useNavigate();
   const { login, user } = useAuth();
+
+  useEffect(() => {
+    api.get("/payments/config")
+      .then(({ data }) => {
+        const amount = Number(data?.amount);
+        if (Number.isFinite(amount) && amount >= 1) setPlanAmount(amount);
+      })
+      .catch(() => {});
+  }, []);
 
   // After successful payment — update auth context then hard-reload
   // so PaidRoute re-evaluates with paid=true from the fresh session
@@ -66,9 +76,7 @@ export default function PaymentWall({ onSuccess }) {
 
     try {
       // 2. Create order on backend
-      const { data: order } = await api.post("/payments/create-order", {
-        amount: PLAN_AMOUNT,
-      });
+      const { data: order } = await api.post("/payments/create-order");
 
       // 3. Open Razorpay modal
       const options = {
@@ -242,7 +250,7 @@ export default function PaymentWall({ onSuccess }) {
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#7c6fff" }}>
-                ₹{PLAN_AMOUNT}
+                ₹{planAmount}
               </div>
               <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>one-time</div>
             </div>
@@ -313,7 +321,7 @@ export default function PaymentWall({ onSuccess }) {
             e.currentTarget.style.boxShadow = "0 6px 24px rgba(124,111,255,0.35)";
           }}
         >
-          {loading ? "Processing…" : `💳 Pay ₹${PLAN_AMOUNT} & Unlock Access`}
+          {loading ? "Processing…" : `💳 Pay ₹${planAmount} & Unlock Access`}
         </button>
 
         <p style={{
