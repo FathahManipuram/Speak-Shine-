@@ -12,17 +12,17 @@ import { createServer } from "http";
 import { Server as SocketIO } from "socket.io";
 
 // ── Load .env FIRST before any other imports that use process.env ────────────
-// dotenv.config() with override:true ensures .env always wins over PM2 cached env
+// Keep override:false so Infisical / shell-provided values win over local .env.
 {
   const __fn = fileURLToPath(import.meta.url);
   const __dn = path.dirname(__fn);
   const envPath = path.join(__dn, '../.env');
   if (fs.existsSync(envPath)) {
-    const result = dotenv.config({ path: envPath, override: true });
+    const result = dotenv.config({ path: envPath, override: false });
     if (result.error) {
       console.error('[ENV] Error loading .env:', result.error.message);
     } else {
-      console.log('[ENV] ✅ .env loaded successfully (override mode)');
+      console.log('[ENV] .env loaded successfully (process env kept)');
       console.log('[ENV] NODE_ENV:', process.env.NODE_ENV);
       console.log('[ENV] R2_ACCESS_KEY_ID:', process.env.R2_ACCESS_KEY_ID?.substring(0, 8) + '...');
     }

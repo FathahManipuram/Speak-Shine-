@@ -185,7 +185,7 @@ export async function verifyPayment(req, res) {
 export async function adminTogglePaid(req, res) {
   try {
     const phone = getRequestPhone(req.params.phone);
-    const { note } = req.body;
+    const { note } = req.body || {};
 
     if (!phone) return res.status(400).json({ error: "Phone number is required" });
 

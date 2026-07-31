@@ -7,10 +7,10 @@
   "scripts": {
     "start": "NODE_ENV=production node --max-old-space-size=4096 --expose-gc api/server.js",
     "start:api": "node api/server.js",
-    "dev:backend": "node api/server.js",
-    "dev:api": "node api/server.js",
+    "dev:backend": "node -e \"process.env.NODE_ENV='development'; import('./api/server.js')\"",
+    "dev:api": "npm run dev:backend",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:infisical": "infisical run -- npm run dev:backend",
+    "dev:infisical": "infisical run --env=dev -- npm run dev:backend",
     "setup": "node scripts/setup.cjs",
     "build": "cd frontend && npm install --prefer-offline --no-audit --no-fund && npm run build",
     "build:frontend": "cd frontend && npm ci --prefer-offline --no-audit --no-fund && npm run build",
