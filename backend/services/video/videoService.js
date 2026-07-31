@@ -47,8 +47,12 @@ const MAX_ANALYSIS_MB = 200; // Increased limit for larger videos (Railway has e
  */
 function sanitizeFilename(filename) {
   const base = path.basename(String(filename || "video.webm")).replace(/\s+/g, "_");
-  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_").slice(0, 120);
-  return cleaned && cleaned !== "." && cleaned !== ".." ? cleaned : "video.webm";
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_");
+  // Extract extension BEFORE slicing so it's never truncated mid-dot
+  const ext = path.extname(cleaned);                          // e.g. ".mp4"
+  const stem = path.basename(cleaned, ext).slice(0, 100);    // cap stem at 100 chars
+  const result = stem ? `${stem}${ext}` : cleaned.slice(0, 104);
+  return result && result !== "." && result !== ".." ? result : "video.webm";
 }
 
 function getBaseMimeType(mimeType) {
@@ -166,7 +170,7 @@ async function downloadFramesFromR2(frameKeys) {
  * Download video from R2, run security checks, then enqueue for AI processing.
  * Runs asynchronously — caller does not await this.
  */
-async function downloadAndEnqueue(reportId, videoUrl, phone, displayName, videoHash = null, frameKeys = null) {
+async function downloadAndEnqueue(reportId, videoUrl, phone, displayName, videoHash = null, frameKeys = null, videoKey = null) {
   const tempPath = `./tmp/uploads/confirm-${reportId}-${Date.now()}.mp4`;
 
   const fail = async (message, eventType = null) => {
@@ -210,7 +214,11 @@ async function downloadAndEnqueue(reportId, videoUrl, phone, displayName, videoH
         if (!browserFrames || browserFrames.length === 0) {
           pushPipelineStep(reportId, "download", "Downloading for analysis…");
           const downloadStart = Date.now();
-          const response = await fetch(videoUrl);
+          // Use a fresh presigned URL so we can fetch from a private R2 bucket
+          const fetchUrl = videoKey
+            ? await getPresignedDownloadUrl(videoKey, 300)
+            : videoUrl;
+          const response = await fetch(fetchUrl);
           if (!response.ok) throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
           const buffer = await response.arrayBuffer();
           fs.writeFileSync(tempPath, Buffer.from(buffer));
@@ -240,7 +248,11 @@ async function downloadAndEnqueue(reportId, videoUrl, phone, displayName, videoH
     console.log(`[VideoService] Downloading video for ${reportId}...`);
 
     const downloadStart = Date.now();
-    const response = await fetch(videoUrl);
+    // Use a fresh presigned URL so we can fetch from a private R2 bucket
+    const fetchUrl = videoKey
+      ? await getPresignedDownloadUrl(videoKey, 300)
+      : videoUrl;
+    const response = await fetch(fetchUrl);
     if (!response.ok) throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
 
     const buffer = await response.arrayBuffer();
@@ -610,7 +622,7 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
 
   // Enqueue for processing (security scans run inside downloadAndEnqueue on the local file)
   // Pass frameKeys (R2 keys) - they will be downloaded and converted to base64 inside downloadAndEnqueue
-  downloadAndEnqueue(report._id, publicUrl, strippedPhone, userDoc?.name || strippedPhone, videoHash, frames);
+  downloadAndEnqueue(report._id, publicUrl, strippedPhone, userDoc?.name || strippedPhone, videoHash, frames, key);
 
   return {
     success: true,
@@ -1354,7 +1366,8 @@ export async function retryVideoAnalysis(reportId, authId) {
       user.phone || user.userId || user._id, 
       user.name || "User",
       null, // videoHash - not available on retry
-      report.frameKeys || null // Pass stored frame keys if available
+      report.frameKeys || null, // Pass stored frame keys if available
+      report.videoKey || null   // Pass videoKey so presigned URL can be generated
     );
   }
   

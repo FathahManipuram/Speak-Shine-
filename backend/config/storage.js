@@ -15,16 +15,23 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
 import path from "path";
 
-// ── Lazy-initialised singleton ──────────────────────────────────────────────
-let _r2 = null;
-let _bucket = null;
+// ── Lazy-initialised singletons ──────────────────────────────────────────────
+// WHY TWO CLIENTS:
+// Cloudflare R2 requires different URL styles for different operations:
+//   _r2        — forcePathStyle:true  — server-side PutObject/DeleteObject/GetObject
+//   _r2Presign — forcePathStyle:false — presigned URLs (browser PUT/GET directly to R2)
+//
+// Path-style presigned URLs ALWAYS fail on R2 with "SignatureDoesNotMatch"
+// because R2 signs against virtual-hosted style (bucket in subdomain).
+
+let _r2        = null;
+let _r2Presign = null;
+let _bucket    = null;
 let _publicUrl = null;
 
-function getR2Client() {
-  if (_r2) return _r2;
-
-  const R2_ENDPOINT        = process.env.R2_ENDPOINT;
-  const R2_ACCESS_KEY_ID   = process.env.R2_ACCESS_KEY_ID;
+function _initEnv() {
+  const R2_ENDPOINT          = process.env.R2_ENDPOINT;
+  const R2_ACCESS_KEY_ID     = process.env.R2_ACCESS_KEY_ID;
   const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
   _bucket    = process.env.R2_BUCKET_NAME || "speak-shine-videos";
   _publicUrl = (process.env.R2_PUBLIC_URL || "").replace(/\/$/, "");
@@ -41,19 +48,31 @@ function getR2Client() {
       "Set these environment variables and restart."
     );
   }
+  return { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY };
+}
 
-  console.log("[R2] Initialising S3 client:", {
+/**
+ * S3 client with forcePathStyle:true — for server-side direct operations
+ * (PutObject, DeleteObject, GetObject). R2's account-scoped endpoint URL
+ * requires path-style for these calls.
+ */
+function getR2Client() {
+  if (_r2) return _r2;
+
+  const { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = _initEnv();
+
+  console.log("[R2] Initialising direct-ops S3 client:", {
     endpoint: R2_ENDPOINT,
     bucket: _bucket,
     accessKeyId: R2_ACCESS_KEY_ID.substring(0, 8) + "...",
     secretKeyLength: R2_SECRET_ACCESS_KEY.length,
+    forcePathStyle: true,
   });
 
   _r2 = new S3Client({
     region: "auto",
     endpoint: R2_ENDPOINT,
     forcePathStyle: true,
-    // R2 does not support AWS SDK default flexible checksums on PutObject streams
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
     credentials: {
@@ -83,6 +102,39 @@ function getR2Client() {
 
   console.log("[R2] S3 client ready");
   return _r2;
+}
+
+/**
+ * S3 client WITHOUT forcePathStyle — for presigned URL generation.
+ * Presigned URLs for R2 MUST use virtual-hosted style (bucket in subdomain).
+ * Path-style presigned URLs always fail with "SignatureDoesNotMatch" on R2.
+ */
+function getR2PresignClient() {
+  if (_r2Presign) return _r2Presign;
+
+  const { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = _initEnv();
+
+  console.log("[R2] Initialising presign S3 client (virtual-hosted style):", {
+    endpoint: R2_ENDPOINT,
+    bucket: _bucket,
+    accessKeyId: R2_ACCESS_KEY_ID.substring(0, 8) + "...",
+    forcePathStyle: false,
+  });
+
+  _r2Presign = new S3Client({
+    region: "auto",
+    endpoint: R2_ENDPOINT,
+    // No forcePathStyle — presigned URLs must use virtual-hosted style
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+    credentials: {
+      accessKeyId: R2_ACCESS_KEY_ID,
+      secretAccessKey: R2_SECRET_ACCESS_KEY,
+    },
+  });
+
+  console.log("[R2] Presign S3 client ready");
+  return _r2Presign;
 }
 
 function getBucket()    { if (!_bucket)    getR2Client(); return _bucket; }
@@ -193,11 +245,14 @@ export async function getPresignedUploadUrl(key, mimeType = "video/webm") {
     const command = new PutObjectCommand({
       Bucket:      getBucket(),
       Key:         key,
-      ContentType: mimeType,
+      // NOTE: Do NOT include ContentType in the presigned PUT command.
+      // If ContentType is signed, the browser must send the exact same header value.
+      // WebM/MP4 codec variants (e.g. "video/mp4; codecs=avc1") differ from "video/mp4",
+      // causing a signature mismatch. Omitting it lets the browser send any Content-Type.
     });
 
-    const url = await getSignedUrl(getR2Client(), command, { expiresIn: 900 });
-    console.log("[R2] Presigned URL generated successfully");
+    const url = await getSignedUrl(getR2PresignClient(), command, { expiresIn: 900 });
+    console.log("[R2] Presigned upload URL generated successfully");
     return url;
   } catch (error) {
     console.error("[R2] Failed to generate presigned URL:", {
@@ -217,7 +272,7 @@ export async function getPresignedDownloadUrl(key, expiresIn = 3600) {
     Bucket: getBucket(),
     Key: key,
   });
-  return getSignedUrl(getR2Client(), command, { expiresIn });
+  return getSignedUrl(getR2PresignClient(), command, { expiresIn });
 }
 
 // Expose client getter for modules that need direct access

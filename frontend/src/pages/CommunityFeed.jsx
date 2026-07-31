@@ -588,6 +588,7 @@ function ProtectedVideoPlayer({ src, identity, watermarkUrl, fullscreenId, itemI
   const [hoverPct,  setHoverPct]  = useState(null);
   const [hoverTime, setHoverTime] = useState("");
   const [flash,     setFlash]     = useState(null);
+  const [videoError, setVideoError] = useState(false);
 
   // Read directly from video element every rAF tick
   const v      = videoRef.current;
@@ -690,6 +691,8 @@ function ProtectedVideoPlayer({ src, identity, watermarkUrl, fullscreenId, itemI
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+    setVideoError(false);
+    setBuffering(true);
     v.play().catch(() => {});
     resetHide();
     return () => {
@@ -724,11 +727,27 @@ function ProtectedVideoPlayer({ src, identity, watermarkUrl, fullscreenId, itemI
         onLoadedData={() => setBuffering(false)}
         onStalled={() => setBuffering(true)}
         onEnded={() => setPlaying(false)}
+        onError={() => { setBuffering(false); setVideoError(true); }}
         muted={muted}
       />
 
+      {/* Error overlay — shown when video fails to load (e.g. expired presigned URL) */}
+      {videoError && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 50,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.82)", gap: 8,
+        }}>
+          <span style={{ fontSize: "2rem" }}>⚠️</span>
+          <span style={{ color: "#f87171", fontWeight: 700, fontSize: "0.9rem" }}>Video unavailable</span>
+          <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.75rem", textAlign: "center", maxWidth: 220 }}>
+            The link may have expired. Refresh the page to get a new one.
+          </span>
+        </div>
+      )}
+
       {/* Buffering spinner */}
-      {buffering && (
+      {buffering && !videoError && (
         <div style={{
           position: "absolute", inset: 0, zIndex: 50,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -1286,6 +1305,7 @@ export default function CommunityFeed() {
                 }}>
                   <video src={`${item.videoUrl}#t=2`} preload="metadata" muted playsInline
                     onContextMenu={e => e.preventDefault()}
+                    onError={e => { e.currentTarget.style.display = "none"; }}
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(6px) brightness(0.45)", borderRadius: "10px", pointerEvents: "none" }}
                   />
                   <div style={{ position: "relative", zIndex: 1, width: 52, height: 52, borderRadius: "50%", background: "rgba(124,111,255,0.85)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(124,111,255,0.5)" }}>
