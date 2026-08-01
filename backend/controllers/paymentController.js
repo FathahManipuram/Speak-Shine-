@@ -110,7 +110,7 @@ export async function verifyPayment(req, res) {
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
     if (!key_secret) return res.status(500).json({ error: "Razorpay not configured" });
 
-    // Verify signature
+    // Verify HMAC-SHA256 signature
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
       .createHmac("sha256", key_secret)
@@ -148,7 +148,6 @@ export async function verifyPayment(req, res) {
 
     // Fallback: resolve phone from Auth document using JWT id
     if (!user && authId) {
-      const Auth = (await import("../../models/authSchema.js")).default;
       const auth = await Auth.findById(authId).select("phone name").lean();
       if (auth?.phone) {
         console.log(`[Payment] Resolved phone from Auth doc: ${auth.phone}`);
@@ -164,7 +163,18 @@ export async function verifyPayment(req, res) {
       return res.status(404).json({ error: "User record not found. Please contact support." });
     }
 
-    // Fetch amount from Razorpay order for accurate logging
+    // ── Replay / double-spend guard ──────────────────────────────────────────
+    // Reject if this Razorpay order ID was already successfully processed.
+    const existing = await Transaction.findOne({
+      razorpayOrderId: razorpay_order_id,
+      status: "success",
+    }).lean();
+    if (existing) {
+      console.warn(`[Payment] Duplicate order rejected: ${razorpay_order_id}`);
+      return res.status(409).json({ error: "This payment order has already been processed." });
+    }
+
+    // Fetch amount from Razorpay for accurate logging
     let amountINR = 0;
     try {
       const rzp = getRazorpay();
@@ -255,7 +265,6 @@ export async function getMyTransactions(req, res) {
 
     // Fallback: resolve phone from Auth doc if missing from token context
     if (!phone && req.user.id) {
-      const Auth = (await import("../../models/authSchema.js")).default;
       const auth = await Auth.findById(req.user.id).select("phone").lean();
       phone = auth?.phone || null;
     }

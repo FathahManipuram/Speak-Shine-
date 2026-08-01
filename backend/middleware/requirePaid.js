@@ -11,7 +11,7 @@ export async function requirePaid(req, res, next) {
   const role = req.user?.role;
 
   // Admins and trainers always bypass payment gate
-  if (role === "admin" || role === "trainer" || role === "viewer") {
+  if (role === "admin" || role === "admins" || role === "trainer" || role === "viewer") {
     return next();
   }
 
