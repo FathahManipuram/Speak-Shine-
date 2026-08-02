@@ -823,6 +823,12 @@ export default function UserDashboard() {
     if (hrs > 0) return `${hrs}h ${mins}m`;
     return `${mins}m`;
   };
+  const formatSessionDuration = (seconds) => {
+    if (seconds == null || seconds <= 0) return "—";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+    return `${mins}m ${String(secs).padStart(2, "0")}s`;
+  };
   const totalRecordedSeconds = scores.reduce((sum, score) => {
     const durationValue = parseDurationToSeconds(score.duration ?? score.videoDuration ?? score.recordedDuration ?? score.durationSeconds);
     return sum + (durationValue ?? 0);
@@ -1220,7 +1226,7 @@ export default function UserDashboard() {
       <div className="stat-grid">
         <StatCard icon="🔥" label="Current Streak" value={`${profile?.streak || 0} days`} color="#f97316" />
         <StatCard icon="📹" label="Total Sessions" value={scores.length} color="#7c6fff" />
-        <StatCard icon="⏱️" label="Recorded Time" value={totalRecordedTimeLabel} color="#38bdf8" />
+        <StatCard icon="⏱️" label="Total Recorded" value={totalRecordedTimeLabel} color="#38bdf8" />
         <StatCard icon="📅" label="This Week" value={`${profile?.weeklySubmissions || 0}/7`} color="#4ade80" />
         <StatCard icon="📆" label="Monthly" value={profile?.monthlySubmissions || 0} color="#fbbf24" />
       </div>
@@ -1678,7 +1684,7 @@ export default function UserDashboard() {
             <div className="section-title">Session History</div>
             <div className="table-wrap">
               <table className="data-table">
-                <thead><tr><th>#</th><th>Date</th><th>Fluency</th><th>Grammar</th><th>Confidence</th><th>Vocabulary</th></tr></thead>
+                <thead><tr><th>#</th><th>Date</th><th>Recorded</th><th>Fluency</th><th>Grammar</th><th>Confidence</th><th>Vocabulary</th></tr></thead>
                 <tbody>
                   {pagedScores.map((s, i) => {
                     const globalIdx = scores.length - ((sessionPage - 1) * SESSION_PAGE_SIZE + i);
@@ -1686,6 +1692,9 @@ export default function UserDashboard() {
                       <tr key={i}>
                         <td style={{ color: "var(--muted)" }}>{globalIdx}</td>
                         <td style={{ color: "var(--muted)" }}>{s.date ? new Date(s.date).toLocaleDateString("en-IN") : s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("en-IN") : "—"}</td>
+                        <td style={{ color: "#38bdf8", fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {formatSessionDuration(parseDurationToSeconds(s.duration ?? s.videoDuration ?? s.recordedDuration ?? s.durationSeconds))}
+                        </td>
                         {["fluency", "grammar", "confidence", "vocabulary"].map(k => (
                           <td key={k} style={{ fontWeight: 600, color: scoreColor(s[k] || 0) }}>{s[k] ?? "—"}/10</td>
                         ))}

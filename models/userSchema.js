@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema({
       vocabulary: Number,
       points: { type: Number, default: null },
       sundayBonus: { type: Boolean, default: false },
+      duration: { type: Number, default: null }, // recorded video duration in seconds
       date: { type: Date, default: Date.now },
     }],
     default: [],
