@@ -5,6 +5,7 @@ import StatCard from "../components/StatCard.jsx";
 import api from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import GuestBanner from "../components/GuestBanner.jsx";
+import StreakBadge from "../components/StreakBadge.jsx";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
@@ -1049,6 +1050,50 @@ export default function UserDashboard() {
         <StatCard icon="📆" label="Monthly"            value={profile?.monthlySubmissions || 0}      color="#fbbf24" />
       </div>
 
+      {/* Earned streak badges */}
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <div className="section-title">🏅 Streak Badges</div>
+        {profile?.currentBadge && (
+          <div style={{ marginBottom: "0.7rem", color: "var(--muted)", fontSize: "0.78rem" }}>
+            Current badge <StreakBadge badge={profile.currentBadge} />
+          </div>
+        )}
+        {profile?.nextBadge ? (
+          <div style={{ marginBottom: "0.85rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginBottom: "0.35rem", fontSize: "0.75rem" }}>
+              <span style={{ color: "var(--muted)" }}>
+                Progress to <StreakBadge badge={profile.nextBadge} compact />
+              </span>
+              <span style={{ color: profile.nextBadge.color, fontWeight: 700, whiteSpace: "nowrap" }}>
+                {profile.badgeProgress?.remainingDays || 0} days to go
+              </span>
+            </div>
+            <div style={{ height: 9, borderRadius: 99, background: "var(--border)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", width: `${profile.badgeProgress?.percent || 0}%`, borderRadius: 99,
+                background: `linear-gradient(90deg, ${profile.currentBadge?.color || "#4ade80"}, ${profile.nextBadge.color})`,
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.25rem", color: "var(--muted)", fontSize: "0.68rem" }}>
+              <span>{profile.streak || 0} days</span>
+              <span>{profile.nextBadge.days} days</span>
+            </div>
+          </div>
+        ) : profile?.currentBadge ? (
+          <div style={{ marginBottom: "0.85rem", color: "#facc15", fontSize: "0.8rem", fontWeight: 700 }}>
+            🌍 You’ve reached the highest badge — Master Orator!
+          </div>
+        ) : null}
+        {profile?.earnedBadges?.length ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
+            {profile.earnedBadges.map(badge => <StreakBadge key={badge.id} badge={badge} />)}
+          </div>
+        ) : (
+          <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Reach a 3-day streak to earn your first badge 🌱</div>
+        )}
+      </div>
+
       {/* Points & Freeze Summary */}
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
@@ -1211,6 +1256,7 @@ export default function UserDashboard() {
                   <span className="streak-rank">{["🥇","🥈","🥉"][i] || `${i+1}.`}</span>
                   <span className="streak-name" style={isMe ? { color: "#a78bfa", fontWeight: 700 } : {}}>
                     {u.name || u.userId?.split("@")[0]}
+                    {u.currentBadge && <StreakBadge badge={u.currentBadge} compact />}
                     {isMe && <span style={{ fontSize: "0.62rem", color: "#7c6fff", marginLeft: "0.3rem", opacity: 0.85 }}>(you)</span>}
                   </span>
                   <span className="streak-val">🔥 {u.streak} days</span>
@@ -1262,7 +1308,7 @@ export default function UserDashboard() {
               }}>
                 <span className="streak-rank" style={{ color: "#a78bfa", minWidth: 28 }}>#{data.myStreakEntry.rank}</span>
                 <span className="streak-name" style={{ color: "#a78bfa", fontWeight: 700 }}>
-                  {data.myStreakEntry.name || "You"} <span style={{ fontSize: "0.65rem", opacity: 0.7 }}>(you)</span>
+                  {data.myStreakEntry.name || "You"} {data.myStreakEntry.currentBadge && <StreakBadge badge={data.myStreakEntry.currentBadge} compact />} <span style={{ fontSize: "0.65rem", opacity: 0.7 }}>(you)</span>
                 </span>
                 <span className="streak-val">🔥 {data.myStreakEntry.streak} days</span>
                 <span className="streak-sub">{data.myStreakEntry.weeklySubmissions}/7</span>

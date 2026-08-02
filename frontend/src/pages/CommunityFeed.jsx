@@ -5,6 +5,7 @@ import api from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getSharedSocket } from "../hooks/useSocket.js";
 import GuestBanner from "../components/GuestBanner.jsx";
+import StreakBadge from "../components/StreakBadge.jsx";
 
 const scoreColor = v => v >= 7 ? "var(--success)" : v >= 5 ? "var(--warning)" : "var(--danger)";
 const scoreBg    = v => v >= 7 ? "rgba(74,222,128,0.1)" : v >= 5 ? "rgba(251,191,36,0.1)" : "rgba(248,113,113,0.1)";
@@ -1213,6 +1214,7 @@ export default function CommunityFeed() {
                   <div>
                     <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                       {item.uploaderName || "Anonymous"}
+                      {item.currentBadge && <StreakBadge badge={item.currentBadge} compact />}
                       {item.isDemo && <span style={{ fontSize: "0.62rem", background: "rgba(124,111,255,0.15)", color: "#a78bfa", borderRadius: 20, padding: "0.1rem 0.45rem", fontWeight: 700 }}>DEMO</span>}
                       {item.isPublic === false && <span style={{ fontSize: "0.62rem", background: "rgba(248,113,113,0.12)", color: "#f87171", borderRadius: 20, padding: "0.1rem 0.45rem", fontWeight: 700 }}>🔒 Private</span>}
                     </div>
