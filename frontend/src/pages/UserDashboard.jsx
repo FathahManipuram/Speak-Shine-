@@ -415,6 +415,47 @@ function BadgeCelebration({ badge, onClose }) {
   );
 }
 
+function BadgeCatalogModal({ badges, earnedBadges, onClose }) {
+  if (!badges?.length) return null;
+  return (
+    <div role="dialog" aria-modal="true" aria-label="All available badges" onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "1rem", background: "rgba(6, 7, 20, 0.8)", backdropFilter: "blur(8px)",
+    }}>
+      <div onClick={event => event.stopPropagation()} style={{
+        width: "min(100%, 680px)", maxHeight: "min(85vh, 720px)", overflowY: "auto",
+        padding: "1.25rem", borderRadius: 20, background: "var(--card)", border: "1px solid var(--border2)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", marginBottom: "1rem" }}>
+          <div>
+            <div className="section-title" style={{ marginBottom: "0.25rem" }}>🏅 All Streak Badges</div>
+            <div style={{ color: "var(--muted)", fontSize: "0.75rem" }}>{earnedBadges?.length || 0} of {badges.length} unlocked</div>
+          </div>
+          <button onClick={onClose} aria-label="Close badges" style={{
+            border: "1px solid var(--border2)", background: "var(--bg2)", color: "var(--muted)",
+            borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: "1.1rem",
+          }}>×</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(175px, 1fr))", gap: "0.55rem" }}>
+          {badges.map(badge => {
+            const unlocked = earnedBadges?.some(earned => earned.id === badge.id);
+            return (
+              <div key={badge.id} style={{
+                padding: "0.7rem", borderRadius: 12, background: unlocked ? `${badge.color}0d` : "rgba(148,163,184,0.04)",
+                border: `1px solid ${unlocked ? `${badge.color}45` : "var(--border)"}`,
+              }}>
+                <StreakBadge badge={badge} locked={!unlocked} />
+                <div style={{ marginTop: "0.4rem", color: "var(--muted)", fontSize: "0.68rem" }}>{badge.days}-day streak</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CelebrationCard({ name, streak, navigate }) {
   const [quote] = useState(() => CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]);
 
@@ -685,6 +726,7 @@ export default function UserDashboard() {
   const [liveSessions, setLiveSessions] = useState([]);
   const [sessionPage, setSessionPage] = useState(1);
   const [celebrationQueue, setCelebrationQueue] = useState([]);
+  const [showBadgeCatalog, setShowBadgeCatalog] = useState(false);
   const badgeStateInitialized = useRef(false);
   const navigate = useNavigate();
 
@@ -775,7 +817,7 @@ export default function UserDashboard() {
     return null;
   };
   const formatDurationLabel = (seconds) => {
-    if (seconds == null || seconds <= 0) return "No recorded time yet";
+    if (seconds == null || seconds <= 0) return "0m";
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     if (hrs > 0) return `${hrs}h ${mins}m`;
@@ -791,15 +833,21 @@ export default function UserDashboard() {
     const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
     const best = Math.max(...values);
     const latest = values[values.length - 1] ?? 0;
-    const first = values[0] ?? 0;
-    const delta = latest - first;
+
+    // Calculate performance: latest vs average
+    const performanceDelta = latest - avg;
+    const performanceTrendText = performanceDelta >= 0
+      ? `${Math.round(performanceDelta)} pts above`
+      : `${Math.round(Math.abs(performanceDelta))} pts below`;
+    const performanceLabel = performanceDelta >= 0 ? "Above Average" : "Below Average";
+
     return {
       avg: Math.round(avg),
       best,
       latest,
-      delta,
-      trendLabel: delta >= 0 ? "up" : "down",
-      trendText: delta >= 0 ? `+${delta} pts` : `${delta} pts`,
+      performanceDelta,
+      performanceTrendText,
+      performanceLabel,
       totalRecordedLabel: totalRecordedTimeLabel,
     };
   })() : null;
@@ -812,6 +860,7 @@ export default function UserDashboard() {
   return (
     <Layout title="My Dashboard">
       {celebrationQueue[0] && <BadgeCelebration badge={celebrationQueue[0]} onClose={() => setCelebrationQueue(queue => queue.slice(1))} />}
+      {showBadgeCatalog && <BadgeCatalogModal badges={profile?.availableBadges} earnedBadges={profile?.earnedBadges} onClose={() => setShowBadgeCatalog(false)} />}
       {/* Guest banner — shown to unauthenticated visitors */}
       {isGuest && <GuestBanner />}
       {data?.showReport && data?.dailyReport && (
@@ -1218,6 +1267,21 @@ export default function UserDashboard() {
         ) : (
           <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Reach a 3-day streak to earn your first badge 🌱</div>
         )}
+        {profile?.availableBadges?.length > 0 && (
+          <div style={{ marginTop: "1rem", paddingTop: "0.9rem", borderTop: "1px solid var(--border)" }}>
+            <button onClick={() => setShowBadgeCatalog(true)} style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem",
+              padding: "0.75rem 0.85rem", borderRadius: 10, border: "1px solid rgba(124,111,255,0.3)",
+              background: "rgba(124,111,255,0.08)", color: "var(--text)", cursor: "pointer", textAlign: "left",
+            }}>
+              <span>
+                <span style={{ display: "block", fontSize: "0.8rem", fontWeight: 700 }}>View all badges</span>
+                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.7rem", marginTop: "0.2rem" }}>{profile.earnedBadges?.length || 0} of {profile.availableBadges.length} unlocked</span>
+              </span>
+              <span style={{ color: "#a78bfa", fontSize: "1.2rem" }}>→</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Points & Freeze Summary */}
@@ -1546,8 +1610,9 @@ export default function UserDashboard() {
                   <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.latest} pts</div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Change</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: pointsSummary.delta >= 0 ? "#4ade80" : "#f87171" }}>{pointsSummary.trendText}</div>
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Performance</div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: pointsSummary.performanceDelta >= 0 ? "#4ade80" : "#f87171" }}>{pointsSummary.performanceLabel}</div>
+                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.2rem" }}>{pointsSummary.performanceTrendText}</div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Recorded</div>
@@ -1558,8 +1623,8 @@ export default function UserDashboard() {
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Trend</div>
-                  <div style={{ fontSize: "1rem", fontWeight: 700, color: pointsSummary.delta >= 0 ? "#67e8f9" : "#fda4af" }}>
-                    {pointsSummary.delta >= 0 ? "Steady upward momentum" : "A small dip, keep going"}
+                  <div style={{ fontSize: "1rem", fontWeight: 700, color: pointsSummary.performanceDelta >= 0 ? "#67e8f9" : "#fda4af" }}>
+                    {pointsSummary.performanceDelta >= 0 ? "📈 Performing well" : "📊 Room to improve"}
                   </div>
                 </div>
               </div>
