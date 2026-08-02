@@ -375,6 +375,46 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
   );
 }
 
+function BadgeCelebration({ badge, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 9000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  if (!badge) return null;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`${badge.name} badge achieved`} style={{
+      position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "1.5rem", background: "rgba(6, 7, 20, 0.94)", backdropFilter: "blur(12px)",
+    }}>
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+        {Array.from({ length: 22 }, (_, i) => <span key={i} style={{
+          position: "absolute", left: `${(i * 47) % 100}%`, top: "-10%", width: 8, height: 18,
+          borderRadius: 3, background: ["#facc15", "#4ade80", "#60a5fa", "#f472b6", "#a78bfa"][i % 5],
+          transform: `rotate(${i * 31}deg)`, animation: `badge-confetti ${3 + (i % 4) * 0.45}s linear ${i * 0.08}s infinite`,
+        }} />)}
+      </div>
+      <div style={{
+        position: "relative", width: "min(100%, 480px)", textAlign: "center", padding: "2.75rem 1.5rem 2rem",
+        borderRadius: 28, border: `1px solid ${badge.color}88`,
+        background: `radial-gradient(circle at 50% 0%, ${badge.color}30, transparent 58%), var(--card)`,
+        boxShadow: `0 0 70px ${badge.color}35`,
+      }}>
+        <div style={{ fontSize: "0.8rem", color: badge.color, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase" }}>
+          Badge achieved!
+        </div>
+        <div style={{ fontSize: "6rem", lineHeight: 1.1, margin: "1rem 0", animation: "badge-pop 0.7s ease-out" }}>{badge.icon}</div>
+        <h2 style={{ margin: 0, fontSize: "1.8rem", color: "var(--text)" }}>{badge.name}</h2>
+        <div style={{ marginTop: "0.45rem", color: badge.color, fontWeight: 700 }}>{badge.tier} · {badge.days}-day streak</div>
+        <p style={{ color: "var(--muted)", lineHeight: 1.6, margin: "1rem auto 1.5rem", maxWidth: 330 }}>
+          Your consistency is paying off. Keep speaking and reach the next milestone!
+        </p>
+        <button className="btn-primary" onClick={onClose} style={{ minWidth: 150 }}>Keep shining ✨</button>
+      </div>
+    </div>
+  );
+}
+
 function CelebrationCard({ name, streak, navigate }) {
   const [quote] = useState(() => CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]);
 
@@ -644,7 +684,42 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(!isGuest && !cached);
   const [liveSessions, setLiveSessions] = useState([]);
   const [sessionPage, setSessionPage] = useState(1);
+  const [celebrationQueue, setCelebrationQueue] = useState([]);
+  const badgeStateInitialized = useRef(false);
   const navigate = useNavigate();
+
+  const applyDashboardData = (nextData) => {
+    const earned = nextData?.profile?.earnedBadges || [];
+    const badgeKey = `speak-shine-seen-badges-${user?.id || user?.phone || "user"}`;
+    let seen = [];
+    let hasSeenState = false;
+    try {
+      const stored = localStorage.getItem(badgeKey);
+      hasSeenState = stored !== null;
+      seen = JSON.parse(stored || "[]");
+    } catch {}
+
+    if (!badgeStateInitialized.current) {
+      badgeStateInitialized.current = true;
+      if (!hasSeenState) {
+        // Establish a baseline on first load so pre-existing badges do not replay.
+        try { localStorage.setItem(badgeKey, JSON.stringify(earned.map(b => b.id))); } catch {}
+      } else {
+        const newBadges = earned.filter(badge => !seen.includes(badge.id));
+        if (newBadges.length) {
+          setCelebrationQueue(newBadges);
+          try { localStorage.setItem(badgeKey, JSON.stringify([...new Set([...seen, ...newBadges.map(b => b.id)])])); } catch {}
+        }
+      }
+    } else {
+      const newBadges = earned.filter(badge => !seen.includes(badge.id));
+      if (newBadges.length) {
+        setCelebrationQueue(queue => [...queue, ...newBadges]);
+        try { localStorage.setItem(badgeKey, JSON.stringify([...new Set([...seen, ...newBadges.map(b => b.id)])])); } catch {}
+      }
+    }
+    setData(nextData);
+  };
 
   useEffect(() => {
     if (isGuest) return; // guests already have dummy data
@@ -653,7 +728,7 @@ export default function UserDashboard() {
         api.get("/dashboard/me"),
         api.get("/live-sessions").catch(() => ({ data: [] })),
       ]).then(([d, ls]) => {
-        setData(d.data);
+        applyDashboardData(d.data);
         setCachedDashboard(d.data);
         setLiveSessions((ls.data || []).filter(s => s.status === "live" || s.status === "scheduled"));
       })
@@ -665,7 +740,7 @@ export default function UserDashboard() {
 
     fetchData();
     const interval = setInterval(() => api.get("/dashboard/me").then(d => {
-      setData(d.data);
+      applyDashboardData(d.data);
       setCachedDashboard(d.data);
     }).catch(() => {}), 30_000);
     return () => clearInterval(interval);
@@ -687,6 +762,7 @@ export default function UserDashboard() {
 
   return (
     <Layout title="My Dashboard">
+      {celebrationQueue[0] && <BadgeCelebration badge={celebrationQueue[0]} onClose={() => setCelebrationQueue(queue => queue.slice(1))} />}
       {/* Guest banner — shown to unauthenticated visitors */}
       {isGuest && <GuestBanner />}
       {data?.showReport && data?.dailyReport && (
