@@ -753,7 +753,13 @@ export default function UserDashboard() {
   const scores = profile?.feedbackScores || [];
   const latest = scores.slice(-1)[0];
   const chartData = scores.map((s, i) => ({ session: `#${i+1}`, Fluency: s.fluency, Grammar: s.grammar, Confidence: s.confidence, Vocabulary: s.vocabulary }));
-  const pointsData = scores.map((s, i) => ({ session: `#${i+1}`, pts: s.points != null ? Math.round(s.points) : null })).filter(d => d.pts != null);
+  const isSundayScore = (score) => {
+    if (score.sundayBonus === true) return true;
+    if (!score.date) return false;
+    return new Date(score.date).toLocaleString("en-US", { weekday: "short", timeZone: "Asia/Kolkata" }) === "Sun";
+  };
+  const graphScores = scores.filter(score => !isSundayScore(score));
+  const pointsData = graphScores.map((s, i) => ({ session: `#${i+1}`, pts: s.points != null ? Math.round(s.points) : null })).filter(d => d.pts != null);
   const radarData = latest ? Object.keys(SCORES).map(k => ({ subject: k.charAt(0).toUpperCase()+k.slice(1), score: latest[k] || 0 })) : [];
   const SESSION_PAGE_SIZE = 5;
   const reversedScores = [...scores].reverse();

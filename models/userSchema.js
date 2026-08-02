@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema({
       confidence: Number,
       vocabulary: Number,
       points: { type: Number, default: null },
+      sundayBonus: { type: Boolean, default: false },
       date: { type: Date, default: Date.now },
     }],
     default: [],
