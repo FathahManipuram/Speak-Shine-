@@ -9,7 +9,7 @@ import StreakBadge from "../components/StreakBadge.jsx";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  BarChart, Bar, Cell,
+  Area, AreaChart,
 } from "recharts";
 
 const MOTIVATIONAL = [
@@ -118,7 +118,7 @@ function QuestionCountdown({ posterSendTime, name, streak }) {
       {remaining && (
         <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {[
-            { val: pad(remaining.hrs),  label: "Hours" },
+            { val: pad(remaining.hrs), label: "Hours" },
             { val: pad(remaining.mins), label: "Minutes" },
             { val: pad(remaining.secs), label: "Seconds" },
           ].map(({ val, label }) => (
@@ -170,12 +170,12 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
   const calcRemaining = () => {
     const now = new Date();
     const nowIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    
+
     // Calculate time until next midnight IST (00:00:00 tomorrow)
     const midnight = new Date(nowIST);
     midnight.setDate(midnight.getDate() + 1);
     midnight.setHours(0, 0, 0, 0);
-    
+
     const diffMs = midnight - nowIST;
     const totalSec = Math.floor(diffMs / 1000);
     const hrs = Math.floor(totalSec / 3600);
@@ -195,16 +195,16 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
 
   return (
     <div style={{
-      background: urgency === "high" 
+      background: urgency === "high"
         ? "linear-gradient(135deg, #7f1d1d 0%, #991b1b 60%, #7f1d1d 100%)"
         : urgency === "medium"
-        ? "linear-gradient(135deg, #78350f 0%, #92400e 60%, #78350f 100%)"
-        : "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1e3a8a 100%)",
-      border: urgency === "high" 
+          ? "linear-gradient(135deg, #78350f 0%, #92400e 60%, #78350f 100%)"
+          : "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1e3a8a 100%)",
+      border: urgency === "high"
         ? "2px solid rgba(248,113,113,0.5)"
         : urgency === "medium"
-        ? "2px solid rgba(251,191,36,0.5)"
-        : "2px solid rgba(96,165,250,0.5)",
+          ? "2px solid rgba(251,191,36,0.5)"
+          : "2px solid rgba(96,165,250,0.5)",
       borderRadius: 16,
       padding: "1.75rem 1.5rem",
       marginBottom: "1.5rem",
@@ -219,8 +219,8 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
         background: urgency === "high"
           ? "radial-gradient(circle, rgba(248,113,113,0.3) 0%, transparent 70%)"
           : urgency === "medium"
-          ? "radial-gradient(circle, rgba(251,191,36,0.3) 0%, transparent 70%)"
-          : "radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)",
+            ? "radial-gradient(circle, rgba(251,191,36,0.3) 0%, transparent 70%)"
+            : "radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)",
         pointerEvents: "none",
         animation: "float 3s ease-in-out infinite",
       }} />
@@ -247,14 +247,14 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
         {specialDay === "weekly"
           ? "📅 Weekly Reflection — Record Before Midnight!"
           : specialDay === "goals"
-          ? "🎯 Monthly Goals — Speak Your Plan Today!"
-          : specialDay === "reflection"
-          ? "🌟 Monthly Reflection — Submit Before Midnight!"
-          : urgency === "high"
-          ? "⚡ Submit NOW or Lose Your Streak!"
-          : urgency === "medium"
-          ? "🎯 Don't Wait! Submit Your Video Today!"
-          : "📹 Question is Live — Time to Shine!"}
+            ? "🎯 Monthly Goals — Speak Your Plan Today!"
+            : specialDay === "reflection"
+              ? "🌟 Monthly Reflection — Submit Before Midnight!"
+              : urgency === "high"
+                ? "⚡ Submit NOW or Lose Your Streak!"
+                : urgency === "medium"
+                  ? "🎯 Don't Wait! Submit Your Video Today!"
+                  : "📹 Question is Live — Time to Shine!"}
       </div>
 
       {/* Countdown */}
@@ -265,17 +265,17 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
           </div>
           <div style={{ display: "flex", gap: "0.6rem", justifyContent: "center" }}>
             {[
-              { val: pad(remaining.hrs),  label: "Hours", icon: "⏰" },
+              { val: pad(remaining.hrs), label: "Hours", icon: "⏰" },
               { val: pad(remaining.mins), label: "Minutes", icon: "⏱️" },
               { val: pad(remaining.secs), label: "Seconds", icon: "⚡" },
             ].map(({ val, label, icon }) => (
               <div key={label} style={{
-                flex: 1, 
-                background: "rgba(255,255,255,0.15)", 
+                flex: 1,
+                background: "rgba(255,255,255,0.15)",
                 backdropFilter: "blur(10px)",
                 border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: 12, 
-                padding: "0.9rem 0.5rem", 
+                borderRadius: 12,
+                padding: "0.9rem 0.5rem",
                 textAlign: "center",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
               }}>
@@ -292,10 +292,10 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
       {streak > 0 && (
         <div style={{
           display: "flex", alignItems: "center", gap: "0.6rem",
-          background: "rgba(249,115,22,0.2)", 
+          background: "rgba(249,115,22,0.2)",
           border: "2px solid rgba(249,115,22,0.4)",
-          borderRadius: 12, 
-          padding: "0.8rem 1rem", 
+          borderRadius: 12,
+          padding: "0.8rem 1rem",
           marginBottom: "1.25rem",
           fontSize: "0.9rem",
           boxShadow: "0 4px 12px rgba(249,115,22,0.2)",
@@ -320,8 +320,8 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
           background: urgency === "high"
             ? "linear-gradient(135deg, #f87171 0%, #ef4444 100%)"
             : urgency === "medium"
-            ? "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)"
-            : "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
+              ? "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)"
+              : "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
           color: urgency === "high" || urgency === "medium" ? "#000" : "#fff",
           border: "none",
           borderRadius: 12,
@@ -430,51 +430,51 @@ function CelebrationCard({ name, streak, navigate }) {
       boxShadow: "0 4px 40px rgba(74,222,128,0.12)",
     }}>
       {/* subtle glow blobs */}
-      <div style={{ position:"absolute", top:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"radial-gradient(circle, rgba(74,222,128,0.18) 0%, transparent 70%)", pointerEvents:"none" }} />
-      <div style={{ position:"absolute", bottom:-40, left:-40, width:160, height:160, borderRadius:"50%", background:"radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%)", pointerEvents:"none" }} />
+      <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(74,222,128,0.18) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: -40, left: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       {/* top row */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"1.25rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
         <div>
-          <div style={{ fontSize:"0.7rem", color:"rgba(74,222,128,0.8)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"0.4rem" }}>
+          <div style={{ fontSize: "0.7rem", color: "rgba(74,222,128,0.8)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.4rem" }}>
             🎊 {name ? `Well done, ${name.split(" ")[0]}!` : "Well done!"}
           </div>
-          <div style={{ fontSize:"1.5rem", fontWeight:800, color:"#fff", lineHeight:1.2 }}>
-            Today's challenge<br/>complete ✅
+          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
+            Today's challenge<br />complete ✅
           </div>
         </div>
         <div style={{
-          background:"rgba(74,222,128,0.15)",
-          border:"1px solid rgba(74,222,128,0.4)",
-          color:"#4ade80",
-          padding:"0.35rem 0.85rem",
-          borderRadius:20,
-          fontSize:"0.72rem",
-          fontWeight:700,
-          textTransform:"uppercase",
-          letterSpacing:"0.06em",
-          whiteSpace:"nowrap",
-          flexShrink:0,
+          background: "rgba(74,222,128,0.15)",
+          border: "1px solid rgba(74,222,128,0.4)",
+          color: "#4ade80",
+          padding: "0.35rem 0.85rem",
+          borderRadius: 20,
+          fontSize: "0.72rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
         }}>✓ Submitted</div>
       </div>
 
       {/* stats row */}
-      <div className="grid-cols-3" style={{ gap:"0.6rem", marginBottom:"1.25rem" }}>
+      <div className="grid-cols-3" style={{ gap: "0.6rem", marginBottom: "1.25rem" }}>
         {[
-          { icon:"✅", value:"Done", sub:"Today", accent:"rgba(74,222,128,0.2)", border:"rgba(74,222,128,0.3)" },
-          { icon:"🔥", value:streak||0, sub:"Day Streak", accent:"rgba(249,115,22,0.2)", border:"rgba(249,115,22,0.35)" },
-          { icon:"🏆", value:"Win", sub:"Earned", accent:"rgba(251,191,36,0.15)", border:"rgba(251,191,36,0.3)" },
-        ].map((s,i) => (
+          { icon: "✅", value: "Done", sub: "Today", accent: "rgba(74,222,128,0.2)", border: "rgba(74,222,128,0.3)" },
+          { icon: "🔥", value: streak || 0, sub: "Day Streak", accent: "rgba(249,115,22,0.2)", border: "rgba(249,115,22,0.35)" },
+          { icon: "🏆", value: "Win", sub: "Earned", accent: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.3)" },
+        ].map((s, i) => (
           <div key={i} style={{
-            background:s.accent,
-            border:`1px solid ${s.border}`,
-            borderRadius:14,
-            padding:"0.85rem 0.5rem",
-            textAlign:"center",
+            background: s.accent,
+            border: `1px solid ${s.border}`,
+            borderRadius: 14,
+            padding: "0.85rem 0.5rem",
+            textAlign: "center",
           }}>
-            <div style={{ fontSize:"1.6rem", lineHeight:1, marginBottom:"0.35rem" }}>{s.icon}</div>
-            <div style={{ fontSize:"1rem", fontWeight:800, color:"#fff" }}>{s.value}</div>
-            <div style={{ fontSize:"0.6rem", color:"rgba(255,255,255,0.6)", textTransform:"uppercase", letterSpacing:"0.06em", marginTop:"0.15rem" }}>{s.sub}</div>
+            <div style={{ fontSize: "1.6rem", lineHeight: 1, marginBottom: "0.35rem" }}>{s.icon}</div>
+            <div style={{ fontSize: "1rem", fontWeight: 800, color: "#fff" }}>{s.value}</div>
+            <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: "0.15rem" }}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -482,23 +482,23 @@ function CelebrationCard({ name, streak, navigate }) {
       {/* streak message */}
       {streak > 0 && (
         <div style={{
-          background:"rgba(255,255,255,0.06)",
-          border:"1px solid rgba(255,255,255,0.1)",
-          borderRadius:12,
-          padding:"0.85rem 1rem",
-          marginBottom:"1rem",
-          display:"flex",
-          alignItems:"center",
-          gap:"0.75rem",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 12,
+          padding: "0.85rem 1rem",
+          marginBottom: "1rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem",
         }}>
-          <span style={{ fontSize:"1.4rem", flexShrink:0 }}>🎯</span>
+          <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>🎯</span>
           <div>
-            <div style={{ fontWeight:700, color:"#fff", fontSize:"0.9rem" }}>{streak} Days of Consistency!</div>
-            <div style={{ fontSize:"0.78rem", color:"rgba(255,255,255,0.65)", marginTop:"0.15rem" }}>
+            <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.9rem" }}>{streak} Days of Consistency!</div>
+            <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.65)", marginTop: "0.15rem" }}>
               {streak >= 30 ? "You're a legend! 30+ days of dedication!" :
-               streak >= 14 ? "Two weeks strong! You're unstoppable!" :
-               streak >= 7  ? "One week milestone! Keep the momentum!" :
-               "Every day counts. You're building greatness!"}
+                streak >= 14 ? "Two weeks strong! You're unstoppable!" :
+                  streak >= 7 ? "One week milestone! Keep the momentum!" :
+                    "Every day counts. You're building greatness!"}
             </div>
           </div>
         </div>
@@ -506,27 +506,27 @@ function CelebrationCard({ name, streak, navigate }) {
 
       {/* CTA */}
       <button
-        onClick={() => document.querySelector(".section-title")?.scrollIntoView({ behavior:"smooth", block:"start" })}
+        onClick={() => document.querySelector(".section-title")?.scrollIntoView({ behavior: "smooth", block: "start" })}
         style={{
-          width:"100%",
-          background:"linear-gradient(135deg, #22c55e, #16a34a)",
-          color:"#fff",
-          border:"none",
-          borderRadius:12,
-          padding:"0.85rem",
-          fontSize:"0.9rem",
-          fontWeight:700,
-          cursor:"pointer",
-          letterSpacing:"0.04em",
-          boxShadow:"0 4px 16px rgba(34,197,94,0.3)",
-          marginBottom:"1rem",
+          width: "100%",
+          background: "linear-gradient(135deg, #22c55e, #16a34a)",
+          color: "#fff",
+          border: "none",
+          borderRadius: 12,
+          padding: "0.85rem",
+          fontSize: "0.9rem",
+          fontWeight: 700,
+          cursor: "pointer",
+          letterSpacing: "0.04em",
+          boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
+          marginBottom: "1rem",
         }}
       >
         📊 View My Feedback Scores
       </button>
 
       {/* quote */}
-      <div style={{ fontSize:"0.8rem", color:"rgba(255,255,255,0.55)", fontStyle:"italic", paddingLeft:"0.75rem", borderLeft:"2px solid rgba(74,222,128,0.4)" }}>
+      <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.55)", fontStyle: "italic", paddingLeft: "0.75rem", borderLeft: "2px solid rgba(74,222,128,0.4)" }}>
         💫 {quote}
       </div>
     </div>
@@ -588,7 +588,7 @@ function VocabularyWords({ words, requiredCount, totalCount }) {
 }
 
 const tt = { background: "#16162a", border: "1px solid #252545", borderRadius: 10, fontSize: 12, color: "#f0f0ff" };
-const avg = (arr, k) => { const v = arr.filter(s => s[k] != null).map(s => s[k]); return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : "—"; };
+const avg = (arr, k) => { const v = arr.filter(s => s[k] != null).map(s => s[k]); return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : "—"; };
 const scoreColor = v => v >= 7 ? "var(--success)" : v >= 5 ? "var(--warning)" : "var(--danger)";
 
 const CACHE_KEY = "dashboard_cache_v4"; // bump version to bust stale sort order
@@ -597,8 +597,8 @@ const CACHE_TTL = 30 * 1000; // 30s — always refetch quickly so scores stay fr
 function getCachedDashboard() {
   try {
     // Also clear all old cache versions on read
-    ["dashboard_cache_v1","dashboard_cache_v2","dashboard_cache_v3"].forEach(k => {
-      try { localStorage.removeItem(k); } catch {}
+    ["dashboard_cache_v1", "dashboard_cache_v2", "dashboard_cache_v3"].forEach(k => {
+      try { localStorage.removeItem(k); } catch { }
     });
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
@@ -611,7 +611,7 @@ function getCachedDashboard() {
 function setCachedDashboard(data) {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-  } catch {}
+  } catch { }
 }
 
 // ── Guest dummy data — same shape as /api/dashboard/me response ─────────────
@@ -620,8 +620,8 @@ function buildGuestData() {
     const prog = i * 0.22;
     const j = () => (Math.random() - 0.5) * 0.8;
     return {
-      fluency:    +Math.min(10, Math.max(1, 5.8 + prog + j())).toFixed(1),
-      grammar:    +Math.min(10, Math.max(1, 6.2 + prog + j())).toFixed(1),
+      fluency: +Math.min(10, Math.max(1, 5.8 + prog + j())).toFixed(1),
+      grammar: +Math.min(10, Math.max(1, 6.2 + prog + j())).toFixed(1),
       confidence: +Math.min(10, Math.max(1, 5.5 + prog + j())).toFixed(1),
       vocabulary: +Math.min(10, Math.max(1, 6.0 + prog + j())).toFixed(1),
       submittedAt: new Date(Date.now() - (9 - i) * 86400000).toISOString(),
@@ -650,22 +650,22 @@ function buildGuestData() {
       isMonthlyGoals: false,
       isWeeklyReflection: false,
       vocabulary: [
-        { word: "Resilience",   meaning: "The ability to recover quickly from setbacks",         example: "Her resilience helped her bounce back after every failure." },
-        { word: "Perseverance", meaning: "Continued effort despite difficulty",                   example: "With perseverance, he finally mastered public speaking." },
-        { word: "Articulate",   meaning: "Able to express thoughts clearly",                      example: "She was articulate and confident during the presentation." },
-        { word: "Proficiency",  meaning: "A high degree of skill or competence",                  example: "He reached proficiency in English after years of practice." },
-        { word: "Ambition",     meaning: "A strong desire to achieve something",                  example: "Her ambition drove her to learn a new skill every year." },
+        { word: "Resilience", meaning: "The ability to recover quickly from setbacks", example: "Her resilience helped her bounce back after every failure." },
+        { word: "Perseverance", meaning: "Continued effort despite difficulty", example: "With perseverance, he finally mastered public speaking." },
+        { word: "Articulate", meaning: "Able to express thoughts clearly", example: "She was articulate and confident during the presentation." },
+        { word: "Proficiency", meaning: "A high degree of skill or competence", example: "He reached proficiency in English after years of practice." },
+        { word: "Ambition", meaning: "A strong desire to achieve something", example: "Her ambition drove her to learn a new skill every year." },
       ],
       vocabWordCount: 5,
       vocabRequiredCount: 3,
     },
     stats: { total: 87, completed: 23, pending: 64, totalFreeze: 12 },
     topStreak: [
-      { name: "Arjun M.",  streak: 42, completed: true,  weeklySubmissions: 5, monthlyScore: 210 },
-      { name: "Priya K.",  streak: 38, completed: true,  weeklySubmissions: 5, monthlyScore: 195 },
-      { name: "Rahul S.",  streak: 31, completed: false, weeklySubmissions: 4, monthlyScore: 157 },
-      { name: "Divya R.",  streak: 27, completed: true,  weeklySubmissions: 5, monthlyScore: 143 },
-      { name: "Kiran T.",  streak: 19, completed: false, weeklySubmissions: 3, monthlyScore:  98 },
+      { name: "Arjun M.", streak: 42, completed: true, weeklySubmissions: 5, monthlyScore: 210 },
+      { name: "Priya K.", streak: 38, completed: true, weeklySubmissions: 5, monthlyScore: 195 },
+      { name: "Rahul S.", streak: 31, completed: false, weeklySubmissions: 4, monthlyScore: 157 },
+      { name: "Divya R.", streak: 27, completed: true, weeklySubmissions: 5, monthlyScore: 143 },
+      { name: "Kiran T.", streak: 19, completed: false, weeklySubmissions: 3, monthlyScore: 98 },
     ],
     myStreakEntry: null,
     streakRecord: { name: "Arjun M.", streak: 87, achievedAt: new Date(Date.now() - 30 * 86400000).toISOString() },
@@ -697,25 +697,25 @@ export default function UserDashboard() {
       const stored = localStorage.getItem(badgeKey);
       hasSeenState = stored !== null;
       seen = JSON.parse(stored || "[]");
-    } catch {}
+    } catch { }
 
     if (!badgeStateInitialized.current) {
       badgeStateInitialized.current = true;
       if (!hasSeenState) {
         // Establish a baseline on first load so pre-existing badges do not replay.
-        try { localStorage.setItem(badgeKey, JSON.stringify(earned.map(b => b.id))); } catch {}
+        try { localStorage.setItem(badgeKey, JSON.stringify(earned.map(b => b.id))); } catch { }
       } else {
         const newBadges = earned.filter(badge => !seen.includes(badge.id));
         if (newBadges.length) {
           setCelebrationQueue(newBadges);
-          try { localStorage.setItem(badgeKey, JSON.stringify([...new Set([...seen, ...newBadges.map(b => b.id)])])); } catch {}
+          try { localStorage.setItem(badgeKey, JSON.stringify([...new Set([...seen, ...newBadges.map(b => b.id)])])); } catch { }
         }
       }
     } else {
       const newBadges = earned.filter(badge => !seen.includes(badge.id));
       if (newBadges.length) {
         setCelebrationQueue(queue => [...queue, ...newBadges]);
-        try { localStorage.setItem(badgeKey, JSON.stringify([...new Set([...seen, ...newBadges.map(b => b.id)])])); } catch {}
+        try { localStorage.setItem(badgeKey, JSON.stringify([...new Set([...seen, ...newBadges.map(b => b.id)])])); } catch { }
       }
     }
     setData(nextData);
@@ -732,35 +732,78 @@ export default function UserDashboard() {
         setCachedDashboard(d.data);
         setLiveSessions((ls.data || []).filter(s => s.status === "live" || s.status === "scheduled"));
       })
-      .catch(err => {
-        if (!getCachedDashboard()) setError(err.response?.data?.error || "Failed to load data");
-      })
-      .finally(() => setLoading(false));
+        .catch(err => {
+          if (!getCachedDashboard()) setError(err.response?.data?.error || "Failed to load data");
+        })
+        .finally(() => setLoading(false));
     };
 
     fetchData();
     const interval = setInterval(() => api.get("/dashboard/me").then(d => {
       applyDashboardData(d.data);
       setCachedDashboard(d.data);
-    }).catch(() => {}), 30_000);
+    }).catch(() => { }), 30_000);
     return () => clearInterval(interval);
   }, [isGuest]);
 
-  if (loading) return <Layout title="My Dashboard"><div className="spinner-wrap"><div className="spinner"/><p style={{color:"var(--muted)"}}>Loading…</p></div></Layout>;
-  if (error) return <Layout title="My Dashboard"><div className="error-box"><p>{error}</p><button className="btn-primary" style={{marginTop:"1rem"}} onClick={()=>window.location.reload()}>Retry</button></div></Layout>;
+  if (loading) return <Layout title="My Dashboard"><div className="spinner-wrap"><div className="spinner" /><p style={{ color: "var(--muted)" }}>Loading…</p></div></Layout>;
+  if (error) return <Layout title="My Dashboard"><div className="error-box"><p>{error}</p><button className="btn-primary" style={{ marginTop: "1rem" }} onClick={() => window.location.reload()}>Retry</button></div></Layout>;
 
   const profile = data?.profile;
   const scores = profile?.feedbackScores || [];
   const latest = scores.slice(-1)[0];
-  const chartData = scores.map((s, i) => ({ session: `#${i+1}`, Fluency: s.fluency, Grammar: s.grammar, Confidence: s.confidence, Vocabulary: s.vocabulary }));
+  const chartData = scores.map((s, i) => ({ session: `#${i + 1}`, Fluency: s.fluency, Grammar: s.grammar, Confidence: s.confidence, Vocabulary: s.vocabulary }));
   const isSundayScore = (score) => {
     if (score.sundayBonus === true) return true;
     if (!score.date) return false;
     return new Date(score.date).toLocaleString("en-US", { weekday: "short", timeZone: "Asia/Kolkata" }) === "Sun";
   };
   const graphScores = scores.filter(score => !isSundayScore(score));
-  const pointsData = graphScores.map((s, i) => ({ session: `#${i+1}`, pts: s.points != null ? Math.round(s.points) : null })).filter(d => d.pts != null);
-  const radarData = latest ? Object.keys(SCORES).map(k => ({ subject: k.charAt(0).toUpperCase()+k.slice(1), score: latest[k] || 0 })) : [];
+  const pointsData = graphScores.map((s, i) => ({ session: `#${i + 1}`, pts: s.points != null ? Math.round(s.points) : null })).filter(d => d.pts != null);
+  const parseDurationToSeconds = (value) => {
+    if (value == null || value === "") return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (/^\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+      const parts = trimmed.split(":").map(p => Number(p));
+      if (parts.every(part => Number.isFinite(part))) {
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+    }
+    return null;
+  };
+  const formatDurationLabel = (seconds) => {
+    if (seconds == null || seconds <= 0) return "No recorded time yet";
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
+  };
+  const totalRecordedSeconds = scores.reduce((sum, score) => {
+    const durationValue = parseDurationToSeconds(score.duration ?? score.videoDuration ?? score.recordedDuration ?? score.durationSeconds);
+    return sum + (durationValue ?? 0);
+  }, 0);
+  const totalRecordedTimeLabel = formatDurationLabel(totalRecordedSeconds);
+  const pointsSummary = pointsData.length > 0 ? (() => {
+    const values = pointsData.map(d => d.pts);
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const best = Math.max(...values);
+    const latest = values[values.length - 1] ?? 0;
+    const first = values[0] ?? 0;
+    const delta = latest - first;
+    return {
+      avg: Math.round(avg),
+      best,
+      latest,
+      delta,
+      trendLabel: delta >= 0 ? "up" : "down",
+      trendText: delta >= 0 ? `+${delta} pts` : `${delta} pts`,
+      totalRecordedLabel: totalRecordedTimeLabel,
+    };
+  })() : null;
+  const radarData = latest ? Object.keys(SCORES).map(k => ({ subject: k.charAt(0).toUpperCase() + k.slice(1), score: latest[k] || 0 })) : [];
   const SESSION_PAGE_SIZE = 5;
   const reversedScores = [...scores].reverse();
   const totalPages = Math.ceil(reversedScores.length / SESSION_PAGE_SIZE);
@@ -855,7 +898,7 @@ export default function UserDashboard() {
               <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>😔</div>
               <div style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem" }}>You missed yesterday's challenge</div>
               <div style={{ fontSize: "0.9rem", color: "#8888aa", marginBottom: "1rem" }}>Don't worry! Today is a new opportunity to shine.</div>
-              
+
               {/* Points & Freeze for Missed Day */}
               <div className="grid-cols-2" style={{ maxWidth: "300px", margin: "1.5rem auto 0" }}>
                 <div style={{ background: "rgba(56, 189, 248, 0.1)", padding: "0.75rem", borderRadius: "8px", textAlign: "center", border: "1px solid rgba(56, 189, 248, 0.2)" }}>
@@ -901,17 +944,17 @@ export default function UserDashboard() {
           <div className="daily-poster-header">
             <div className="daily-poster-brand">
               {data?.today?.isMonthlyReflection ? "🌟 Speak & Shine"
-               : data?.today?.isMonthlyGoals ? "🎯 Speak & Shine"
-               : data?.today?.isWeeklyReflection ? "📅 Speak & Shine"
-               : data?.today?.isStorySummary ? "🎧 Speak & Shine"
-               : "✦ Speak & Shine"}
+                : data?.today?.isMonthlyGoals ? "🎯 Speak & Shine"
+                  : data?.today?.isWeeklyReflection ? "📅 Speak & Shine"
+                    : data?.today?.isStorySummary ? "🎧 Speak & Shine"
+                      : "✦ Speak & Shine"}
             </div>
             <div className="daily-poster-sub">
               {data?.today?.isMonthlyReflection ? "MONTHLY REFLECTION"
-               : data?.today?.isMonthlyGoals ? "MONTHLY GOAL SETTING"
-               : data?.today?.isWeeklyReflection ? "WEEKLY REFLECTION"
-               : data?.today?.isStorySummary ? "STORY SUMMARY"
-               : "DAILY SPEAKING CHALLENGE"}
+                : data?.today?.isMonthlyGoals ? "MONTHLY GOAL SETTING"
+                  : data?.today?.isWeeklyReflection ? "WEEKLY REFLECTION"
+                    : data?.today?.isStorySummary ? "STORY SUMMARY"
+                      : "DAILY SPEAKING CHALLENGE"}
             </div>
             {/* Sunday bonus badge */}
             {new Date().getDay() === 0 && (
@@ -921,11 +964,11 @@ export default function UserDashboard() {
             )}
             {data.today.category && (
               <div className="daily-poster-badge" style={
-                data?.today?.isMonthlyReflection ? { background:"rgba(139,92,246,0.3)", border:"1px solid rgba(167,139,250,0.5)", color:"#c4b5fd" }
-                : data?.today?.isMonthlyGoals ? { background:"rgba(34,197,94,0.25)", border:"1px solid rgba(74,222,128,0.5)", color:"#4ade80" }
-                : data?.today?.isWeeklyReflection ? { background:"rgba(14,165,233,0.25)", border:"1px solid rgba(56,189,248,0.5)", color:"#38bdf8" }
-                : data?.today?.isStorySummary ? { background:"rgba(20,184,166,0.25)", border:"1px solid rgba(45,212,191,0.5)", color:"#5eead4" }
-                : {}
+                data?.today?.isMonthlyReflection ? { background: "rgba(139,92,246,0.3)", border: "1px solid rgba(167,139,250,0.5)", color: "#c4b5fd" }
+                  : data?.today?.isMonthlyGoals ? { background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", color: "#4ade80" }
+                    : data?.today?.isWeeklyReflection ? { background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", color: "#38bdf8" }
+                      : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
+                        : {}
               }>
                 {data.today.category}
               </div>
@@ -945,7 +988,7 @@ export default function UserDashboard() {
               {data.today.audioUrl && (
                 <audio controls controlsList="nodownload nofullscreen noremoteplayback" onContextMenu={e => e.preventDefault()} src={data.today.audioUrl} style={{ width: "100%", marginTop: "0.75rem" }} />
               )}
-              <div style={{ marginTop:"0.85rem", background:"rgba(20,184,166,0.08)", border:"1px solid rgba(45,212,191,0.25)", borderRadius:10, padding:"0.65rem 0.85rem", fontSize:"0.82rem", color:"rgba(255,255,255,0.82)", lineHeight:1.5 }}>
+              <div style={{ marginTop: "0.85rem", background: "rgba(20,184,166,0.08)", border: "1px solid rgba(45,212,191,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.82rem", color: "rgba(255,255,255,0.82)", lineHeight: 1.5 }}>
                 {data.today.question || "Listen to the story audio. Then record a clear video summary in your own words."}
               </div>
             </div>
@@ -954,48 +997,48 @@ export default function UserDashboard() {
             <div style={{ marginTop: "1rem" }}>
               <div className="daily-poster-section-label">📋 REFLECTION QUESTIONS</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["How many reviews did you attend this month?","How many reviews passed and how many failed? Why did you fail?","How many extensions did you take this month?","What is your current growth and progress in the program?","What did you do this month to improve your communication skill?","What is your communication skill level now compared to last month?"].map((q, i) => (
-                  <div key={i} style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(167,139,250,0.2)", borderRadius:10, padding:"0.65rem 0.85rem" }}>
-                    <div style={{ minWidth:24, height:24, borderRadius:"50%", background:"rgba(139,92,246,0.3)", border:"1px solid rgba(139,92,246,0.5)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.72rem", fontWeight:800, color:"#a78bfa", flexShrink:0 }}>{i+1}</div>
-                    <div style={{ fontSize:"0.85rem", color:"rgba(255,255,255,0.9)", lineHeight:1.5 }}>{q}</div>
+                {["How many reviews did you attend this month?", "How many reviews passed and how many failed? Why did you fail?", "How many extensions did you take this month?", "What is your current growth and progress in the program?", "What did you do this month to improve your communication skill?", "What is your communication skill level now compared to last month?"].map((q, i) => (
+                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
+                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(139,92,246,0.3)", border: "1px solid rgba(139,92,246,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#a78bfa", flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop:"0.85rem", background:"rgba(139,92,246,0.1)", border:"1px solid rgba(139,92,246,0.25)", borderRadius:10, padding:"0.65rem 0.85rem", fontSize:"0.78rem", color:"rgba(255,255,255,0.65)" }}>
+              <div style={{ marginTop: "0.85rem", background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
                 💡 Record a video answering all 6 questions. Same rules apply — counts as your daily submission.
               </div>
             </div>
 
-          /* Monthly Goals questions */
+            /* Monthly Goals questions */
           ) : data?.today?.isMonthlyGoals ? (
             <div style={{ marginTop: "1rem" }}>
               <div className="daily-poster-section-label">🎯 GOAL SETTING QUESTIONS</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["What is your main goal for this month in the program?","What is your dream or target you are working toward right now?","What specific steps will you take this month to improve your communication?","What was your biggest challenge last month and how will you overcome it this month?","How many reviews are you planning to attend this month?","What will you do differently this month to grow faster?"].map((q, i) => (
-                  <div key={i} style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(74,222,128,0.2)", borderRadius:10, padding:"0.65rem 0.85rem" }}>
-                    <div style={{ minWidth:24, height:24, borderRadius:"50%", background:"rgba(34,197,94,0.25)", border:"1px solid rgba(74,222,128,0.5)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.72rem", fontWeight:800, color:"#4ade80", flexShrink:0 }}>{i+1}</div>
-                    <div style={{ fontSize:"0.85rem", color:"rgba(255,255,255,0.9)", lineHeight:1.5 }}>{q}</div>
+                {["What is your main goal for this month in the program?", "What is your dream or target you are working toward right now?", "What specific steps will you take this month to improve your communication?", "What was your biggest challenge last month and how will you overcome it this month?", "How many reviews are you planning to attend this month?", "What will you do differently this month to grow faster?"].map((q, i) => (
+                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
+                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#4ade80", flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop:"0.85rem", background:"rgba(34,197,94,0.08)", border:"1px solid rgba(74,222,128,0.25)", borderRadius:10, padding:"0.65rem 0.85rem", fontSize:"0.78rem", color:"rgba(255,255,255,0.65)" }}>
+              <div style={{ marginTop: "0.85rem", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
                 💡 Be specific and speak from the heart. Your goals drive your growth — say them out loud with confidence!
               </div>
             </div>
 
-          /* Weekly Reflection questions */
+            /* Weekly Reflection questions */
           ) : data?.today?.isWeeklyReflection ? (
             <div style={{ marginTop: "1rem" }}>
               <div className="daily-poster-section-label">📅 WEEKLY REFLECTION QUESTIONS</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["Did you attend your review this week? If yes, did you pass or fail? Why?","How many days did you submit your speaking video this week?","What was the best speaking moment you had this week?","What was the most difficult part of speaking this week?","What new word or phrase did you learn and use this week?","What is your focus for next week — in both review preparation and communication?"].map((q, i) => (
-                  <div key={i} style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(56,189,248,0.2)", borderRadius:10, padding:"0.65rem 0.85rem" }}>
-                    <div style={{ minWidth:24, height:24, borderRadius:"50%", background:"rgba(14,165,233,0.25)", border:"1px solid rgba(56,189,248,0.5)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.72rem", fontWeight:800, color:"#38bdf8", flexShrink:0 }}>{i+1}</div>
-                    <div style={{ fontSize:"0.85rem", color:"rgba(255,255,255,0.9)", lineHeight:1.5 }}>{q}</div>
+                {["Did you attend your review this week? If yes, did you pass or fail? Why?", "How many days did you submit your speaking video this week?", "What was the best speaking moment you had this week?", "What was the most difficult part of speaking this week?", "What new word or phrase did you learn and use this week?", "What is your focus for next week — in both review preparation and communication?"].map((q, i) => (
+                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
+                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#38bdf8", flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop:"0.85rem", background:"rgba(14,165,233,0.08)", border:"1px solid rgba(56,189,248,0.25)", borderRadius:10, padding:"0.65rem 0.85rem", fontSize:"0.78rem", color:"rgba(255,255,255,0.65)" }}>
+              <div style={{ marginTop: "0.85rem", background: "rgba(14,165,233,0.08)", border: "1px solid rgba(56,189,248,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
                 💡 Be honest about your week. Reflection is how you grow — speak clearly and specifically!
               </div>
             </div>
@@ -1031,22 +1074,22 @@ export default function UserDashboard() {
             style={{
               cursor: 'pointer', border: 'none', width: '100%',
               transition: 'transform 0.2s, box-shadow 0.2s',
-              ...(isGuest ? { background: "linear-gradient(135deg,#7c6fff,#4f46e5)", boxShadow:"0 4px 20px rgba(124,111,255,0.4)" }
-                : data?.today?.isMonthlyReflection ? { background:"linear-gradient(135deg,#7c3aed,#5b21b6)", boxShadow:"0 4px 20px rgba(139,92,246,0.4)" }
-                : data?.today?.isMonthlyGoals ? { background:"linear-gradient(135deg,#16a34a,#15803d)", boxShadow:"0 4px 20px rgba(34,197,94,0.4)" }
-                : data?.today?.isWeeklyReflection ? { background:"linear-gradient(135deg,#0ea5e9,#0284c7)", boxShadow:"0 4px 20px rgba(14,165,233,0.4)" }
-                : data?.today?.isStorySummary ? { background:"linear-gradient(135deg,#0f766e,#0d9488)", boxShadow:"0 4px 20px rgba(20,184,166,0.35)" }
-                : {}),
+              ...(isGuest ? { background: "linear-gradient(135deg,#7c6fff,#4f46e5)", boxShadow: "0 4px 20px rgba(124,111,255,0.4)" }
+                : data?.today?.isMonthlyReflection ? { background: "linear-gradient(135deg,#7c3aed,#5b21b6)", boxShadow: "0 4px 20px rgba(139,92,246,0.4)" }
+                  : data?.today?.isMonthlyGoals ? { background: "linear-gradient(135deg,#16a34a,#15803d)", boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }
+                    : data?.today?.isWeeklyReflection ? { background: "linear-gradient(135deg,#0ea5e9,#0284c7)", boxShadow: "0 4px 20px rgba(14,165,233,0.4)" }
+                      : data?.today?.isStorySummary ? { background: "linear-gradient(135deg,#0f766e,#0d9488)", boxShadow: "0 4px 20px rgba(20,184,166,0.35)" }
+                        : {}),
             }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
           >
             {isGuest ? "✨ Register to Submit Your Answer"
-             : data?.today?.isMonthlyReflection ? "🌟 Record Monthly Reflection Video"
-             : data?.today?.isMonthlyGoals ? "🎯 Record Monthly Goals Video"
-             : data?.today?.isWeeklyReflection ? "📅 Record Weekly Reflection Video"
-             : data?.today?.isStorySummary ? "🎧 Record Story Summary Video"
-             : "🎥 Upload Your Speaking Video Now!"}
+              : data?.today?.isMonthlyReflection ? "🌟 Record Monthly Reflection Video"
+                : data?.today?.isMonthlyGoals ? "🎯 Record Monthly Goals Video"
+                  : data?.today?.isWeeklyReflection ? "📅 Record Weekly Reflection Video"
+                    : data?.today?.isStorySummary ? "🎧 Record Story Summary Video"
+                      : "🎥 Upload Your Speaking Video Now!"}
           </button>
         </div>
       )}
@@ -1070,26 +1113,26 @@ export default function UserDashboard() {
       {profile && data?.today?.question && !isGuest && (
         profile.completed
           ? <CelebrationCard
+            name={profile?.name}
+            streak={profile?.streak || 0}
+            navigate={navigate}
+          />
+          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals || data?.today?.isWeeklyReflection)
+            ? <SubmitNudge
+              name={profile?.name}
+              streak={profile?.streak || 0}
+              navigate={navigate}
+              specialDay={
+                data?.today?.isWeeklyReflection ? "weekly"
+                  : data?.today?.isMonthlyGoals ? "goals"
+                    : "reflection"
+              }
+            />
+            : <SubmitNudge
               name={profile?.name}
               streak={profile?.streak || 0}
               navigate={navigate}
             />
-          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals || data?.today?.isWeeklyReflection)
-            ? <SubmitNudge
-                name={profile?.name}
-                streak={profile?.streak || 0}
-                navigate={navigate}
-                specialDay={
-                  data?.today?.isWeeklyReflection ? "weekly"
-                  : data?.today?.isMonthlyGoals ? "goals"
-                  : "reflection"
-                }
-              />
-            : <SubmitNudge
-                name={profile?.name}
-                streak={profile?.streak || 0}
-                navigate={navigate}
-              />
       )}
 
       {/* Guest submit nudge — same visual weight as SubmitNudge but drives to register */}
@@ -1100,24 +1143,24 @@ export default function UserDashboard() {
           borderRadius: 16, padding: "1.75rem 1.5rem",
           marginBottom: "1.5rem", position: "relative", overflow: "hidden",
         }}>
-          <div style={{ position:"absolute", top:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)", pointerEvents:"none" }} />
-          <div style={{ fontSize:"0.75rem", color:"rgba(255,255,255,0.7)", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"0.5rem" }}>
+          <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.5rem" }}>
             🎯 Ready to take the challenge?
           </div>
-          <div style={{ fontSize:"1.3rem", fontWeight:800, color:"#fff", marginBottom:"0.5rem", lineHeight:1.3 }}>
+          <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", marginBottom: "0.5rem", lineHeight: 1.3 }}>
             Submit your video and get AI-powered feedback!
           </div>
-          <div style={{ fontSize:"0.85rem", color:"rgba(255,255,255,0.75)", marginBottom:"1.25rem" }}>
+          <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.75)", marginBottom: "1.25rem" }}>
             Register to unlock fluency, grammar, confidence & vocabulary analysis after each submission.
           </div>
           <button
             onClick={() => navigate('/register')}
             style={{
-              width:"100%", background:"linear-gradient(135deg,#60a5fa,#3b82f6)",
-              color:"#fff", border:"none", borderRadius:12,
-              padding:"1rem", fontSize:"1.05rem", fontWeight:800,
-              cursor:"pointer", textTransform:"uppercase", letterSpacing:"0.05em",
-              boxShadow:"0 6px 20px rgba(0,0,0,0.3)",
+              width: "100%", background: "linear-gradient(135deg,#60a5fa,#3b82f6)",
+              color: "#fff", border: "none", borderRadius: 12,
+              padding: "1rem", fontSize: "1.05rem", fontWeight: 800,
+              cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.3)",
             }}
           >
             ✨ Register Free — 30 Spots Daily
@@ -1126,10 +1169,11 @@ export default function UserDashboard() {
       )}
 
       <div className="stat-grid">
-        <StatCard icon="🔥" label="Current Streak"    value={`${profile?.streak || 0} days`}        color="#f97316" />
-        <StatCard icon="📹" label="Total Sessions"     value={scores.length}                          color="#7c6fff" />
-        <StatCard icon="📅" label="This Week"          value={`${profile?.weeklySubmissions || 0}/7`} color="#4ade80" />
-        <StatCard icon="📆" label="Monthly"            value={profile?.monthlySubmissions || 0}      color="#fbbf24" />
+        <StatCard icon="🔥" label="Current Streak" value={`${profile?.streak || 0} days`} color="#f97316" />
+        <StatCard icon="📹" label="Total Sessions" value={scores.length} color="#7c6fff" />
+        <StatCard icon="⏱️" label="Recorded Time" value={totalRecordedTimeLabel} color="#38bdf8" />
+        <StatCard icon="📅" label="This Week" value={`${profile?.weeklySubmissions || 0}/7`} color="#4ade80" />
+        <StatCard icon="📆" label="Monthly" value={profile?.monthlySubmissions || 0} color="#fbbf24" />
       </div>
 
       {/* Earned streak badges */}
@@ -1223,10 +1267,10 @@ export default function UserDashboard() {
       </div>
 
       <div className="stat-grid">
-        <StatCard icon="👥" label="Group Members"      value={data?.stats?.total || 0}               color="#7c6fff" />
-        <StatCard icon="✅" label="Submitted Today"    value={data?.stats?.completed || 0}           color="#4ade80" />
-        <StatCard icon="⏳" label="Pending Today"      value={data?.stats?.pending || 0}             color="#f87171" />
-        <StatCard icon="🧊" label="Total Freezes"      value={data?.stats?.totalFreeze || 0}         color="#38bdf8" />
+        <StatCard icon="👥" label="Group Members" value={data?.stats?.total || 0} color="#7c6fff" />
+        <StatCard icon="✅" label="Submitted Today" value={data?.stats?.completed || 0} color="#4ade80" />
+        <StatCard icon="⏳" label="Pending Today" value={data?.stats?.pending || 0} color="#f87171" />
+        <StatCard icon="🧊" label="Total Freezes" value={data?.stats?.totalFreeze || 0} color="#38bdf8" />
       </div>
 
       {/* ── Hall of Fame — always visible ── */}
@@ -1241,7 +1285,7 @@ export default function UserDashboard() {
           boxShadow: "0 0 24px rgba(251,191,36,0.12)",
           position: "relative", overflow: "hidden",
         }}>
-          <div style={{ position:"absolute", top:-30, right:-30, width:120, height:120, borderRadius:"50%", background:"radial-gradient(circle, rgba(251,191,36,0.18) 0%, transparent 70%)", pointerEvents:"none" }} />
+          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(251,191,36,0.18) 0%, transparent 70%)", pointerEvents: "none" }} />
           <span style={{ fontSize: "1.6rem", flexShrink: 0 }}>👑</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: "0.6rem", fontWeight: 800, color: "rgba(251,191,36,0.7)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.15rem" }}>
@@ -1252,7 +1296,7 @@ export default function UserDashboard() {
             </div>
             {data.streakRecord.achievedAt && (
               <div style={{ fontSize: "0.62rem", color: "rgba(251,191,36,0.5)", marginTop: "0.1rem" }}>
-                Set on {new Date(data.streakRecord.achievedAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}
+                Set on {new Date(data.streakRecord.achievedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </div>
             )}
           </div>
@@ -1335,7 +1379,7 @@ export default function UserDashboard() {
                     margin: "0 -0.1rem",
                   } : {}}
                 >
-                  <span className="streak-rank">{["🥇","🥈","🥉"][i] || `${i+1}.`}</span>
+                  <span className="streak-rank">{["🥇", "🥈", "🥉"][i] || `${i + 1}.`}</span>
                   <span className="streak-name" style={isMe ? { color: "#a78bfa", fontWeight: 700 } : {}}>
                     {u.name || u.userId?.split("@")[0]}
                     {u.currentBadge && <StreakBadge badge={u.currentBadge} compact />}
@@ -1426,8 +1470,8 @@ export default function UserDashboard() {
         <>
           <div className="stat-grid">
             {Object.entries(SCORES).map(([k, c]) => (
-              <StatCard key={k} icon={k==="fluency"?"🗣️":k==="grammar"?"📝":k==="confidence"?"💪":"📚"}
-                label={`Avg ${k.charAt(0).toUpperCase()+k.slice(1)}`} value={avg(scores, k)} color={c} />
+              <StatCard key={k} icon={k === "fluency" ? "🗣️" : k === "grammar" ? "📝" : k === "confidence" ? "💪" : "📚"}
+                label={`Avg ${k.charAt(0).toUpperCase() + k.slice(1)}`} value={avg(scores, k)} color={c} />
             ))}
           </div>
 
@@ -1447,7 +1491,7 @@ export default function UserDashboard() {
               {Object.entries(SCORES).map(([k, c]) => (
                 <div className="score-bar" key={k}>
                   <div className="score-bar-header">
-                    <span className="score-bar-label">{k.charAt(0).toUpperCase()+k.slice(1)}</span>
+                    <span className="score-bar-label">{k.charAt(0).toUpperCase() + k.slice(1)}</span>
                     <span className="score-bar-value" style={{ color: scoreColor(latest?.[k] || 0) }}>{latest?.[k] || 0}/10</span>
                   </div>
                   <div className="score-bar-track">
@@ -1468,50 +1512,100 @@ export default function UserDashboard() {
                 <Tooltip contentStyle={tt} />
                 <Legend />
                 {Object.entries(SCORES).map(([k, c]) => (
-                  <Line key={k} type="monotone" dataKey={k.charAt(0).toUpperCase()+k.slice(1)} stroke={c} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line key={k} type="monotone" dataKey={k.charAt(0).toUpperCase() + k.slice(1)} stroke={c} strokeWidth={2} dot={{ r: 3 }} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
             {isGuest && (
-              <div style={{ textAlign:"center", fontSize:"0.75rem", color:"var(--muted)", marginTop:"0.5rem", padding:"0.5rem", background:"rgba(124,111,255,0.07)", borderRadius:8 }}>
+              <div style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.5rem", padding: "0.5rem", background: "rgba(124,111,255,0.07)", borderRadius: 8 }}>
                 📊 Sample data — register to track your real progress
               </div>
             )}
           </div>
 
-          {pointsData.length > 0 && (
-            <div className="card" style={{ marginTop: "1rem" }}>
-              <div className="section-title">📊 Daily Points — Last {pointsData.length} Sessions</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={pointsData} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.04)" vertical={false} />
-                  <XAxis dataKey="session" stroke="#55557a" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis domain={[0, 100]} stroke="#55557a" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={tt}
-                    cursor={{ fill: "rgba(124,111,255,0.08)" }}
-                    formatter={(v) => [`${v} pts`, "Points"]}
-                    itemStyle={{ color: "#fbbf24" }}
-                    labelStyle={{ color: "#a0a0c0", marginBottom: "0.2rem" }}
-                  />
-                  <Bar dataKey="pts" radius={[6, 6, 0, 0]} maxBarSize={32}>
-                    {pointsData.map((d, i) => (
-                      <Cell
-                        key={i}
-                        fill={d.pts >= 80 ? "#4ade80" : d.pts >= 50 ? "#7c6fff" : d.pts >= 30 ? "#fbbf24" : "#f87171"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "0.5rem", flexWrap: "wrap" }}>
-                {[{ color: "#4ade80", label: "80+ pts" }, { color: "#7c6fff", label: "50–79 pts" }, { color: "#fbbf24", label: "30–49 pts" }, { color: "#f87171", label: "< 30 pts" }].map(({ color, label }) => (
-                  <div key={label} style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.7rem", color: "var(--muted)" }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
-                    {label}
+          {pointsData.length > 0 && pointsSummary && (
+            <div className="card" style={{ marginTop: "1rem", border: "1px solid rgba(34,211,238,0.18)", boxShadow: "0 16px 40px rgba(2,8,23,0.24)", background: "linear-gradient(135deg, rgba(15,23,42,0.98) 0%, rgba(15,23,42,0.9) 100%)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "0.95rem", flexWrap: "wrap" }}>
+                <div>
+                  <div className="section-title" style={{ marginBottom: "0.25rem" }}>📈 Daily Points Trend</div>
+                  <div style={{ color: "var(--muted)", fontSize: "0.74rem" }}>Your consistency over the last {pointsData.length} sessions · Sunday bonuses excluded</div>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(34,211,238,0.12)", color: "#67e8f9", fontSize: "0.74rem", fontWeight: 700 }}>
+                    {pointsSummary.avg} avg pts
                   </div>
-                ))}
+                  <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(167,139,250,0.14)", color: "#c4b5fd", fontSize: "0.74rem", fontWeight: 700 }}>
+                    Best {pointsSummary.best} pts
+                  </div>
+                </div>
               </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.7rem", marginBottom: "0.9rem" }}>
+                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Latest</div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.latest} pts</div>
+                </div>
+                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Change</div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: pointsSummary.delta >= 0 ? "#4ade80" : "#f87171" }}>{pointsSummary.trendText}</div>
+                </div>
+                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Recorded</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.totalRecordedLabel}</div>
+                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.25rem" }}>
+                    {totalRecordedSeconds > 0 ? "Based on your saved session durations" : "No session durations yet — they’ll appear here once available"}
+                  </div>
+                </div>
+                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Trend</div>
+                  <div style={{ fontSize: "1rem", fontWeight: 700, color: pointsSummary.delta >= 0 ? "#67e8f9" : "#fda4af" }}>
+                    {pointsSummary.delta >= 0 ? "Steady upward momentum" : "A small dip, keep going"}
+                  </div>
+                </div>
+              </div>
+
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={pointsData} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="dailyPointsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.28} />
+                      <stop offset="72%" stopColor="#22d3ee" stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 6" stroke="rgba(148,163,184,0.14)" vertical={false} />
+                  <XAxis dataKey="session" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} dy={8} interval="preserveStartEnd" />
+                  <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} width={34} tickFormatter={v => `${v}`} />
+                  <Tooltip
+                    contentStyle={{ ...tt, border: "1px solid rgba(34,211,238,0.35)", boxShadow: "0 8px 24px rgba(0,0,0,0.28)" }}
+                    cursor={{ stroke: "rgba(34,211,238,0.35)", strokeWidth: 1 }}
+                    formatter={(v) => [`${v} pts`, "Daily points"]}
+                    itemStyle={{ color: "#67e8f9", fontWeight: 700 }}
+                    labelStyle={{ color: "#cbd5e1", marginBottom: "0.2rem" }}
+                  />
+                  <Area type="monotone" dataKey="pts" stroke="none" fill="url(#dailyPointsFill)" />
+                  <Line
+                    type="monotone"
+                    dataKey="pts"
+                    name="Daily points"
+                    stroke="#67e8f9"
+                    strokeWidth={3.2}
+                    connectNulls
+                    isAnimationActive={false}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="pts"
+                    stroke="none"
+                    strokeWidth={0}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                    dot={{ r: 4.5, fill: "#cffafe", stroke: "#67e8f9", strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: "#cffafe", stroke: "#0891b2", strokeWidth: 2.5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           )}
 
@@ -1527,7 +1621,7 @@ export default function UserDashboard() {
                       <tr key={i}>
                         <td style={{ color: "var(--muted)" }}>{globalIdx}</td>
                         <td style={{ color: "var(--muted)" }}>{s.date ? new Date(s.date).toLocaleDateString("en-IN") : s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("en-IN") : "—"}</td>
-                        {["fluency","grammar","confidence","vocabulary"].map(k => (
+                        {["fluency", "grammar", "confidence", "vocabulary"].map(k => (
                           <td key={k} style={{ fontWeight: 600, color: scoreColor(s[k] || 0) }}>{s[k] ?? "—"}/10</td>
                         ))}
                       </tr>
