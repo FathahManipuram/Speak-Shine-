@@ -6,6 +6,7 @@
 import User from "../../../models/userSchema.js";
 import Status from "../../../models/statusSchema.js";
 import StreakRecord from "../../../models/streakRecordSchema.js";
+import { getNewStreakBadgeIds } from "../../utils/streakBadges.js";
 
 const TIMEZONE = "Asia/Kolkata";
 
@@ -41,6 +42,11 @@ export async function applyStreakUpdates() {
     let freezesAwarded = 0;
     for (const u of submittedUsers) {
       const newStreak = (u.streak || 0) + 1;
+      const newBadgeIds = getNewStreakBadgeIds(newStreak, u.earnedBadges || []);
+      if (newBadgeIds.length > 0) {
+        await User.updateOne({ _id: u._id }, { $addToSet: { earnedBadges: { $each: newBadgeIds } } });
+        console.log(`[DailyReset] 🏅 Badges awarded to ${u.name}: ${newBadgeIds.join(", ")}`);
+      }
       if (newStreak > 0 && newStreak % FREEZE_AWARD_DAYS === 0) {
         await User.updateOne({ _id: u._id }, { $inc: { streakFreeze: 1 } });
         freezesAwarded++;

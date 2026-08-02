@@ -5,6 +5,7 @@
 
 import VideoReport from "../../../models/videoReportSchema.js";
 import User from "../../../models/userSchema.js";
+import { serializeStreakBadges } from "../../utils/streakBadges.js";
 import Status from "../../../models/statusSchema.js";
 import UploadAudit from "../../../models/uploadAuditSchema.js";
 import mongoose from "mongoose";
@@ -1044,12 +1045,24 @@ export async function getCommunityFeed(authIdOrPhone, myRole = "user") {
   })
     .sort({ submittedAt: -1 })
     .limit(20)
-    .select("uploaderName submittedAt videoDuration videoUrl videoKey phone analysis expiresAt likes dislikes comments isPublic")
+    .select("userId uploaderName submittedAt videoDuration videoUrl videoKey phone analysis expiresAt likes dislikes comments isPublic")
     .lean();
+
+  const feedUserIds = feed.map(item => item.userId).filter(Boolean);
+  const feedPhones = feed.map(item => item.phone).filter(Boolean);
+  const feedUsers = await User.find({
+    $or: [
+      ...(feedUserIds.length ? [{ _id: { $in: feedUserIds } }] : []),
+      ...(feedPhones.length ? [{ phone: { $in: feedPhones } }] : []),
+    ],
+  }).lean();
+  const userById = new Map(feedUsers.map(user => [String(user._id), user]));
+  const userByPhone = new Map(feedUsers.filter(user => user.phone).map(user => [user.phone, user]));
 
   // Private objects are not readable through the public CDN URL. Generate a
   // short-lived URL for every private item the query allowed through.
   const annotated = await Promise.all(feed.map(async item => {
+    const feedUser = userById.get(String(item.userId)) || userByPhone.get(item.phone) || {};
     let videoUrl = item.videoUrl;
     if (!item.isPublic && item.videoKey) {
       try {
@@ -1062,6 +1075,7 @@ export async function getCommunityFeed(authIdOrPhone, myRole = "user") {
     return {
       _id: item._id,
       uploaderName: item.uploaderName,
+      ...serializeStreakBadges(feedUser),
       submittedAt: item.submittedAt,
       videoDuration: item.videoDuration,
       videoUrl,

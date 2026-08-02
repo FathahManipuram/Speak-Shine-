@@ -11,6 +11,9 @@ import { generateSVGPoster } from "../../../api/posterGenerator.js";
 import env from "../../config/env.js";
 import { getTodayVocabulary } from "../ai/vocabularyGenerator.js";
 import { getDurationLimits } from "../video/submitGate.js";
+import { serializeStreakBadges } from "../../utils/streakBadges.js";
+
+const withBadgeData = (user, data = {}) => ({ ...data, ...serializeStreakBadges(user) });
 
 /**
  * Get poster image - use bot's stored PNG if available, else generate SVG fallback
@@ -41,7 +44,7 @@ export async function getTodayOverview() {
   const topStreak = [...users]
     .sort((a, b) => (b.streak || 0) - (a.streak || 0))
     .slice(0, 5)
-    .map(u => ({
+    .map(u => withBadgeData(u, {
       name: u.name,
       userId: u.userId,
       streak: u.streak || 0,
@@ -155,7 +158,7 @@ export async function getUserProfile(phone) {
   });
 
   const topStreak = leaderboardSorted
-    .map(u => ({
+    .map(u => withBadgeData(u, {
       name: u.name,
       userId: u.userId,
       streak: u.streak || 0,
@@ -183,7 +186,7 @@ export async function getUserProfile(phone) {
     u.phone === phone.replace(/^91/, "") ||
     u.phone === `91${phone}`
   );
-  const myStreakEntry = myRankIdx >= 0 ? {
+  const myStreakEntry = myRankIdx >= 0 ? withBadgeData(leaderboardSorted[myRankIdx], {
     rank: myRankIdx + 1,
     name: leaderboardSorted[myRankIdx].name,
     userId: leaderboardSorted[myRankIdx].userId,
@@ -192,7 +195,7 @@ export async function getUserProfile(phone) {
     completed: leaderboardSorted[myRankIdx].completed || false,
     monthlyScore: leaderboardSorted[myRankIdx].monthlyScore ?? 0,
     inTop5: myRankIdx < 5,
-  } : null;
+  }) : null;
 
   // Check if we should show daily report (12 AM - 8 AM)
   let dailyReport = null;
@@ -226,6 +229,7 @@ export async function getUserProfile(phone) {
       weeklySubmissions: user.weeklySubmissions || 0,
       monthlySubmissions: user.monthlySubmissions || 0,
       linkedPhone: user.phone || null,
+      ...serializeStreakBadges(user),
     },
     today: {
       questionSent: status?.questionSentToday || false,

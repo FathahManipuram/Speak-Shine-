@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, default: null },
   completed: { type: Boolean, default: false },
   streak: { type: Number, default: 0 },
+  // Badge ids earned at streak milestones. Kept separately so badges survive a reset.
+  earnedBadges: { type: [String], default: [] },
   consecutiveSkips: { type: Number, default: 0 },
   weeklySubmissions: { type: Number, default: 0 },
   monthlySubmissions: { type: Number, default: 0 },
@@ -32,6 +34,7 @@ const userSchema = new mongoose.Schema({
       confidence: Number,
       vocabulary: Number,
       points: { type: Number, default: null },
+      sundayBonus: { type: Boolean, default: false },
       date: { type: Date, default: Date.now },
     }],
     default: [],

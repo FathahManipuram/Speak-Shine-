@@ -10,6 +10,7 @@ import { useToast } from "../components/Toast.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client.js";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
+import StreakBadge from "../components/StreakBadge.jsx";
 
 const CATS = ["Daily Life","Opinion","Personal Experience","English Growth","Future Goals","Fun Topic","Free Talk"];
 const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c","#a78bfa"];
@@ -628,8 +629,8 @@ export default function AdminDashboard() {
                         {medals[i] || `${i+1}`}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                          {u.name || u.userId?.split("@")[0]}
+                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                          {u.name || u.userId?.split("@")[0]} {u.currentBadge && <StreakBadge badge={u.currentBadge} compact />}
                         </div>
                         <div style={{ height: 3, background: "var(--border)", borderRadius: 99, marginTop: "0.3rem", overflow: "hidden" }}>
                           <div style={{ height: "100%", borderRadius: 99, background: i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#cd7f32" : "#7c6fff", width: `${pct}%` }} />

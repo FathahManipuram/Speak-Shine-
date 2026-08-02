@@ -6,6 +6,7 @@ import Modal from "../components/Modal.jsx";
 import SubmissionControls from "../components/SubmissionControls.jsx";
 import { useConfirm } from "../components/ConfirmDialog.jsx";
 import api from "../api/client.js";
+import StreakBadge from "../components/StreakBadge.jsx";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, BarChart, Bar, Cell } from "recharts";
 
 const SCORES = { Fluency:"#7c6fff", Grammar:"#4ade80", Confidence:"#fbbf24", Vocabulary:"#ff6b9d" };
@@ -168,7 +169,7 @@ export default function TrainerDashboard() {
                 {(dash?.topStreak||[]).map((u,i)=>(
                   <div className="streak-row" key={i}>
                     <span className="streak-rank">{["🥇","🥈","🥉"][i]||`${i+1}.`}</span>
-                    <span className="streak-name">{u.name||u.userId?.split("@")[0]}</span>
+                    <span className="streak-name">{u.name||u.userId?.split("@")[0]} {u.currentBadge && <StreakBadge badge={u.currentBadge} compact />}</span>
                     <span className="streak-val">🔥 {u.streak}</span>
                     <span className="streak-sub">{u.weeklySubmissions}/7</span>
                   </div>
