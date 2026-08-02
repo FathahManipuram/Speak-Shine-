@@ -7,6 +7,7 @@ import User from "../../../models/userSchema.js";
 import Status from "../../../models/statusSchema.js";
 import DailyReport from "../../../models/dailyReportSchema.js";
 import StreakRecord from "../../../models/streakRecordSchema.js";
+import VideoReport from "../../../models/videoReportSchema.js";
 import { generateSVGPoster } from "../../../api/posterGenerator.js";
 import env from "../../config/env.js";
 import { getTodayVocabulary } from "../ai/vocabularyGenerator.js";
@@ -137,6 +138,25 @@ export async function getUserProfile(phone) {
 
   const status = await Status.findOne().lean();
   const allUsers = await User.find().lean();
+  const recentCompletedReport = user?._id
+    ? await VideoReport.findOne({ userId: user._id, status: "completed", videoDuration: { $gt: 0 } })
+        .sort({ submittedAt: -1 })
+        .select("videoDuration submittedAt")
+        .lean()
+    : null;
+  const feedbackScores = [...(user.feedbackScores || [])];
+  const lastFeedback = feedbackScores[feedbackScores.length - 1];
+  // Older completed reports may predate duration persistence. Enrich the latest
+  // score from the still-available report so today's recorded time is visible.
+  if (recentCompletedReport?.videoDuration && lastFeedback && !lastFeedback.duration) {
+    const reportAgeMs = Date.now() - new Date(recentCompletedReport.submittedAt || 0).getTime();
+    if (reportAgeMs >= 0 && reportAgeMs < 48 * 60 * 60 * 1000) {
+      feedbackScores[feedbackScores.length - 1] = {
+        ...lastFeedback,
+        duration: recentCompletedReport.videoDuration,
+      };
+    }
+  }
   const completed = allUsers.filter(u => u.completed).length;
   const sortedByStreak = [...allUsers].sort((a, b) => (b.streak || 0) - (a.streak || 0));
 
@@ -221,7 +241,7 @@ export async function getUserProfile(phone) {
   return {
     profile: {
       name: user.name,
-      feedbackScores: user.feedbackScores || [],
+      feedbackScores,
       streak: user.streak || 0,
       streakFreeze: user.streakFreeze || 0,
       monthlyScore: user.monthlyScore || 0,

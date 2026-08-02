@@ -378,7 +378,16 @@ async function processJob(job) {
         {
           $push: {
             feedbackScores: {
-              $each: [{ fluency, grammar, confidence, vocabulary, points: effectiveScore ?? null, sundayBonus: isSundayScore, date: new Date() }],
+              $each: [{
+                fluency,
+                grammar,
+                confidence,
+                vocabulary,
+                points: effectiveScore ?? null,
+                sundayBonus: isSundayScore,
+                duration: durationToSave ?? null,
+                date: new Date(),
+              }],
               $slice: -30,
             },
           },
