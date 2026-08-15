@@ -994,6 +994,10 @@ export default function UserDashboard() {
           background: "linear-gradient(135deg, #10231f 0%, #173d35 50%, #10231f 100%)",
           border: "2px solid rgba(45,212,191,0.45)",
           boxShadow: "0 8px 40px rgba(20,184,166,0.2)",
+        } : data?.today?.isPictureDescription ? {
+          background: "linear-gradient(135deg, #0f1a2e 0%, #1a2d4a 50%, #0f1a2e 100%)",
+          border: "2px solid rgba(99,179,237,0.45)",
+          boxShadow: "0 8px 40px rgba(66,153,225,0.2)",
         } : {}}>
           {/* Header */}
           <div className="daily-poster-header">
@@ -1002,6 +1006,7 @@ export default function UserDashboard() {
                 : data?.today?.isMonthlyGoals ? "🎯 Speak & Shine"
                   : data?.today?.isWeeklyReflection ? "📅 Speak & Shine"
                     : data?.today?.isStorySummary ? "🎧 Speak & Shine"
+                      : data?.today?.isPictureDescription ? "🖼️ Speak & Shine"
                       : "✦ Speak & Shine"}
             </div>
             <div className="daily-poster-sub">
@@ -1009,6 +1014,7 @@ export default function UserDashboard() {
                 : data?.today?.isMonthlyGoals ? "MONTHLY GOAL SETTING"
                   : data?.today?.isWeeklyReflection ? "WEEKLY REFLECTION"
                     : data?.today?.isStorySummary ? "STORY SUMMARY"
+                      : data?.today?.isPictureDescription ? "PICTURE DESCRIPTION"
                       : "DAILY SPEAKING CHALLENGE"}
             </div>
             {/* Sunday bonus badge */}
@@ -1023,6 +1029,7 @@ export default function UserDashboard() {
                   : data?.today?.isMonthlyGoals ? { background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", color: "#4ade80" }
                     : data?.today?.isWeeklyReflection ? { background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", color: "#38bdf8" }
                       : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
+                        : data?.today?.isPictureDescription ? { background: "rgba(66,153,225,0.25)", border: "1px solid rgba(99,179,237,0.5)", color: "#90cdf4" }
                         : {}
               }>
                 {data.today.category}
@@ -1031,7 +1038,42 @@ export default function UserDashboard() {
           </div>
 
           {/* Monthly Reflection questions */}
-          {data?.today?.isStorySummary ? (
+          {data?.today?.isPictureDescription ? (
+            <div style={{ marginTop: "1rem" }}>
+              <div className="daily-poster-section-label">🖼️ PICTURE DESCRIPTION</div>
+              {data.today.topic && (
+                <div className="daily-poster-topic-wrap">
+                  <div className="daily-poster-section-label">SCENE</div>
+                  <div className="daily-poster-topic">"{data.today.topic}"</div>
+                </div>
+              )}
+              {data.today.imageUrl && (
+                <div style={{ margin: "0.75rem 0", borderRadius: 12, overflow: "hidden", position: "relative" }}>
+                  <img
+                    src={data.today.imageUrl}
+                    alt={data.today.topic || "Picture description challenge"}
+                    style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block", borderRadius: 12 }}
+                    loading="lazy"
+                  />
+                  {data.today.imagePhotographer && (
+                    <div style={{
+                      position: "absolute", bottom: 0, left: 0, right: 0,
+                      padding: "0.4rem 0.65rem",
+                      background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)",
+                      borderBottomLeftRadius: 12, borderBottomRightRadius: 12,
+                      fontSize: "0.62rem", color: "rgba(255,255,255,0.75)",
+                    }}>
+                      📷 Photo by {data.today.imagePhotographer}{data.today.imageSource ? ` on ${data.today.imageSource}` : ""}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div style={{ marginTop: "0.75rem", background: "rgba(66,153,225,0.08)", border: "1px solid rgba(99,179,237,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.82rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                {data.today.imageInstructions || data.today.question || "Look at the image carefully. Describe what you see, what might be happening, and what you think about it."}
+              </div>
+            </div>
+
+          ) : data?.today?.isStorySummary ? (
             <div style={{ marginTop: "1rem" }}>
               <div className="daily-poster-section-label">🎧 LISTENING PRACTICE</div>
               {data.today.topic && (
@@ -1134,6 +1176,7 @@ export default function UserDashboard() {
                   : data?.today?.isMonthlyGoals ? { background: "linear-gradient(135deg,#16a34a,#15803d)", boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }
                     : data?.today?.isWeeklyReflection ? { background: "linear-gradient(135deg,#0ea5e9,#0284c7)", boxShadow: "0 4px 20px rgba(14,165,233,0.4)" }
                       : data?.today?.isStorySummary ? { background: "linear-gradient(135deg,#0f766e,#0d9488)", boxShadow: "0 4px 20px rgba(20,184,166,0.35)" }
+                        : data?.today?.isPictureDescription ? { background: "linear-gradient(135deg,#1e40af,#1d4ed8)", boxShadow: "0 4px 20px rgba(66,153,225,0.35)" }
                         : {}),
             }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
@@ -1144,6 +1187,7 @@ export default function UserDashboard() {
                 : data?.today?.isMonthlyGoals ? "🎯 Record Monthly Goals Video"
                   : data?.today?.isWeeklyReflection ? "📅 Record Weekly Reflection Video"
                     : data?.today?.isStorySummary ? "🎧 Record Story Summary Video"
+                      : data?.today?.isPictureDescription ? "🖼️ Record Picture Description"
                       : "🎥 Upload Your Speaking Video Now!"}
           </button>
         </div>
