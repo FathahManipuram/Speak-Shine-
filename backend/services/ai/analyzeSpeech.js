@@ -299,7 +299,7 @@ function mergeScores(a, b) {
   };
 }
 
-export async function analyzeSpeech(transcript, durationSeconds, words = [], questionTopic = null, questionText = null, pronunciationIssues = [], rhythm = null) {
+export async function analyzeSpeech(transcript, durationSeconds, words = [], questionTopic = null, questionText = null, pronunciationIssues = [], rhythm = null, challengeType = null) {
 
   // --- Compute real stats from Whisper data ---
   const fillerWords = detectFillerWords(transcript);
@@ -371,8 +371,20 @@ export async function analyzeSpeech(transcript, durationSeconds, words = [], que
       ].filter(Boolean).join("\n- ")
     : "No specific topic provided.";
 
-  const topicRelevanceGuide = hasTopic
-    ? `- topicRelevance: how directly and thoroughly the speaker addressed the topic/question
+  const topicRelevanceGuide = !hasTopic
+    ? `- topicRelevance: null (no topic was provided)
+- topicFeedback: null`
+    : challengeType === "picture_description"
+    ? `- topicRelevance: how thoroughly the speaker described the image and followed the task instructions
+    10 = rich, vivid description covering people/objects/setting/mood/actions, clear inferences, personal thoughts expressed fluently
+    8-9 = good description with most key elements covered; minor gaps in detail or inference
+    6-7 = adequate description but surface-level; misses important visual details or doesn't go beyond obvious
+    4-5 = partial description; only describes 1-2 elements, very brief or generic
+    2-3 = minimal effort; barely describes the image, mostly off-topic or filler
+    1 = does not attempt to describe the image at all
+    IMPORTANT: Credit any attempt to describe what they see. Reward specific observations (colours, actions, emotions, setting) over vague statements.
+- topicFeedback: 1-2 sentences explaining specifically which visual elements the student described well (people, objects, setting, mood, actions) and which important details they missed or could expand on. Be concrete — mention what was actually in their description.`
+    : `- topicRelevance: how directly and thoroughly the speaker addressed the topic/question
     10 = entire speech is focused on the topic with specific details and examples
     8-9 = mostly on-topic with good coverage, minor tangents
     6-7 = partially on-topic, addresses the question but lacks depth or goes off-track
@@ -380,16 +392,26 @@ export async function analyzeSpeech(transcript, durationSeconds, words = [], que
     2-3 = barely related, only 1-2 sentences touch the topic
     1 = completely off-topic, does not address the question at all
     IMPORTANT: Read the transcript carefully against the question. Give credit for any relevant content.
-- topicFeedback: 1-2 sentences explaining specifically what the student covered from the topic and what key points were missing. Be specific — mention actual content from their speech.`
-    : `- topicRelevance: null (no topic was provided)
-- topicFeedback: null`;
+- topicFeedback: 1-2 sentences explaining specifically what the student covered from the topic and what key points were missing. Be specific — mention actual content from their speech.`;
 
   // ---------------------------------------------------------------------------
   // Build prompt for a given transcript chunk (used for both single + split mode)
   // ---------------------------------------------------------------------------
   const buildPrompt = (transcriptChunk, partLabel = null) => {
     const partNote = partLabel ? `\nNOTE: This is ${partLabel} of the full transcript. Score accordingly.\n` : "";
+    const challengeContext = challengeType === "picture_description"
+      ? `\nCHALLENGE TYPE: Picture Description
+The student was shown an image and asked to describe it. This is a spontaneous speaking task — prioritise evaluation of:
+• Fluency and natural delivery under unprepared conditions
+• Vocabulary variety (colours, adjectives, scene vocabulary, spatial language: "in the background", "on the left", etc.)
+• Coherence — do they describe in an organised way (general → specific, or spatial order)?
+• Use of inference language ("it looks like", "they seem to be", "this might be")
+• Grammar in spontaneous speech (less forgiving than prepared speeches)
+When writing suggestions, give concrete image-description tips (e.g. "Try describing the background before the foreground", "Use more specific adjectives like 'crowded' instead of 'many people'").
+When writing overallComment, mention both their description quality AND speaking fluency.\n`
+      : "";
     return `You are an expert English speaking coach analyzing a student's spoken English video submission.
+${challengeContext}
 
 TRANSCRIPT SOURCE (critical):
 The TRANSCRIPT below is automatic speech-to-text (audio → text). It often has NO punctuation, NO sentence capitals, and occasional STT glitches (repeated words, "i I", homophones). Evaluate the SPEAKER's real English grammar — not transcription formatting.
