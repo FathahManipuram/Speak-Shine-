@@ -8,10 +8,18 @@ const statusSchema = new mongoose.Schema({
   todayTopic: { type: String, default: null },
   todayQuestion: { type: String, default: null },
   todayCategory: { type: String, default: null },
-  todayContentType: { type: String, enum: ["question", "story_audio"], default: "question" },
+  todayContentType: { type: String, enum: ["question", "story_audio", "picture_description"], default: "question" },
   todayAudioUrl: { type: String, default: null },
   todayStoryTranscript: { type: String, default: null },
   todaySummaryGuide: { type: String, default: null },
+  // Picture Description fields — populated when isPictureDescriptionDay is true
+  todayImageUrl: { type: String, default: null },
+  todayImageSource: { type: String, default: null },       // e.g. "Unsplash"
+  todayImagePageUrl: { type: String, default: null },      // link back to source page
+  todayImagePhotographer: { type: String, default: null }, // photographer name
+  todayImagePhotographerUrl: { type: String, default: null },
+  todayImageSearchQuery: { type: String, default: null },  // query used to find the image
+  todayImageInstructions: { type: String, default: null }, // speaking instructions for the user
   todayPosterImage: { type: String, default: null },
   posterExpiresAt: { type: Date, default: null },
   recentCategories: { type: [String], default: [] },
@@ -35,6 +43,8 @@ const statusSchema = new mongoose.Schema({
   allowPrivateVideos: { type: Boolean, default: true }, // admin can disable to force all videos public
   // Which day of the week auto-story runs (0=Sun, 1=Mon, ... 6=Sat). Default: 6 (Saturday)
   storyDay: { type: Number, default: 6, min: 0, max: 6 },
+  // Which day of the week picture description runs (0=Sun ... 6=Sat). Default: 4 (Thursday). -1 = disabled.
+  pictureDescriptionDay: { type: Number, default: 4, min: -1, max: 6 },
   // Payment settings (admin-configurable)
   paymentAmount: { type: Number, default: 5, min: 1, max: 100000 },
   // Duration scoring settings (admin-configurable)
@@ -53,6 +63,10 @@ const statusSchema = new mongoose.Schema({
   isMonthlyGoalsDay: { type: Boolean, default: false },
   isWeeklyReflectionDay: { type: Boolean, default: false },
   isStorySummaryDay: { type: Boolean, default: false },
+  isPictureDescriptionDay: { type: Boolean, default: false },
+  // Duration scoring — picture description (admin-configurable)
+  durationPictureMax:  { type: Number, default: 180, min: 60, max: 600 },
+  durationPictureFull: { type: Number, default: 180, min: 60, max: 600 },
   // Daily report tracking
   dailyReportGenerated: { type: Boolean, default: false },
   reportExpiresAt: { type: Date, default: null },

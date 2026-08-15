@@ -105,6 +105,69 @@ function isSaturday() {
 }
 
 /**
+ * Check if today is the picture description day (IST).
+ * Uses pictureDescriptionDay from DB settings (default 4 = Thursday).
+ * Returns false if set to -1 (disabled).
+ */
+async function isPictureDescriptionDay() {
+  try {
+    const status = await Status.findOne().select("pictureDescriptionDay").lean();
+    const configuredDay = status?.pictureDescriptionDay ?? 4;
+    if (configuredDay === -1) return false;
+    const istDate = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    return istDate.getDay() === configuredDay;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Auto-generate and publish a Picture Description challenge.
+ * Skips with a non-fatal error if PEXELS_API_KEY is not set.
+ */
+async function publishAutoPictureDescription() {
+  try {
+    const { generatePictureDescriptionChallenge } = await import("../ai/pictureDescriptionGenerator.js");
+
+    console.log("[QuestionScheduler] 🖼️  Auto-generating Picture Description challenge…");
+    const challenge = await generatePictureDescriptionChallenge();
+
+    await Status.updateOne({}, {
+      $set: {
+        questionSentToday: true,
+        isPictureDescriptionDay: true,
+        isStorySummaryDay: false,
+        isMonthlyReflectionDay: false,
+        isMonthlyGoalsDay: false,
+        isWeeklyReflectionDay: false,
+        todayContentType: "picture_description",
+        todayTopic: challenge.title,
+        todayQuestion: challenge.instructions,
+        todayCategory: "Picture Description",
+        todayImageUrl: challenge.imageUrl,
+        todayImageSource: challenge.imageSource,
+        todayImagePageUrl: challenge.imagePageUrl,
+        todayImagePhotographer: challenge.imagePhotographer,
+        todayImagePhotographerUrl: challenge.imagePhotographerUrl,
+        todayImageSearchQuery: challenge.imageQuery,
+        todayImageInstructions: challenge.instructions,
+        todayAudioUrl: null,
+        todayStoryTranscript: null,
+        todaySummaryGuide: null,
+        todayPosterImage: null,
+        todayVocabulary: [],
+      }
+    }, { upsert: true });
+
+    console.log(`[QuestionScheduler] ✅ Picture Description published: "${challenge.title}"`);
+    return { published: true, type: "picture_description", topic: challenge.title, source: "auto" };
+  } catch (err) {
+    console.error("[QuestionScheduler] Picture Description auto-publish failed:", err.message);
+    return { published: false, error: err.message };
+  }
+}
+
+/**
  * Auto-generate and publish a story summary for the configured story day.
  * Skips if a manual story is already scheduled for today.
  */
@@ -212,6 +275,17 @@ export async function publishDailyQuestion() {
     // ── Story Summary Day → Auto Story Summary ────────────────────────────
     if (await isStoryDay()) {
       return await publishAutoSaturdayStory();
+    }
+
+    // ── Picture Description Day → Auto Picture Description ────────────────
+    // Runs on the configured weekday (default Thursday).
+    // Falls back to a normal question if generation fails (non-fatal).
+    if (await isPictureDescriptionDay()) {
+      const result = await publishAutoPictureDescription();
+      if (result.published) return result;
+      // If picture generation failed (e.g. no Pexels key), log and fall through
+      // to the normal question so users still get a challenge today.
+      console.warn("[QuestionScheduler] ⚠️  Picture Description failed — falling back to normal question");
     }
 
     // ── 1st of month → Monthly Goal Setting (takes priority over Sunday) ─

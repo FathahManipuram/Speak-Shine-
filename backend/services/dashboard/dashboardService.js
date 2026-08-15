@@ -62,6 +62,12 @@ export async function getTodayOverview() {
       contentType: status?.todayContentType || "question",
       audioUrl: status?.todayAudioUrl || null,
       isStorySummary: status?.isStorySummaryDay || false,
+      isPictureDescription: status?.isPictureDescriptionDay || false,
+      imageUrl:          status?.todayImageUrl || null,
+      imageSource:       status?.todayImageSource || null,
+      imagePageUrl:      status?.todayImagePageUrl || null,
+      imagePhotographer: status?.todayImagePhotographer || null,
+      imageInstructions: status?.todayImageInstructions || null,
       posterImage: getPosterImage(status),
     },
     stats: {
@@ -263,6 +269,15 @@ export async function getUserProfile(phone) {
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: status?.isStorySummaryDay || false,
+      isPictureDescription: status?.isPictureDescriptionDay || false,
+      // Picture description image data (only populated on picture description days)
+      imageUrl:             status?.todayImageUrl || null,
+      imageSource:          status?.todayImageSource || null,
+      imagePageUrl:         status?.todayImagePageUrl || null,
+      imagePhotographer:    status?.todayImagePhotographer || null,
+      imagePhotographerUrl: status?.todayImagePhotographerUrl || null,
+      imageSearchQuery:     status?.todayImageSearchQuery || null,
+      imageInstructions:    status?.todayImageInstructions || null,
       vocabulary: await vocabularyPromise,
       allowPrivateVideos: status?.allowPrivateVideos ?? true,
       vocabWordCount: status?.vocabWordCount ?? 5,
@@ -272,6 +287,7 @@ export async function getUserProfile(phone) {
         isMonthlyGoals: status?.isMonthlyGoalsDay || false,
         isWeeklyReflection: status?.isWeeklyReflectionDay || false,
         isStorySummary: status?.isStorySummaryDay || false,
+        isPictureDescription: status?.isPictureDescriptionDay || false,
       }, status || {}),
     },
     dailyReport: showReport ? dailyReport : null,
@@ -353,6 +369,14 @@ export async function setTodayQuestion(topic, question, category) {
       todayStoryTranscript: null,
       todaySummaryGuide: null,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
+      todayImageUrl: null,
+      todayImageSource: null,
+      todayImagePageUrl: null,
+      todayImagePhotographer: null,
+      todayImagePhotographerUrl: null,
+      todayImageSearchQuery: null,
+      todayImageInstructions: null,
       questionSentToday: true,
     }
   }, { upsert: true });
@@ -379,6 +403,7 @@ export async function getSettings() {
     storyLevel: status.storyLevel || "B1",
     allowPrivateVideos: status.allowPrivateVideos ?? true,
     storyDay: status.storyDay ?? 6,
+    pictureDescriptionDay: status.pictureDescriptionDay ?? 4,
     paymentAmount: status.paymentAmount ?? 5,
     durationDefaultMax: status.durationDefaultMax ?? 300,
     durationDefaultFull: status.durationDefaultFull ?? 300,
@@ -390,6 +415,8 @@ export async function getSettings() {
     durationMonthlyReflectionFull: status.durationMonthlyReflectionFull ?? 420,
     durationMonthlyGoalsMax: status.durationMonthlyGoalsMax ?? 600,
     durationMonthlyGoalsFull: status.durationMonthlyGoalsFull ?? 420,
+    durationPictureMax: status.durationPictureMax ?? 180,
+    durationPictureFull: status.durationPictureFull ?? 180,
   };
 }
 
@@ -404,7 +431,8 @@ export async function updateSettings(
   durationWeeklyMax, durationWeeklyFull,
   durationMonthlyReflectionMax, durationMonthlyReflectionFull,
   durationMonthlyGoalsMax, durationMonthlyGoalsFull,
-  allowPrivateVideos
+  allowPrivateVideos,
+  pictureDescriptionDay
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -501,6 +529,16 @@ export async function updateSettings(
       throw error;
     }
     updates.storyDay = day;
+  }
+
+  if (pictureDescriptionDay !== undefined) {
+    const day = parseInt(pictureDescriptionDay, 10);
+    if (isNaN(day) || day < -1 || day > 6) {
+      const error = new Error("pictureDescriptionDay must be -1 (disabled) or 0 (Sunday) through 6 (Saturday)");
+      error.statusCode = 400;
+      throw error;
+    }
+    updates.pictureDescriptionDay = day;
   }
 
   if (paymentAmount !== undefined) {
@@ -632,6 +670,7 @@ export async function enableMonthlyReflection() {
       isMonthlyReflectionDay: true,
       isMonthlyGoalsDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       todayContentType: "question",
       todayAudioUrl: null,
       todayStoryTranscript: null,
@@ -659,6 +698,7 @@ export async function enableMonthlyGoals() {
       isMonthlyReflectionDay: false,
       isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       todayContentType: "question",
       todayAudioUrl: null,
       todayStoryTranscript: null,
@@ -686,6 +726,7 @@ export async function enableWeeklyReflection() {
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       todayContentType: "question",
       todayAudioUrl: null,
       todayStoryTranscript: null,
@@ -723,12 +764,22 @@ export async function disableSpecialModes() {
       isMonthlyGoalsDay: false,
       isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       questionSentToday: false,
       todayTopic: null,
       todayQuestion: null,
       todayCategory: null,
       todayContentType: "question",
       todayAudioUrl: null,
+      todayStoryTranscript: null,
+      todaySummaryGuide: null,
+      todayImageUrl: null,
+      todayImageSource: null,
+      todayImagePageUrl: null,
+      todayImagePhotographer: null,
+      todayImagePhotographerUrl: null,
+      todayImageSearchQuery: null,
+      todayImageInstructions: null,
       todayStoryTranscript: null,
       todaySummaryGuide: null,
     }

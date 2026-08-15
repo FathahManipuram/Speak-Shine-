@@ -318,6 +318,7 @@ async function processJob(job) {
         isMonthlyGoals:      status?.isMonthlyGoalsDay      || false,
         isWeeklyReflection:  status?.isWeeklyReflectionDay  || false,
         isStorySummary:      status?.isStorySummaryDay      || false,
+        isPictureDescription: status?.isPictureDescriptionDay || false,
       };
       const { fullScoreSeconds } = getDurationLimits(gateFlags, status || {});
       const todayVocab = status?.todayVocabulary || [];

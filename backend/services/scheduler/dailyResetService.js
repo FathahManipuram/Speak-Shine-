@@ -215,10 +215,18 @@ export async function resetStatusFlags() {
         isMonthlyGoalsDay: false,
         isWeeklyReflectionDay: false,
         isStorySummaryDay: false,
+        isPictureDescriptionDay: false,
         todayContentType: "question",
         todayAudioUrl: null,
         todayStoryTranscript: null,
         todaySummaryGuide: null,
+        todayImageUrl: null,
+        todayImageSource: null,
+        todayImagePageUrl: null,
+        todayImagePhotographer: null,
+        todayImagePhotographerUrl: null,
+        todayImageSearchQuery: null,
+        todayImageInstructions: null,
       }
     }, { upsert: true });
 
@@ -285,15 +293,23 @@ export async function performDailyReset() {
         isMonthlyGoalsDay: false,
         isWeeklyReflectionDay: false,
         isStorySummaryDay: false,
+        isPictureDescriptionDay: false,
         todayContentType: "question",
         todayAudioUrl: null,
         todayStoryTranscript: null,
         todaySummaryGuide: null,
+        todayImageUrl: null,
+        todayImageSource: null,
+        todayImagePageUrl: null,
+        todayImagePhotographer: null,
+        todayImagePhotographerUrl: null,
+        todayImageSearchQuery: null,
+        todayImageInstructions: null,
         todayQuestion: null,
         todayTopic: null,
         todayCategory: null,
         todayPosterImage: null,
-        todayVocabulary: [],      // ← reset vocab words each day
+        todayVocabulary: [],
         lastResetDate: todayIST,
       }
     }, { upsert: true });

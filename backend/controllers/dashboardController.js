@@ -132,6 +132,7 @@ export async function updateSettings(req, res) {
       durationMonthlyGoalsMax,
       durationMonthlyGoalsFull,
       allowPrivateVideos,
+      pictureDescriptionDay,
     } = req.body;
     const result = await dashboardService.updateSettings(
       posterSendTime,
@@ -153,7 +154,8 @@ export async function updateSettings(req, res) {
       durationMonthlyReflectionFull,
       durationMonthlyGoalsMax,
       durationMonthlyGoalsFull,
-      allowPrivateVideos
+      allowPrivateVideos,
+      pictureDescriptionDay
     );
     res.json(result);
   } catch (error) {

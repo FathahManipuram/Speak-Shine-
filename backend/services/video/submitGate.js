@@ -9,7 +9,7 @@ export const GATE_FRAME_IDEAL = 16;
 /** @typedef {"pass"|"warn"|"fail"} GateStatus */
 
 /**
- * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean }} flags
+ * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean, isPictureDescription?: boolean }} flags
  */
 export function getDurationLimits(flags = {}, settings = {}) {
   const maxSeconds = flags.isMonthlyReflection
@@ -20,6 +20,8 @@ export function getDurationLimits(flags = {}, settings = {}) {
       ? (settings.durationWeeklyMax ?? 420)
       : flags.isStorySummary
       ? (settings.durationStoryMax ?? 180)
+      : flags.isPictureDescription
+      ? (settings.durationPictureMax ?? 180)
       : (settings.durationDefaultMax ?? 300);
 
   const fullScoreSeconds = flags.isMonthlyReflection
@@ -30,6 +32,8 @@ export function getDurationLimits(flags = {}, settings = {}) {
       ? (settings.durationWeeklyFull ?? 300)
       : flags.isStorySummary
       ? (settings.durationStoryFull ?? 180)
+      : flags.isPictureDescription
+      ? (settings.durationPictureFull ?? 180)
       : (settings.durationDefaultFull ?? 300);
 
   return {
@@ -62,7 +66,7 @@ function fmtDuration(sec) {
  * @param {number|null} input.fileSizeBytes
  * @param {number|null} input.frameCount
  * @param {boolean} input.hasAudioTrack - optional hint from client
- * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean }} input.flags
+ * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean, isPictureDescription?: boolean }} input.flags
  */
 export function evaluateSubmitGate(input) {
   const { minSeconds, maxSeconds, minLabel, maxLabel } = getDurationLimits(input.flags || {});

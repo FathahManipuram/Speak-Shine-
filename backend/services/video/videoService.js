@@ -533,6 +533,7 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: status?.isStorySummaryDay || false,
+      isPictureDescription: status?.isPictureDescriptionDay || false,
     };
 
     const gate = evaluateSubmitGate({
@@ -799,6 +800,7 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
     const isMonthlyGoals = status?.isMonthlyGoalsDay || false;
     const isWeeklyReflection = status?.isWeeklyReflectionDay || false;
     const isStorySummary = status?.isStorySummaryDay || false;
+    const isPictureDescription = status?.isPictureDescriptionDay || false;
     
     const maxDuration = isMonthlyReflection
       ? (status?.durationMonthlyReflectionMax ?? 420) + 5
@@ -808,6 +810,8 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       ? (status?.durationWeeklyMax ?? 420) + 5
       : isStorySummary
       ? (status?.durationStoryMax ?? 180) + 5
+      : isPictureDescription
+      ? (status?.durationPictureMax ?? 180) + 5
       : (status?.durationDefaultMax ?? 300) + 5;
     
     const maxMinutes = Math.floor((maxDuration - 5) / 60);
