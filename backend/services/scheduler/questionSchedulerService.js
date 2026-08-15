@@ -255,6 +255,55 @@ export async function publishDueManualStoryQuestion(now = new Date()) {
   return publishStoryQuestion(storyQuestion);
 }
 
+// ── Picture Description — manual publish ─────────────────────────────────────
+
+const PICTURE_DESCRIPTION_CATEGORY = "Picture Description";
+
+async function publishPictureDescriptionQuestion(q) {
+  await Status.updateOne({}, {
+    $set: {
+      questionSentToday: true,
+      isPictureDescriptionDay: true,
+      isStorySummaryDay: false,
+      isMonthlyReflectionDay: false,
+      isMonthlyGoalsDay: false,
+      isWeeklyReflectionDay: false,
+      todayContentType: "picture_description",
+      todayTopic: q.topic,
+      todayQuestion: q.question,
+      todayCategory: q.category || PICTURE_DESCRIPTION_CATEGORY,
+      todayImageUrl: q.imageUrl || null,
+      todayImageSource: q.imageSource || null,
+      todayImagePageUrl: q.imagePageUrl || null,
+      todayImagePhotographer: q.imagePhotographer || null,
+      todayImagePhotographerUrl: q.imagePhotographerUrl || null,
+      todayImageSearchQuery: q.imageSearchQuery || null,
+      todayImageInstructions: q.imageInstructions || q.question || null,
+      todayAudioUrl: null,
+      todayStoryTranscript: null,
+      todaySummaryGuide: null,
+      todayPosterImage: null,
+      todayVocabulary: [],
+    }
+  }, { upsert: true });
+
+  return {
+    published: true,
+    type: "picture_description",
+    topic: q.topic,
+    source: "manual",
+  };
+}
+
+/**
+ * Publish a due picture description task by exact scheduled datetime.
+ */
+export async function publishDueManualPictureDescriptionQuestion(now = new Date()) {
+  const q = await getDueManualQuestion("picture_description", now);
+  if (!q) return { published: false };
+  return publishPictureDescriptionQuestion(q);
+}
+
 /**
  * Publish daily question
  * Handles special days (monthly reflection, goals, weekly reflection) and regular questions
@@ -264,6 +313,9 @@ export async function publishDailyQuestion() {
   try {
     const dueStory = await publishDueManualStoryQuestion();
     if (dueStory.published) return dueStory;
+
+    const duePicture = await publishDueManualPictureDescriptionQuestion();
+    if (duePicture.published) return duePicture;
 
     const statusCheck = await Status.findOne();
     if (statusCheck?.questionSentToday) {

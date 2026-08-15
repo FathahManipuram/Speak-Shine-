@@ -41,9 +41,10 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
   // Fetch today's question so topic relevance can be scored
   let questionTopic = null;
   let questionText = null;
+  let status = null;
   try {
     const Status = (await import("../../../models/statusSchema.js")).default;
-    const status = await Status.findOne().lean();
+    status = await Status.findOne().lean();
     questionTopic = status?.todayTopic || null;
     questionText  = status?.todayQuestion || null;
     if (status?.isStorySummaryDay) {

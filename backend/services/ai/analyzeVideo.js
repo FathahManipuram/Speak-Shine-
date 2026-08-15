@@ -112,7 +112,7 @@ Return ONLY valid JSON (no markdown, no extra text):
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: userContent }],
         temperature: 0.2,
         max_tokens: 1500,
