@@ -579,11 +579,12 @@ export default function VideoAnalysis() {
                   onClick={() => setPicturePreviewOpen(false)}
                   aria-label="Close full screen picture preview"
                   style={{
-                    position: "fixed", top: "1rem", right: "1rem", zIndex: 2001,
+                    position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 2001,
                     width: 42, height: 42, borderRadius: "50%",
-                    border: "1px solid rgba(255,255,255,0.35)",
+                    border: "2px solid rgba(255,255,255,0.65)",
                     background: "rgba(255,255,255,0.12)", color: "#fff",
                     fontSize: "1.4rem", cursor: "pointer",
+                    boxShadow: "0 3px 16px rgba(0,0,0,0.45)",
                   }}
                 >×</button>
                 <a
@@ -592,11 +593,12 @@ export default function VideoAnalysis() {
                   rel="noopener noreferrer"
                   onClick={event => event.stopPropagation()}
                   style={{
-                    position: "fixed", top: "1.15rem", left: "1rem", zIndex: 2001,
-                    border: "1px solid rgba(255,255,255,0.35)", borderRadius: 10,
+                    position: "fixed", top: "1.5rem", left: "1.5rem", zIndex: 2001,
+                    border: "2px solid rgba(255,255,255,0.55)", borderRadius: 10,
                     padding: "0.55rem 0.8rem", background: "rgba(255,255,255,0.12)",
                     color: "#fff", fontSize: "0.8rem", fontWeight: 700,
                     textDecoration: "none", backdropFilter: "blur(6px)",
+                    boxShadow: "0 3px 16px rgba(0,0,0,0.45)",
                   }}
                 >🔍 Open Original Image</a>
                 <img
@@ -618,7 +620,20 @@ export default function VideoAnalysis() {
               borderRadius: 12, padding: "0.85rem 1rem",
               color: "rgba(255,255,255,0.9)", fontSize: "0.9rem", lineHeight: 1.6,
             }}>
-              {todayQuestion.imageInstructions || todayQuestion.question || "Describe what you see in the image. Mention the people, setting, and actions. Share what you think might be happening and what could happen next."}
+              {todayQuestion.imageInstructions || todayQuestion.question || "Describe what you see in the image."}
+            </div>
+            <div style={{
+              background: "rgba(99,179,237,0.12)", border: "2px solid rgba(99,179,237,0.42)",
+              borderRadius: 14, padding: "1rem 1.1rem", marginTop: "0.85rem",
+              color: "rgba(255,255,255,0.9)", fontSize: "0.88rem", lineHeight: 1.55,
+              boxShadow: "0 4px 18px rgba(66,153,225,0.12)",
+            }}>
+              <strong style={{ color: "#b9e3ff", fontSize: "0.95rem" }}>💬 Guiding questions — use these in your response</strong>
+              <ol style={{ margin: "0.65rem 0 0", paddingLeft: "1.45rem", display: "grid", gap: "0.45rem" }}>
+                {["What do you see?", "What do you think is happening?", "What is the atmosphere like?", "What do you think might happen next?"].map(question => (
+                  <li key={question} style={{ paddingLeft: "0.25rem", fontWeight: 600 }}>{question}</li>
+                ))}
+              </ol>
             </div>
           </div>
         )}

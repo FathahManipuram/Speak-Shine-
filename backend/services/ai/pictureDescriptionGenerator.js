@@ -38,7 +38,7 @@ Rules:
 - imageQuery: a vivid, specific 3–8 word phrase suitable for a photo search (e.g. "busy fish market early morning" or "elderly man reading in library")
 - Avoid generic queries like "people", "nature", "city"
 - title: 2–5 word label describing the scene (e.g. "A Morning at the Market")
-- instructions: 1–2 sentences telling the speaker what to describe and discuss (mention: what you see, what might be happening, what you think/feel about it)
+- instructions: 1–2 sentences telling the speaker what to describe and discuss. It must naturally encourage these four points: what they see, what they think is happening, the atmosphere, and what might happen next.
 - difficulty: one of "easy", "medium", or "hard"
 - speakingDuration: seconds — 60 for easy, 90 for medium, 120 for hard
 
