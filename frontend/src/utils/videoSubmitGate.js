@@ -5,8 +5,16 @@
 export function getDurationLimits({ isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription } = {}) {
   const maxSeconds = isMonthlyReflection ? 420 : isMonthlyGoals ? 600 : isWeeklyReflection ? 420 : isStorySummary ? 180 : isPictureDescription ? 180 : 300;
   const fullScoreSeconds = isMonthlyReflection ? 420 : isMonthlyGoals ? 420 : isWeeklyReflection ? 300 : (isStorySummary || isPictureDescription) ? 180 : 300;
-  const maxLabel = maxSeconds >= 600 ? "10 min" : maxSeconds >= 420 ? "7 min" : maxSeconds >= 300 ? "5 min" : "3 min";
-  const fullScoreLabel = fullScoreSeconds >= 600 ? "10 min" : fullScoreSeconds >= 420 ? "7 min" : fullScoreSeconds >= 300 ? "5 min" : "3 min";
+  const formatDurationLabel = (seconds) => {
+    const value = Math.max(0, Math.round(Number(seconds) || 0));
+    const minutes = Math.floor(value / 60);
+    const remainder = value % 60;
+    if (remainder === 0) return `${minutes} min`;
+    if (minutes === 0) return `${remainder} sec`;
+    return `${minutes} min ${remainder} sec`;
+  };
+  const maxLabel = formatDurationLabel(maxSeconds);
+  const fullScoreLabel = formatDurationLabel(fullScoreSeconds);
   return { minSeconds: 60, maxSeconds, fullScoreSeconds, minLabel: "1 min", maxLabel, fullScoreLabel };
 }
 

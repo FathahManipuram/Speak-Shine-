@@ -47,10 +47,12 @@ export function getDurationLimits(flags = {}, settings = {}) {
 }
 
 function formatMaxLabel(sec) {
-  if (sec >= 600) return "10 min";
-  if (sec >= 420) return "7 min";
-  if (sec >= 300) return "5 min";
-  return "3 min";
+  const seconds = Math.max(0, Math.round(Number(sec) || 0));
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (remainder === 0) return `${minutes} min`;
+  if (minutes === 0) return `${remainder} sec`;
+  return `${minutes} min ${remainder} sec`;
 }
 
 function fmtDuration(sec) {

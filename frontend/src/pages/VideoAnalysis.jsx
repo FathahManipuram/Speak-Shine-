@@ -89,7 +89,7 @@ export default function VideoAnalysis() {
     }
     loadMyReports();
     // Fetch today's question for the top card
-    api.get("/dashboard/me").then(r => {
+      api.get("/dashboard/me?_duration_refresh=" + Date.now()).then(r => {
       const t = r.data?.today;
       if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType, imageUrl: t.imageUrl, imageSource: t.imageSource, imagePageUrl: t.imagePageUrl, imagePhotographer: t.imagePhotographer, imagePhotographerUrl: t.imagePhotographerUrl, imageInstructions: t.imageInstructions });
       if (t?.isMonthlyReflection) setIsMonthlyReflection(true);
@@ -1948,18 +1948,9 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
     return seconds;
   }, []);
 
-  // Dynamic time limits based on question type
-  const MAX_SECONDS = isMonthlyReflection
-    ? 420  // 7 minutes for monthly reflection
-    : isMonthlyGoals
-    ? 600  // 10 minutes for monthly goals
-    : isWeeklyReflection 
-    ? 420  // 7 minutes for weekly reflection
-    : isStorySummary
-    ? 180  // 3 minutes for story summaries
-    : isPictureDescription
-    ? 180  // 3 minutes for picture description
-    : 300; // 5 minutes for regular daily questions
+  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription };
+  const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
+  const MAX_SECONDS = durationLimits.maxSeconds;
 
   // Enumerate devices + restore any saved draft on mount
   useEffect(() => {
@@ -2401,9 +2392,6 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
     setStep("setup");
     cleanup();
   };
-
-  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription };
-  const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
 
   const submitRecording = async () => {
     if (!recordedBlob) return;
