@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout.jsx";
 import Modal from "../components/Modal.jsx";
@@ -43,6 +44,7 @@ export default function VideoAnalysis() {
   const [isWeeklyReflection, setIsWeeklyReflection] = useState(false);
   const [isStorySummary, setIsStorySummary] = useState(false);
   const [isPictureDescription, setIsPictureDescription] = useState(false);
+  const [picturePreviewOpen, setPicturePreviewOpen] = useState(false);
   const [allowPrivateVideos, setAllowPrivateVideos] = useState(true);
   const [durationLimits, setDurationLimits] = useState(null);
 
@@ -57,6 +59,20 @@ export default function VideoAnalysis() {
   const [myReports, setMyReports]     = useState([]);
   const [modal, setModal]             = useState(null);
   const [visibilityUpdating, setVisibilityUpdating] = useState(false);
+
+  useEffect(() => {
+    if (!picturePreviewOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setPicturePreviewOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [picturePreviewOpen]);
 
   useEffect(() => {
     if (isGuest) {
@@ -502,6 +518,18 @@ export default function VideoAnalysis() {
                   }}
                   loading="lazy"
                 />
+                <button
+                  type="button"
+                  onClick={() => setPicturePreviewOpen(true)}
+                  aria-label="View picture full screen"
+                  style={{
+                    position: "absolute", top: "0.75rem", right: "0.75rem",
+                    border: "1px solid rgba(255,255,255,0.35)", borderRadius: 10,
+                    padding: "0.5rem 0.7rem", background: "rgba(0,0,0,0.7)",
+                    color: "#fff", fontSize: "0.8rem", fontWeight: 700,
+                    cursor: "pointer", backdropFilter: "blur(6px)",
+                  }}
+                >⛶ View Full Screen</button>
                 {/* Photographer attribution */}
                 {todayQuestion.imagePhotographer && (
                   <div style={{
@@ -532,6 +560,56 @@ export default function VideoAnalysis() {
                   </div>
                 )}
               </div>
+            )}
+
+            {picturePreviewOpen && todayQuestion.imageUrl && createPortal(
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Full screen picture preview"
+                onClick={() => setPicturePreviewOpen(false)}
+                style={{
+                  position: "fixed", inset: 0, zIndex: 2000,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "2rem", background: "rgba(0,0,0,0.92)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setPicturePreviewOpen(false)}
+                  aria-label="Close full screen picture preview"
+                  style={{
+                    position: "fixed", top: "1rem", right: "1rem", zIndex: 2001,
+                    width: 42, height: 42, borderRadius: "50%",
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    background: "rgba(255,255,255,0.12)", color: "#fff",
+                    fontSize: "1.4rem", cursor: "pointer",
+                  }}
+                >×</button>
+                <a
+                  href={todayQuestion.imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={event => event.stopPropagation()}
+                  style={{
+                    position: "fixed", top: "1.15rem", left: "1rem", zIndex: 2001,
+                    border: "1px solid rgba(255,255,255,0.35)", borderRadius: 10,
+                    padding: "0.55rem 0.8rem", background: "rgba(255,255,255,0.12)",
+                    color: "#fff", fontSize: "0.8rem", fontWeight: 700,
+                    textDecoration: "none", backdropFilter: "blur(6px)",
+                  }}
+                >🔍 Open Original Image</a>
+                <img
+                  src={todayQuestion.imageUrl}
+                  alt={todayQuestion.topic || "Picture description challenge"}
+                  onClick={event => event.stopPropagation()}
+                  style={{
+                    maxWidth: "96vw", maxHeight: "92vh", objectFit: "contain",
+                    borderRadius: 10, boxShadow: "0 12px 60px rgba(0,0,0,0.55)",
+                  }}
+                />
+              </div>,
+              document.body
             )}
 
             {/* Instructions */}

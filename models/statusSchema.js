@@ -35,6 +35,12 @@ const statusSchema = new mongoose.Schema({
   // Vocabulary challenge settings (admin-configurable)
   vocabWordCount: { type: Number, default: 5, min: 1, max: 10 }, // how many words shown per day
   vocabRequiredCount: { type: Number, default: 3, min: 1, max: 10 }, // how many words user must use
+  vocabNormalWordCount: { type: Number, default: 5, min: 1, max: 10 },
+  vocabNormalRequiredCount: { type: Number, default: 3, min: 1, max: 10 },
+  vocabStoryWordCount: { type: Number, default: 5, min: 1, max: 10 },
+  vocabStoryRequiredCount: { type: Number, default: 3, min: 1, max: 10 },
+  vocabPictureWordCount: { type: Number, default: 5, min: 1, max: 10 },
+  vocabPictureRequiredCount: { type: Number, default: 3, min: 1, max: 10 },
   vocabLevel: { type: String, default: "B2", enum: ["A1", "A2", "B1", "B2", "C1", "C2"] }, // CEFR level
   // Story Summary settings (admin-configurable)
   storyWordCount: { type: Number, default: 200, min: 100, max: 400 },

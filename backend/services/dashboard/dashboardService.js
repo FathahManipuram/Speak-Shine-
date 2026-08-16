@@ -280,8 +280,22 @@ export async function getUserProfile(phone) {
       imageInstructions:    status?.todayImageInstructions || null,
       vocabulary: await vocabularyPromise,
       allowPrivateVideos: status?.allowPrivateVideos ?? true,
-      vocabWordCount: status?.vocabWordCount ?? 5,
-      vocabRequiredCount: status?.vocabRequiredCount ?? 3,
+      vocabWordCount: status?.isPictureDescriptionDay
+        ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+        : status?.isStorySummaryDay
+        ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+        : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5),
+      vocabRequiredCount: status?.isPictureDescriptionDay
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : status?.isStorySummaryDay
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3),
+      vocabNormalWordCount: status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5,
+      vocabNormalRequiredCount: status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3,
+      vocabStoryWordCount: status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5,
+      vocabStoryRequiredCount: status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3,
+      vocabPictureWordCount: status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5,
+      vocabPictureRequiredCount: status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3,
       durationLimits: getDurationLimits({
         isMonthlyReflection: status?.isMonthlyReflectionDay || false,
         isMonthlyGoals: status?.isMonthlyGoalsDay || false,
@@ -398,6 +412,12 @@ export async function getSettings() {
     questionGenerateTime: status.questionGenerateTime || "07:00",
     vocabWordCount: status.vocabWordCount ?? 5,
     vocabRequiredCount: status.vocabRequiredCount ?? 3,
+    vocabNormalWordCount: status.vocabNormalWordCount ?? status.vocabWordCount ?? 5,
+    vocabNormalRequiredCount: status.vocabNormalRequiredCount ?? status.vocabRequiredCount ?? 3,
+    vocabStoryWordCount: status.vocabStoryWordCount ?? status.vocabWordCount ?? 5,
+    vocabStoryRequiredCount: status.vocabStoryRequiredCount ?? status.vocabRequiredCount ?? 3,
+    vocabPictureWordCount: status.vocabPictureWordCount ?? status.vocabWordCount ?? 5,
+    vocabPictureRequiredCount: status.vocabPictureRequiredCount ?? status.vocabRequiredCount ?? 3,
     vocabLevel: status.vocabLevel || "B2",
     storyWordCount: status.storyWordCount ?? 200,
     storyLevel: status.storyLevel || "B1",
@@ -433,7 +453,10 @@ export async function updateSettings(
   durationMonthlyGoalsMax, durationMonthlyGoalsFull,
   allowPrivateVideos,
   pictureDescriptionDay,
-  durationPictureMax, durationPictureFull
+  durationPictureMax, durationPictureFull,
+  vocabNormalWordCount, vocabNormalRequiredCount,
+  vocabStoryWordCount, vocabStoryRequiredCount,
+  vocabPictureWordCount, vocabPictureRequiredCount
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -476,6 +499,44 @@ export async function updateSettings(
       throw error;
     }
     updates.vocabRequiredCount = required;
+  }
+
+  const vocabGroups = [
+    ["vocabNormalWordCount", vocabNormalWordCount, "vocabNormalRequiredCount", vocabNormalRequiredCount],
+    ["vocabStoryWordCount", vocabStoryWordCount, "vocabStoryRequiredCount", vocabStoryRequiredCount],
+    ["vocabPictureWordCount", vocabPictureWordCount, "vocabPictureRequiredCount", vocabPictureRequiredCount],
+  ];
+  for (const [wordKey, rawWords, requiredKey, rawRequired] of vocabGroups) {
+    if (rawWords !== undefined) {
+      const count = parseInt(rawWords, 10);
+      if (isNaN(count) || count < 1 || count > 10) {
+        const error = new Error(`${wordKey} must be between 1 and 10`);
+        error.statusCode = 400;
+        throw error;
+      }
+      updates[wordKey] = count;
+      updates.todayVocabulary = [];
+    }
+    if (rawRequired !== undefined) {
+      const required = parseInt(rawRequired, 10);
+      if (isNaN(required) || required < 1 || required > 10) {
+        const error = new Error(`${requiredKey} must be between 1 and 10`);
+        error.statusCode = 400;
+        throw error;
+      }
+      updates[requiredKey] = required;
+    }
+  }
+
+  const vocabStatus = await Status.findOne().lean();
+  for (const [wordKey, , requiredKey] of vocabGroups) {
+    const words = updates[wordKey] ?? vocabStatus?.[wordKey] ?? vocabStatus?.vocabWordCount ?? 5;
+    const required = updates[requiredKey] ?? vocabStatus?.[requiredKey] ?? vocabStatus?.vocabRequiredCount ?? 3;
+    if (required > words) {
+      const error = new Error(`${requiredKey} cannot exceed ${wordKey}`);
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   // Ensure required count never exceeds word count

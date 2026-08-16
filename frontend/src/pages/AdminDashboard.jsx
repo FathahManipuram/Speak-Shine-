@@ -42,6 +42,12 @@ export default function AdminDashboard() {
     questionGenerateTime: "07:00",
     vocabWordCount: 5,
     vocabRequiredCount: 3,
+    vocabNormalWordCount: 5,
+    vocabNormalRequiredCount: 3,
+    vocabStoryWordCount: 5,
+    vocabStoryRequiredCount: 3,
+    vocabPictureWordCount: 5,
+    vocabPictureRequiredCount: 3,
     vocabLevel: "B2",
     storyWordCount: 200,
     storyLevel: "B1",
@@ -212,6 +218,12 @@ export default function AdminDashboard() {
         questionGenerateTime: s.data.questionGenerateTime || "07:00",
         vocabWordCount: s.data.vocabWordCount ?? 5,
         vocabRequiredCount: s.data.vocabRequiredCount ?? 3,
+        vocabNormalWordCount: s.data.vocabNormalWordCount ?? 5,
+        vocabNormalRequiredCount: s.data.vocabNormalRequiredCount ?? 3,
+        vocabStoryWordCount: s.data.vocabStoryWordCount ?? 5,
+        vocabStoryRequiredCount: s.data.vocabStoryRequiredCount ?? 3,
+        vocabPictureWordCount: s.data.vocabPictureWordCount ?? 5,
+        vocabPictureRequiredCount: s.data.vocabPictureRequiredCount ?? 3,
         vocabLevel: s.data.vocabLevel || "B2",
         storyWordCount: s.data.storyWordCount ?? 200,
         storyLevel: s.data.storyLevel || "B1",
@@ -402,6 +414,12 @@ export default function AdminDashboard() {
         questionGenerateTime: fresh.data.questionGenerateTime || "07:00",
         vocabWordCount: fresh.data.vocabWordCount ?? 5,
         vocabRequiredCount: fresh.data.vocabRequiredCount ?? 3,
+        vocabNormalWordCount: fresh.data.vocabNormalWordCount ?? 5,
+        vocabNormalRequiredCount: fresh.data.vocabNormalRequiredCount ?? 3,
+        vocabStoryWordCount: fresh.data.vocabStoryWordCount ?? 5,
+        vocabStoryRequiredCount: fresh.data.vocabStoryRequiredCount ?? 3,
+        vocabPictureWordCount: fresh.data.vocabPictureWordCount ?? 5,
+        vocabPictureRequiredCount: fresh.data.vocabPictureRequiredCount ?? 3,
         vocabLevel: fresh.data.vocabLevel || "B2",
         storyWordCount: fresh.data.storyWordCount ?? 200,
         storyLevel: fresh.data.storyLevel || "B1",
@@ -1771,55 +1789,28 @@ export default function AdminDashboard() {
                 Control the difficulty and number of vocabulary words shown to users each day. Users must use a minimum number of words for full credit. Changes clear today's words and regenerate them on next dashboard load.
               </p>
               <form onSubmit={e => saveSettings(e, "vocab")}>
-                <div className="form-group" style={{marginBottom:"1.25rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🔢 Words Per Day
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(1–10 words)</span>
-                  </label>
-                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1} max={10}
-                      value={settings.vocabWordCount}
-                      onChange={e=>setSettings(s=>{
-                        const vocabWordCount = parseInt(e.target.value)||5;
-                        return {
-                          ...s,
-                          vocabWordCount,
-                          vocabRequiredCount: Math.min(s.vocabRequiredCount, vocabWordCount),
-                        };
-                      })}
-                      required
-                      style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
-                    />
-                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>words shown per day (currently <strong style={{color:"var(--accent)"}}>{settings.vocabWordCount}</strong>)</span>
+                {[
+                  { key: "Normal", label: "🗣️ Normal Topics", words: "vocabNormalWordCount", required: "vocabNormalRequiredCount" },
+                  { key: "Story", label: "📖 Story Tasks", words: "vocabStoryWordCount", required: "vocabStoryRequiredCount" },
+                  { key: "Picture", label: "🖼️ Picture Tasks", words: "vocabPictureWordCount", required: "vocabPictureRequiredCount" },
+                ].map(({ key, label, words, required }) => (
+                  <div key={key} style={{marginBottom:"1.1rem",padding:"0.85rem 1rem",border:"1px solid var(--border)",borderRadius:12,background:"var(--bg-secondary)"}}>
+                    <div style={{fontWeight:700,marginBottom:"0.65rem"}}>{label}</div>
+                    <div style={{display:"flex",gap:"1rem",flexWrap:"wrap"}}>
+                      <label style={{fontSize:"0.78rem",color:"var(--muted)"}}>Shown
+                        <input className="form-input" type="number" min={1} max={10} value={settings[words]}
+                          onChange={e => setSettings(s => ({...s, [words]: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)), [required]: Math.min(s[required], parseInt(e.target.value) || 1)}))}
+                          required style={{display:"block",width:78,marginTop:"0.25rem",textAlign:"center"}} />
+                      </label>
+                      <label style={{fontSize:"0.78rem",color:"var(--muted)"}}>Required
+                        <input className="form-input" type="number" min={1} max={settings[words]} value={settings[required]}
+                          onChange={e => setSettings(s => ({...s, [required]: Math.max(1, Math.min(s[words], parseInt(e.target.value) || 1))}))}
+                          required style={{display:"block",width:78,marginTop:"0.25rem",textAlign:"center"}} />
+                      </label>
+                      <span style={{alignSelf:"center",fontSize:"0.78rem",color:"var(--muted)"}}>words shown; minimum required for full vocabulary credit</span>
+                    </div>
                   </div>
-                </div>
-                <div className="form-group" style={{marginBottom:"1.25rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    ✅ Words Required
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(must use at least this many)</span>
-                  </label>
-                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1}
-                      max={settings.vocabWordCount}
-                      value={settings.vocabRequiredCount}
-                      onChange={e=>setSettings(s=>({
-                        ...s,
-                        vocabRequiredCount: Math.min(parseInt(e.target.value)||3, s.vocabWordCount),
-                      }))}
-                      required
-                      style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
-                    />
-                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
-                      of {settings.vocabWordCount} words for full vocab points
-                    </span>
-                  </div>
-                </div>
+                ))}
                 <div className="form-group" style={{marginBottom:"1.5rem"}}>
                   <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
                     📊 CEFR Level

@@ -295,11 +295,21 @@ async function processJob(job) {
     try {
       const status = await Status.findOne().lean();
       const todayVocab = status?.todayVocabulary || [];
+      const taskType = reportMeta?.challengeType || (
+        status?.isPictureDescriptionDay ? "picture_description"
+        : status?.isStorySummaryDay ? "story_summary"
+        : "topic"
+      );
+      const configuredRequiredCount = taskType === "picture_description"
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : taskType === "story_summary"
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
       const transcript = result.analysis?.transcription || "";
       if (todayVocab.length > 0 && transcript) {
         vocabularyUsed = matchVocabularyInTranscript(transcript, todayVocab);
         const requiredCount = Math.min(
-          status?.vocabRequiredCount ?? 3,
+          configuredRequiredCount,
           todayVocab.length
         );
         vocabularyScore = Math.round(
@@ -333,8 +343,16 @@ async function processJob(job) {
       };
       const { fullScoreSeconds } = getDurationLimits(gateFlags, status || {});
       const todayVocab = status?.todayVocabulary || [];
-      const configuredWordCount = status?.vocabWordCount ?? 5;
-      const configuredRequiredCount = status?.vocabRequiredCount ?? 3;
+      const configuredWordCount = gateFlags.isPictureDescription
+        ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+        : gateFlags.isStorySummary
+        ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+        : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5);
+      const configuredRequiredCount = gateFlags.isPictureDescription
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : gateFlags.isStorySummary
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
       const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
       const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
 
