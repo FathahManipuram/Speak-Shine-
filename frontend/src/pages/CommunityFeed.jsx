@@ -155,8 +155,9 @@ function DetailedReport({ a }) {
   const s = a.stats || {};
 
   // ── Composite score card (same data as VideoAnalysis page) ────────────────
-  const bd = a.scoreBreakdown || null;
-  const cs = a.compositeScore ?? null;
+  const bd = a.scoreBreakdown || a._scoreBreakdown || null;
+  const cs = a.compositeScore ?? a._compositeScore ?? null;
+  const isPictureBd = a.challengeType === "picture_description" || bd?.isPictureDescription === true;
 
   const improvementTips = [];
   if (bd) {
@@ -214,12 +215,20 @@ function DetailedReport({ a }) {
           {/* Breakdown bars */}
           {bd && (
             <div style={{ padding: "0 1.1rem 0.85rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {[
-                { label: "⏱️ Duration",       earned: bd.length    || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
-                { label: "📚 Vocab used",     earned: bd.vocabUsed || 0, max: bd.maxVocab  || 33.33, color: "#a78bfa" },
+              {(isPictureBd ? [
+                { label: "🗣️ Fluency",                 earned: bd.fluency     || 0, max: bd.maxFluency     || 25, color: "#60a5fa" },
+                { label: "🧠 Coherence",                earned: bd.coherence   || 0, max: bd.maxCoherence   || 20, color: "#a78bfa" },
+                { label: "📚 Vocabulary",               earned: bd.vocabulary  || 0, max: bd.maxVocabulary  || 10, color: "#34d399" },
+                { label: "✍️ Grammar",                   earned: bd.grammar     || 0, max: bd.maxGrammar     || 5,  color: "#f472b6" },
+                { label: "👀 Description & Relevance",  earned: bd.description || 0, max: bd.maxDescription || 13, color: "#fbbf24" },
+                { label: "💪 Confidence",               earned: bd.confidence  || 0, max: bd.maxConfidence  || 7,  color: "#fb923c" },
+                { label: "⏱️ Duration",                 earned: bd.duration    || 0, max: bd.maxDuration    || 20, color: "#94a3b8" },
+              ] : [
+                { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
+                { label: "📚 Vocab used", earned: bd.vocabUsed || 0, max: bd.maxVocab || 33.33, color: "#a78bfa" },
                 ...(!bd.isSpecialDay ? [{ label: "🎯 Topic relevance", earned: bd.topic || 0, max: bd.maxTopic || 16.67, color: "#34d399" }] : []),
-                { label: "🗣️ Communication",  earned: bd.comm      || 0, max: bd.maxComm   || 16.67, color: "#fbbf24" },
-              ].map(({ label, earned, max, color }) => (
+                { label: "🗣️ Communication", earned: bd.comm || 0, max: bd.maxComm || 16.67, color: "#fbbf24" },
+              ]).map(({ label, earned, max, color }) => (
                 <div key={label}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "0.18rem" }}>
                     <span style={{ color: "var(--muted)" }}>{label}</span>
@@ -1322,8 +1331,7 @@ export default function CommunityFeed() {
               )}
 
               {/* Feedback / Report toggle buttons */}
-              {item.analysis && (
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
                   <button onClick={() => toggleView(item._id, "feedback")} style={{
                     flex: 1, padding: "0.5rem", borderRadius: "8px", background: "transparent",
                     border: `1px solid ${view[item._id] === "feedback" ? "var(--primary)" : "var(--border2)"}`,
@@ -1338,10 +1346,9 @@ export default function CommunityFeed() {
                     color: view[item._id] === "report" ? "var(--primary)" : "var(--muted)",
                     fontSize: "0.78rem", cursor: "pointer", transition: "all 0.18s",
                   }}>
-                    {view[item._id] === "report" ? "▲ Hide" : "📋 Full Report"}
+                    {view[item._id] === "report" ? "▲ Hide" : "📋 Report"}
                   </button>
                 </div>
-              )}
 
               {/* Quick feedback panel — scores + one-liner */}
               {view[item._id] === "feedback" && item.analysis && (
@@ -1352,10 +1359,12 @@ export default function CommunityFeed() {
               )}
 
               {/* Full detailed report — everything */}
-              {view[item._id] === "report" && item.analysis && (
+              {view[item._id] === "report" && (
                 <div style={{ marginTop: "0.75rem", padding: "1rem", borderRadius: "10px", background: "var(--card2)", border: "1px solid var(--border2)" }}>
                   <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.5rem" }}>📋 Detailed Analysis Report</div>
-                  <DetailedReport a={item.analysis} />
+                  {item.analysis
+                    ? <DetailedReport a={item.analysis} />
+                    : <p style={{ color: "var(--muted)", fontSize: "0.82rem" }}>The detailed report is not available for this submission.</p>}
                 </div>
               )}
 
