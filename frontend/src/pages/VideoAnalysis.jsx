@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout.jsx";
 import Modal from "../components/Modal.jsx";
@@ -42,6 +43,8 @@ export default function VideoAnalysis() {
   const [isMonthlyGoals, setIsMonthlyGoals] = useState(false);
   const [isWeeklyReflection, setIsWeeklyReflection] = useState(false);
   const [isStorySummary, setIsStorySummary] = useState(false);
+  const [isPictureDescription, setIsPictureDescription] = useState(false);
+  const [picturePreviewOpen, setPicturePreviewOpen] = useState(false);
   const [allowPrivateVideos, setAllowPrivateVideos] = useState(true);
   const [durationLimits, setDurationLimits] = useState(null);
 
@@ -58,11 +61,25 @@ export default function VideoAnalysis() {
   const [visibilityUpdating, setVisibilityUpdating] = useState(false);
 
   useEffect(() => {
+    if (!picturePreviewOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setPicturePreviewOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [picturePreviewOpen]);
+
+  useEffect(() => {
     if (isGuest) {
       // Show sample question for guests from preview API
       api.get("/guest/preview").then(r => {
         const t = r.data?.today;
-        if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType });
+        if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType, imageUrl: t.imageUrl, imageSource: t.imageSource, imagePageUrl: t.imagePageUrl, imagePhotographer: t.imagePhotographer, imagePhotographerUrl: t.imagePhotographerUrl, imageInstructions: t.imageInstructions });
         if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
         if (t?.vocabWordCount) setVocabWordCount(t.vocabWordCount);
         if (t?.vocabRequiredCount) setVocabRequiredCount(t.vocabRequiredCount);
@@ -72,13 +89,14 @@ export default function VideoAnalysis() {
     }
     loadMyReports();
     // Fetch today's question for the top card
-    api.get("/dashboard/me").then(r => {
+      api.get("/dashboard/me?_duration_refresh=" + Date.now()).then(r => {
       const t = r.data?.today;
-      if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType });
+      if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType, imageUrl: t.imageUrl, imageSource: t.imageSource, imagePageUrl: t.imagePageUrl, imagePhotographer: t.imagePhotographer, imagePhotographerUrl: t.imagePhotographerUrl, imageInstructions: t.imageInstructions });
       if (t?.isMonthlyReflection) setIsMonthlyReflection(true);
       if (t?.isMonthlyGoals) setIsMonthlyGoals(true);
       if (t?.isWeeklyReflection) setIsWeeklyReflection(true);
       if (t?.isStorySummary || t?.contentType === "story_audio") setIsStorySummary(true);
+      if (t?.isPictureDescription || t?.contentType === "picture_description") setIsPictureDescription(true);
       if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
       if (t?.vocabWordCount) setVocabWordCount(t.vocabWordCount);
       if (t?.vocabRequiredCount) setVocabRequiredCount(t.vocabRequiredCount);
@@ -460,6 +478,166 @@ export default function VideoAnalysis() {
           </div>
         )}
 
+        {/* ── Picture Description Card ── */}
+        {todayQuestion && isPictureDescription && (
+          <div style={{
+            background: "linear-gradient(135deg, #0f1a2e 0%, #1a2d4a 50%, #0f1a2e 100%)",
+            border: "2px solid rgba(99,179,237,0.45)",
+            borderRadius: 18,
+            padding: "1.5rem",
+            marginBottom: "1rem",
+            boxShadow: "0 8px 40px rgba(66,153,225,0.2)",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+              <div style={{ fontSize: "2.5rem" }}>🖼️</div>
+              <div>
+                <div style={{ fontSize: "0.7rem", color: "rgba(147,197,253,0.85)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Picture Description</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
+                  {todayQuestion.topic || "Describe What You See"}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginTop: "0.2rem" }}>
+                  Look at the image carefully, then record your response.
+                </div>
+              </div>
+            </div>
+
+            {/* Image */}
+            {todayQuestion.imageUrl && (
+              <div style={{ marginBottom: "1rem", borderRadius: 12, overflow: "hidden", position: "relative" }}>
+                <img
+                  src={todayQuestion.imageUrl}
+                  alt={todayQuestion.topic || "Picture description challenge"}
+                  style={{
+                    width: "100%",
+                    maxHeight: 400,
+                    objectFit: "contain",
+                    background: "#0a0a14",
+                    display: "block",
+                    borderRadius: 12,
+                  }}
+                  loading="lazy"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPicturePreviewOpen(true)}
+                  aria-label="View picture full screen"
+                  style={{
+                    position: "absolute", top: "0.75rem", right: "0.75rem",
+                    border: "1px solid rgba(255,255,255,0.35)", borderRadius: 10,
+                    padding: "0.5rem 0.7rem", background: "rgba(0,0,0,0.7)",
+                    color: "#fff", fontSize: "0.8rem", fontWeight: 700,
+                    cursor: "pointer", backdropFilter: "blur(6px)",
+                  }}
+                >⛶ View Full Screen</button>
+                {/* Photographer attribution */}
+                {todayQuestion.imagePhotographer && (
+                  <div style={{
+                    position: "absolute", bottom: 0, left: 0, right: 0,
+                    padding: "0.5rem 0.75rem",
+                    background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)",
+                    borderBottomLeftRadius: 12, borderBottomRightRadius: 12,
+                    fontSize: "0.65rem", color: "rgba(255,255,255,0.75)",
+                    display: "flex", alignItems: "center", gap: "0.25rem",
+                  }}>
+                    <span>📷</span>
+                    <span>
+                      Photo by{" "}
+                      {todayQuestion.imagePhotographerUrl
+                        ? <a href={todayQuestion.imagePhotographerUrl} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.9)", textDecoration: "underline" }}>{todayQuestion.imagePhotographer}</a>
+                        : todayQuestion.imagePhotographer
+                      }
+                      {todayQuestion.imageSource && (
+                        <>
+                          {" on "}
+                          {todayQuestion.imagePageUrl
+                            ? <a href={todayQuestion.imagePageUrl} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.9)", textDecoration: "underline" }}>{todayQuestion.imageSource}</a>
+                            : todayQuestion.imageSource
+                          }
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {picturePreviewOpen && todayQuestion.imageUrl && createPortal(
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Full screen picture preview"
+                onClick={() => setPicturePreviewOpen(false)}
+                style={{
+                  position: "fixed", inset: 0, zIndex: 2000,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "2rem", background: "rgba(0,0,0,0.92)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setPicturePreviewOpen(false)}
+                  aria-label="Close full screen picture preview"
+                  style={{
+                    position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 2001,
+                    width: 42, height: 42, borderRadius: "50%",
+                    border: "2px solid rgba(255,255,255,0.65)",
+                    background: "rgba(255,255,255,0.12)", color: "#fff",
+                    fontSize: "1.4rem", cursor: "pointer",
+                    boxShadow: "0 3px 16px rgba(0,0,0,0.45)",
+                  }}
+                >×</button>
+                <a
+                  href={todayQuestion.imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={event => event.stopPropagation()}
+                  style={{
+                    position: "fixed", top: "1.5rem", left: "1.5rem", zIndex: 2001,
+                    border: "2px solid rgba(255,255,255,0.55)", borderRadius: 10,
+                    padding: "0.55rem 0.8rem", background: "rgba(255,255,255,0.12)",
+                    color: "#fff", fontSize: "0.8rem", fontWeight: 700,
+                    textDecoration: "none", backdropFilter: "blur(6px)",
+                    boxShadow: "0 3px 16px rgba(0,0,0,0.45)",
+                  }}
+                >🔍 Open Original Image</a>
+                <img
+                  src={todayQuestion.imageUrl}
+                  alt={todayQuestion.topic || "Picture description challenge"}
+                  onClick={event => event.stopPropagation()}
+                  style={{
+                    maxWidth: "96vw", maxHeight: "92vh", objectFit: "contain",
+                    borderRadius: 10, boxShadow: "0 12px 60px rgba(0,0,0,0.55)",
+                  }}
+                />
+              </div>,
+              document.body
+            )}
+
+            {/* Instructions */}
+            <div style={{
+              background: "rgba(99,179,237,0.08)", border: "1px solid rgba(99,179,237,0.25)",
+              borderRadius: 12, padding: "0.85rem 1rem",
+              color: "rgba(255,255,255,0.9)", fontSize: "0.9rem", lineHeight: 1.6,
+            }}>
+              {todayQuestion.imageInstructions || todayQuestion.question || "Describe what you see in the image."}
+            </div>
+            <div style={{
+              background: "rgba(99,179,237,0.12)", border: "2px solid rgba(99,179,237,0.42)",
+              borderRadius: 14, padding: "1rem 1.1rem", marginTop: "0.85rem",
+              color: "rgba(255,255,255,0.9)", fontSize: "0.88rem", lineHeight: 1.55,
+              boxShadow: "0 4px 18px rgba(66,153,225,0.12)",
+            }}>
+              <strong style={{ color: "#b9e3ff", fontSize: "0.95rem" }}>💬 Guiding questions — use these in your response</strong>
+              <ol style={{ margin: "0.65rem 0 0", paddingLeft: "1.45rem", display: "grid", gap: "0.45rem" }}>
+                {["What do you see?", "What do you think is happening?", "What is the atmosphere like?", "What do you think might happen next?"].map(question => (
+                  <li key={question} style={{ paddingLeft: "0.25rem", fontWeight: 600 }}>{question}</li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
+
         {/* ── Story Summary Card ── */}
         {todayQuestion && isStorySummary && (
           <div style={{
@@ -494,7 +672,7 @@ export default function VideoAnalysis() {
         )}
 
         {/* ── Today's Question Card — regular days only ── */}
-        {todayQuestion && !isMonthlyReflection && !isMonthlyGoals && !isWeeklyReflection && !isStorySummary && (
+        {todayQuestion && !isMonthlyReflection && !isMonthlyGoals && !isWeeklyReflection && !isStorySummary && !isPictureDescription && (
           <div className="daily-poster" style={{ marginBottom: "1rem" }}>
             <div className="daily-poster-header">
               <div className="daily-poster-brand">✦ Speak &amp; Shine</div>
@@ -546,8 +724,8 @@ export default function VideoAnalysis() {
         </div>
 
         {mode === "upload"
-          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
-          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
+          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} isPictureDescription={isPictureDescription} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
+          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} isPictureDescription={isPictureDescription} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
         }
 
         {/* Report Section */}
@@ -660,7 +838,11 @@ export default function VideoAnalysis() {
             )}
             {report.status === "completed" && report.analysis && (
               <ReportView 
-                analysis={report.analysis} 
+                analysis={{
+                  ...report.analysis,
+                  challengeType: report.analysis?.challengeType
+                    || report.challengeType,
+                }}
                 expiresAt={report.expiresAt} 
                 formatTimeRemaining={formatTimeRemaining} 
                 videoUrl={report.videoUrl} 
@@ -1298,7 +1480,7 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
 }
 
 // ── Upload Card (direct-to-R2 flow) ─────────────────────────────────────────
-function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
+function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription = false, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const [file, setFile]           = useState(null);
   const [fileDuration, setFileDuration] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1312,7 +1494,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   const uploadStartRef = useRef(null);
   const { generateHashAndFrames, cacheResult, isHashing, hashProgress } = useVideoFrameHash();
 
-  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary };
+  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription };
   const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
 
   const handleFileChange = (e) => {
@@ -1373,7 +1555,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
           // If original file is too large and compression failed, show clear error
           if (file.size > 200 * 1024 * 1024) {
             setUploading(false);
-            setError(`Video compression failed (browser memory limit). Your file is ${(file.size/1024/1024).toFixed(1)}MB (max 200MB without compression). Please:\n• Record a shorter video (max ${isMonthlyReflection || isWeeklyReflection ? "7" : isMonthlyGoals ? "10" : isStorySummary ? "3" : "5"} min)\n• Or use a lower resolution when recording`);
+            setError(`Video compression failed (browser memory limit). Your file is ${(file.size/1024/1024).toFixed(1)}MB (max 200MB without compression). Please:\n• Record a shorter video (max ${isMonthlyReflection || isWeeklyReflection ? "7" : isMonthlyGoals ? "10" : isStorySummary || isPictureDescription ? "3" : "5"} min)\n• Or use a lower resolution when recording`);
             return;
           }
         }
@@ -1694,7 +1876,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
 // ── Record Card ──────────────────────────────────────────────────────────────
 // States: "setup" → "countdown" → "recording" → "preview" → "uploading"
 
-function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
+function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription = false, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const navigate = useNavigate();
   const [step, setStep]             = useState("setup");
   const [cameras, setCameras]       = useState([]);
@@ -1766,16 +1948,9 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
     return seconds;
   }, []);
 
-  // Dynamic time limits based on question type
-  const MAX_SECONDS = isMonthlyReflection
-    ? 420  // 7 minutes for monthly reflection
-    : isMonthlyGoals
-    ? 600  // 10 minutes for monthly goals
-    : isWeeklyReflection 
-    ? 420  // 7 minutes for weekly reflection
-    : isStorySummary
-    ? 180  // 3 minutes for story summaries
-    : 300; // 5 minutes for regular daily questions
+  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription };
+  const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
+  const MAX_SECONDS = durationLimits.maxSeconds;
 
   // Enumerate devices + restore any saved draft on mount
   useEffect(() => {
@@ -2218,9 +2393,6 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
     cleanup();
   };
 
-  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary };
-  const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
-
   const submitRecording = async () => {
     if (!recordedBlob) return;
     const gate = evaluateSubmitGate({
@@ -2548,6 +2720,17 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
               fontSize: "0.82rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.6,
             }}>
               🎧 <strong style={{ color: "#2dd4bf" }}>Story Summary Day!</strong> Listen to the audio first, then retell the story clearly in your own words.
+            </div>
+          )}
+
+          {/* Picture description reminder inside record card */}
+          {isPictureDescription && (
+            <div style={{
+              background: "rgba(66,153,225,0.08)", border: "1px solid rgba(99,179,237,0.3)",
+              borderRadius: 12, padding: "0.85rem 1rem", marginBottom: "1.25rem",
+              fontSize: "0.82rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.6,
+            }}>
+              🖼️ <strong style={{ color: "#90cdf4" }}>Picture Description!</strong> Look at the image above, then describe what you see and share your thoughts.
             </div>
           )}
 
@@ -3253,27 +3436,50 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
   // ── Today's composite score breakdown ────────────────────────────────────
   const bd = a.scoreBreakdown || a._scoreBreakdown || null;
   const cs = a.compositeScore ?? a._compositeScore ?? null;
+  // Detect picture description from challengeType (new reports) OR bd flag (processed after scoring change)
+  const isPictureBd = a.challengeType === "picture_description" || bd?.isPictureDescription === true;
 
   // Generate improvement tips based on what's missing from full score
   const improvementTips = [];
   if (bd) {
-    const lenGap  = (bd.maxLength  || 33.33) - (bd.length   || 0);
-    const vocGap  = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
-    const topGap  = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
-    const comGap  = (bd.maxComm    || 16.67) - (bd.comm      || 0);
-    // Show speech ratio tip if multiplier was low (silent/quiet video)
-    if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
-      improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Your speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout the video for full duration points`, gap: lenGap });
-    } else if (lenGap > 2) {
-      improvementTips.push({ icon: "⏱️", label: "Record longer", detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`, gap: lenGap });
+    if (isPictureBd) {
+      // Picture Description tips
+      const fluGap  = 25  - (bd.fluency      || 0);
+      const cohGap  = 20  - (bd.coherence    || 0);
+      const vocGap  = 10  - (bd.vocabulary   || 0);
+      const graGap  = 5  - (bd.grammar      || 0);
+      const desGap  = 13  - (bd.description  || 0);
+      const conGap  = 7  - (bd.confidence   || 0);
+      const durGap  = 20  - (bd.duration     || 0);
+      if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
+        improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout`, gap: fluGap });
+      }
+      if (fluGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve fluency",    detail: `+${fluGap.toFixed(1)} pts possible — smoother continuous speech`, gap: fluGap });
+      if (cohGap > 2)  improvementTips.push({ icon: "🧠", label: "Better coherence",   detail: `+${cohGap.toFixed(1)} pts possible — connect your ideas more logically`, gap: cohGap });
+      if (vocGap > 2)  improvementTips.push({ icon: "📚", label: "Richer vocabulary",  detail: `+${vocGap.toFixed(1)} pts possible — use more varied and precise words`, gap: vocGap });
+      if (graGap > 2)  improvementTips.push({ icon: "✍️", label: "Fix grammar",        detail: `+${graGap.toFixed(1)} pts possible — watch tenses and sentence structure`, gap: graGap });
+      if (desGap > 2)  improvementTips.push({ icon: "👀", label: "Describe the image", detail: `+${desGap.toFixed(1)} pts possible — mention more people, objects, and details`, gap: desGap });
+      if (conGap > 2)  improvementTips.push({ icon: "💪", label: "Speak with confidence", detail: `+${conGap.toFixed(1)} pts possible — reduce hesitation, be more assertive`, gap: conGap });
+      if (durGap > 0.5) improvementTips.push({ icon: "⏱️", label: "Speak longer",      detail: `+${durGap.toFixed(1)} pts possible — aim for a more complete response`, gap: durGap });
+    } else {
+      // Normal / standard tips
+      const lenGap  = (bd.maxLength  || 33.33) - (bd.length   || 0);
+      const vocGap  = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
+      const topGap  = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
+      const comGap  = (bd.maxComm    || 16.67) - (bd.comm      || 0);
+      if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
+        improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Your speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout the video for full duration points`, gap: lenGap });
+      } else if (lenGap > 2) {
+        improvementTips.push({ icon: "⏱️", label: "Record longer", detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`, gap: lenGap });
+      }
+      if (vocGap > 2) {
+        const requiredVocabWords = bd.requiredVocabWords || 3;
+        const totalVocabWords = bd.totalVocabWords || 5;
+        improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`, gap: vocGap });
+      }
+      if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`, gap: topGap });
+      if (comGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve communication", detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`, gap: comGap });
     }
-    if (vocGap > 2) {
-      const requiredVocabWords = bd.requiredVocabWords || 3;
-      const totalVocabWords = bd.totalVocabWords || 5;
-      improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`, gap: vocGap });
-    }
-    if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`, gap: topGap });
-    if (comGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve communication", detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`, gap: comGap });
     improvementTips.sort((x, y) => y.gap - x.gap);
   }
 
@@ -3419,12 +3625,20 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
           {/* Breakdown bars */}
           {bd && (
             <div style={{ padding: "0 1.25rem 1rem", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-              {[
+              {(isPictureBd ? [
+                { label: `🗣️ Fluency`,              earned: bd.fluency     || 0, max: 25,  color: "#60a5fa" },
+                { label: `🧠 Coherence`,             earned: bd.coherence   || 0, max: 20,  color: "#a78bfa" },
+                { label: `📚 Vocabulary`,            earned: bd.vocabulary  || 0, max: 10,  color: "#34d399" },
+                { label: `✍️ Grammar`,               earned: bd.grammar     || 0, max: 5,   color: "#f472b6" },
+                { label: `👀 Description & Relevance`, earned: bd.description || 0, max: 13, color: "#fbbf24" },
+                { label: `💪 Confidence`,            earned: bd.confidence  || 0, max: 7,   color: "#fb923c" },
+                { label: `⏱️ Duration`,              earned: bd.duration    || 0, max: 20,  color: "#94a3b8" },
+              ] : [
                 { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
                 { label: "📚 Vocab used",    earned: bd.vocabUsed || 0, max: bd.maxVocab   || 33.33, color: "#a78bfa" },
                 ...(!bd.isSpecialDay ? [{ label: "🎯 Topic relevance", earned: bd.topic || 0, max: bd.maxTopic || 16.67, color: "#34d399" }] : []),
                 { label: "🗣️ Communication", earned: bd.comm     || 0, max: bd.maxComm    || 16.67, color: "#fbbf24" },
-              ].map(({ label, earned, max, color }) => (
+              ]).map(({ label, earned, max, color }) => (
                 <div key={label}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "0.2rem" }}>
                     <span style={{ color: "var(--muted)" }}>{label}</span>

@@ -249,6 +249,7 @@ function drainQueue() {
 async function processJob(job) {
   const { reportId, videoPath, phone, displayName, knownDuration, browserFrames } = job;
   const startTime = Date.now();
+  const reportMeta = await VideoReport.findById(reportId).select("challengeType").lean();
 
   console.log(
     `[Queue] ▶ Starting ${reportId}` +
@@ -294,11 +295,21 @@ async function processJob(job) {
     try {
       const status = await Status.findOne().lean();
       const todayVocab = status?.todayVocabulary || [];
+      const taskType = reportMeta?.challengeType || (
+        status?.isPictureDescriptionDay ? "picture_description"
+        : status?.isStorySummaryDay ? "story_summary"
+        : "topic"
+      );
+      const configuredRequiredCount = taskType === "picture_description"
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : taskType === "story_summary"
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
       const transcript = result.analysis?.transcription || "";
       if (todayVocab.length > 0 && transcript) {
         vocabularyUsed = matchVocabularyInTranscript(transcript, todayVocab);
         const requiredCount = Math.min(
-          status?.vocabRequiredCount ?? 3,
+          configuredRequiredCount,
           todayVocab.length
         );
         vocabularyScore = Math.round(
@@ -311,18 +322,37 @@ async function processJob(job) {
 
     // ── Composite 100-point score ────────────────────────────────────────────
     let compositeScore = null;
+    let challengeType = reportMeta?.challengeType || null;
+    let gateFlags = null;
     try {
       const status = await Status.findOne().lean();
-      const gateFlags = {
-        isMonthlyReflection: status?.isMonthlyReflectionDay || false,
-        isMonthlyGoals:      status?.isMonthlyGoalsDay      || false,
-        isWeeklyReflection:  status?.isWeeklyReflectionDay  || false,
-        isStorySummary:      status?.isStorySummaryDay      || false,
+      challengeType = challengeType || (
+        status?.isPictureDescriptionDay ? "picture_description"
+        : status?.isStorySummaryDay ? "story_summary"
+        : status?.isWeeklyReflectionDay ? "weekly_reflection"
+        : status?.isMonthlyReflectionDay ? "monthly_reflection"
+        : status?.isMonthlyGoalsDay ? "monthly_goals"
+        : "topic"
+      );
+      gateFlags = {
+        isMonthlyReflection: challengeType === "monthly_reflection",
+        isMonthlyGoals:      challengeType === "monthly_goals",
+        isWeeklyReflection:  challengeType === "weekly_reflection",
+        isStorySummary:      challengeType === "story_summary",
+        isPictureDescription: challengeType === "picture_description",
       };
       const { fullScoreSeconds } = getDurationLimits(gateFlags, status || {});
       const todayVocab = status?.todayVocabulary || [];
-      const configuredWordCount = status?.vocabWordCount ?? 5;
-      const configuredRequiredCount = status?.vocabRequiredCount ?? 3;
+      const configuredWordCount = gateFlags.isPictureDescription
+        ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+        : gateFlags.isStorySummary
+        ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+        : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5);
+      const configuredRequiredCount = gateFlags.isPictureDescription
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : gateFlags.isStorySummary
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
       const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
       const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
 
@@ -334,11 +364,22 @@ async function processJob(job) {
         requiredVocabWords: effectiveRequiredWords,
         topicRelevance:     result.analysis?.topicRelevance ?? null,
         analysis:           result.analysis,
+        isPictureDescription: gateFlags.isPictureDescription || false,
       });
       compositeScore = score;
       // Attach breakdown + maxes to analysis so the report UI can show it
       result.analysis._compositeScore = score;
-      result.analysis._scoreBreakdown = {
+      result.analysis._scoreBreakdown = breakdown.isPictureDescription ? {
+        ...breakdown,
+        // Picture Description custom max labels for UI
+        maxFluency:    25,
+        maxCoherence:  20,
+        maxVocabulary: 10,
+        maxGrammar:    5,
+        maxDescription: 13,
+        maxConfidence: 7,
+        maxDuration:   20,
+      } : {
         ...breakdown,
         maxLength:    33.33,
         maxVocab:     33.33,
@@ -349,6 +390,16 @@ async function processJob(job) {
       console.warn("[Queue] Composite score calculation failed (non-fatal):", scoreErr.message);
     }
 
+    // Keep report persistence safe even if the optional score calculation fails.
+    challengeType = challengeType || "topic";
+    gateFlags = gateFlags || {
+      isMonthlyReflection: challengeType === "monthly_reflection",
+      isMonthlyGoals:      challengeType === "monthly_goals",
+      isWeeklyReflection:  challengeType === "weekly_reflection",
+      isStorySummary:      challengeType === "story_summary",
+      isPictureDescription: challengeType === "picture_description",
+    };
+
     await VideoReport.findByIdAndUpdate(reportId, {
       status: "completed",
       analysis: {
@@ -357,6 +408,12 @@ async function processJob(job) {
         vocabularyScore,
         compositeScore: result.analysis._compositeScore ?? null,
         scoreBreakdown: result.analysis._scoreBreakdown ?? null,
+        challengeType: gateFlags.isPictureDescription ? "picture_description"
+          : gateFlags.isStorySummary ? "story_summary"
+          : gateFlags.isWeeklyReflection ? "weekly_reflection"
+          : gateFlags.isMonthlyReflection ? "monthly_reflection"
+          : gateFlags.isMonthlyGoals ? "monthly_goals"
+          : "topic",
       },
       ...(durationToSave ? { videoDuration: durationToSave } : {}),
     });

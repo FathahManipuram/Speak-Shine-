@@ -9,7 +9,7 @@ export const GATE_FRAME_IDEAL = 16;
 /** @typedef {"pass"|"warn"|"fail"} GateStatus */
 
 /**
- * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean }} flags
+ * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean, isPictureDescription?: boolean }} flags
  */
 export function getDurationLimits(flags = {}, settings = {}) {
   const maxSeconds = flags.isMonthlyReflection
@@ -20,6 +20,8 @@ export function getDurationLimits(flags = {}, settings = {}) {
       ? (settings.durationWeeklyMax ?? 420)
       : flags.isStorySummary
       ? (settings.durationStoryMax ?? 180)
+      : flags.isPictureDescription
+      ? (settings.durationPictureMax ?? 180)
       : (settings.durationDefaultMax ?? 300);
 
   const fullScoreSeconds = flags.isMonthlyReflection
@@ -30,6 +32,8 @@ export function getDurationLimits(flags = {}, settings = {}) {
       ? (settings.durationWeeklyFull ?? 300)
       : flags.isStorySummary
       ? (settings.durationStoryFull ?? 180)
+      : flags.isPictureDescription
+      ? (settings.durationPictureFull ?? 180)
       : (settings.durationDefaultFull ?? 300);
 
   return {
@@ -43,10 +47,12 @@ export function getDurationLimits(flags = {}, settings = {}) {
 }
 
 function formatMaxLabel(sec) {
-  if (sec >= 600) return "10 min";
-  if (sec >= 420) return "7 min";
-  if (sec >= 300) return "5 min";
-  return "3 min";
+  const seconds = Math.max(0, Math.round(Number(sec) || 0));
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (remainder === 0) return `${minutes} min`;
+  if (minutes === 0) return `${remainder} sec`;
+  return `${minutes} min ${remainder} sec`;
 }
 
 function fmtDuration(sec) {
@@ -62,7 +68,7 @@ function fmtDuration(sec) {
  * @param {number|null} input.fileSizeBytes
  * @param {number|null} input.frameCount
  * @param {boolean} input.hasAudioTrack - optional hint from client
- * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean }} input.flags
+ * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isWeeklyReflection?: boolean, isStorySummary?: boolean, isPictureDescription?: boolean }} input.flags
  */
 export function evaluateSubmitGate(input) {
   const { minSeconds, maxSeconds, minLabel, maxLabel } = getDurationLimits(input.flags || {});
@@ -215,7 +221,78 @@ export function calculateCompositeScore({
   requiredVocabWords = 3,
   topicRelevance = null,
   analysis = {},
+  isPictureDescription = false,
 }) {
+
+  // ── Picture Description: custom weighted formula ─────────────────────────
+  // Fluency 25 | Coherence 20 | Vocabulary 10 | Grammar 5 |
+  // Description Relevance 13 | Confidence 7 | Duration 20 = 100
+  if (isPictureDescription) {
+    const statsObj = analysis._stats || analysis.stats || {};
+    const rawSpeechRatio = statsObj?.rhythm?.speechRatio;
+    const wpm = statsObj?.wpm;
+
+    // Duration score (max 20) — full marks at the configured full-score duration
+    const maxDur = maxDurationSeconds || 180;
+    const minDur = 45;
+    const actualDur = Math.min(durationSeconds || 0, maxDur);
+    const durationScore = actualDur >= minDur
+      ? Math.min(20, ((actualDur - minDur) / (maxDur - minDur)) * 20 + 10)
+      : (actualDur / minDur) * 10;
+
+    // Speech ratio multiplier for fluency & confidence
+    let speechMult = 1;
+    if (typeof rawSpeechRatio === "number" && rawSpeechRatio >= 0) {
+      const r = rawSpeechRatio / 100;
+      speechMult = r >= 0.85 ? 1.0 : r <= 0 ? 0 : Math.min(1, r / 0.85);
+    } else if (typeof wpm === "number" && wpm > 0) {
+      speechMult = Math.min(1, wpm / 100);
+    }
+
+    const get = (field) => (typeof analysis[field] === "number" && !Number.isNaN(analysis[field]) ? analysis[field] : null);
+
+    const fluency    = get("fluency");
+    const grammar    = get("grammar");
+    const confidence = get("confidence");
+    const vocabulary = get("vocabulary");
+    // topicRelevance is used as "Description & Relevance"
+    const descRelevance = typeof topicRelevance === "number" ? topicRelevance : 5; // default mid if missing
+
+    // Coherence — no direct AI field yet; proxy from overallPresence or commAvg
+    const coherenceProxy = get("overallPresence") ?? ((fluency ?? 5) + (vocabulary ?? 5)) / 2;
+
+    const fluencyScore      = fluency    != null ? (fluency    / 10) * 25 * speechMult : 12.5 * speechMult;
+    const coherenceScore    =                       (coherenceProxy / 10) * 20;
+    // Picture vocabulary is a challenge: using the configured number of
+    // target words earns full credit (e.g. 1 of 3 when requiredCount = 1).
+    const requiredTargetWords = Math.max(1, Number(requiredVocabWords) || 1);
+    const usedTargetWords = Array.isArray(vocabularyUsed) ? vocabularyUsed.length : 0;
+    const vocabularyScore   = Math.min(10, (usedTargetWords / requiredTargetWords) * 10);
+    const grammarScore      = grammar    != null ? (grammar    / 10) * 5 : 2.5;
+    const descScore         =                       (descRelevance / 10) * 13;
+    const confidenceScore   = confidence != null ? (confidence / 10) * 7 * speechMult : 3.5 * speechMult;
+
+    const total100 = Math.min(100, Math.round(
+      (fluencyScore + coherenceScore + vocabularyScore + grammarScore + descScore + confidenceScore + durationScore) * 100
+    ) / 100);
+
+    return {
+      score: total100,
+      breakdown: {
+        fluency:         Math.round(fluencyScore    * 100) / 100,
+        coherence:       Math.round(coherenceScore  * 100) / 100,
+        vocabulary:      Math.round(vocabularyScore * 100) / 100,
+        grammar:         Math.round(grammarScore    * 100) / 100,
+        description:     Math.round(descScore       * 100) / 100,
+        confidence:      Math.round(confidenceScore * 100) / 100,
+        duration:        Math.round(durationScore   * 100) / 100,
+        speechMultiplier: Math.round(speechMult * 100),
+        isPictureDescription: true,
+        isSpecialDay: false,
+      },
+    };
+  }
+
   const isSpecialDay = topicRelevance == null;
 
   // ── Part 1: Effective speaking time ─────────────────────────────────────

@@ -42,11 +42,18 @@ export default function AdminDashboard() {
     questionGenerateTime: "07:00",
     vocabWordCount: 5,
     vocabRequiredCount: 3,
+    vocabNormalWordCount: 5,
+    vocabNormalRequiredCount: 3,
+    vocabStoryWordCount: 5,
+    vocabStoryRequiredCount: 3,
+    vocabPictureWordCount: 5,
+    vocabPictureRequiredCount: 3,
     vocabLevel: "B2",
     storyWordCount: 200,
     storyLevel: "B1",
     allowPrivateVideos: true,
     storyDay: 6,
+    pictureDescriptionDay: 4,
     paymentAmount: 5,
     durationDefaultMax: 300,
     durationDefaultFull: 300,
@@ -58,6 +65,8 @@ export default function AdminDashboard() {
     durationMonthlyReflectionFull: 420,
     durationMonthlyGoalsMax: 600,
     durationMonthlyGoalsFull: 420,
+    durationPictureMax: 180,
+    durationPictureFull: 180,
   });
   const [savingSection, setSavingSection] = useState(null); // null, "schedule", "vocab", "duration"
   const [resetting, setResetting] = useState("");
@@ -209,11 +218,18 @@ export default function AdminDashboard() {
         questionGenerateTime: s.data.questionGenerateTime || "07:00",
         vocabWordCount: s.data.vocabWordCount ?? 5,
         vocabRequiredCount: s.data.vocabRequiredCount ?? 3,
+        vocabNormalWordCount: s.data.vocabNormalWordCount ?? 5,
+        vocabNormalRequiredCount: s.data.vocabNormalRequiredCount ?? 3,
+        vocabStoryWordCount: s.data.vocabStoryWordCount ?? 5,
+        vocabStoryRequiredCount: s.data.vocabStoryRequiredCount ?? 3,
+        vocabPictureWordCount: s.data.vocabPictureWordCount ?? 5,
+        vocabPictureRequiredCount: s.data.vocabPictureRequiredCount ?? 3,
         vocabLevel: s.data.vocabLevel || "B2",
         storyWordCount: s.data.storyWordCount ?? 200,
         storyLevel: s.data.storyLevel || "B1",
         allowPrivateVideos: s.data.allowPrivateVideos ?? true,
         storyDay: s.data.storyDay ?? 6,
+        pictureDescriptionDay: s.data.pictureDescriptionDay ?? 4,
         paymentAmount: s.data.paymentAmount ?? 5,
         durationDefaultMax: s.data.durationDefaultMax ?? 300,
         durationDefaultFull: s.data.durationDefaultFull ?? 300,
@@ -225,6 +241,8 @@ export default function AdminDashboard() {
         durationMonthlyReflectionFull: s.data.durationMonthlyReflectionFull ?? 420,
         durationMonthlyGoalsMax: s.data.durationMonthlyGoalsMax ?? 600,
         durationMonthlyGoalsFull: s.data.durationMonthlyGoalsFull ?? 420,
+        durationPictureMax:  s.data.durationPictureMax  ?? 180,
+        durationPictureFull: s.data.durationPictureFull ?? 180,
       });
       setDataLoaded(prev => ({ ...prev, settings: true }));
     } catch (err) {
@@ -396,6 +414,12 @@ export default function AdminDashboard() {
         questionGenerateTime: fresh.data.questionGenerateTime || "07:00",
         vocabWordCount: fresh.data.vocabWordCount ?? 5,
         vocabRequiredCount: fresh.data.vocabRequiredCount ?? 3,
+        vocabNormalWordCount: fresh.data.vocabNormalWordCount ?? 5,
+        vocabNormalRequiredCount: fresh.data.vocabNormalRequiredCount ?? 3,
+        vocabStoryWordCount: fresh.data.vocabStoryWordCount ?? 5,
+        vocabStoryRequiredCount: fresh.data.vocabStoryRequiredCount ?? 3,
+        vocabPictureWordCount: fresh.data.vocabPictureWordCount ?? 5,
+        vocabPictureRequiredCount: fresh.data.vocabPictureRequiredCount ?? 3,
         vocabLevel: fresh.data.vocabLevel || "B2",
         storyWordCount: fresh.data.storyWordCount ?? 200,
         storyLevel: fresh.data.storyLevel || "B1",
@@ -411,6 +435,8 @@ export default function AdminDashboard() {
         durationMonthlyReflectionFull: fresh.data.durationMonthlyReflectionFull ?? 420,
         durationMonthlyGoalsMax: fresh.data.durationMonthlyGoalsMax ?? 600,
         durationMonthlyGoalsFull: fresh.data.durationMonthlyGoalsFull ?? 420,
+        durationPictureMax:  fresh.data.durationPictureMax  ?? 180,
+        durationPictureFull: fresh.data.durationPictureFull ?? 180,
       }));
       msg("Settings saved!");
     } catch (err) {
@@ -1763,55 +1789,28 @@ export default function AdminDashboard() {
                 Control the difficulty and number of vocabulary words shown to users each day. Users must use a minimum number of words for full credit. Changes clear today's words and regenerate them on next dashboard load.
               </p>
               <form onSubmit={e => saveSettings(e, "vocab")}>
-                <div className="form-group" style={{marginBottom:"1.25rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🔢 Words Per Day
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(1–10 words)</span>
-                  </label>
-                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1} max={10}
-                      value={settings.vocabWordCount}
-                      onChange={e=>setSettings(s=>{
-                        const vocabWordCount = parseInt(e.target.value)||5;
-                        return {
-                          ...s,
-                          vocabWordCount,
-                          vocabRequiredCount: Math.min(s.vocabRequiredCount, vocabWordCount),
-                        };
-                      })}
-                      required
-                      style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
-                    />
-                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>words shown per day (currently <strong style={{color:"var(--accent)"}}>{settings.vocabWordCount}</strong>)</span>
+                {[
+                  { key: "Normal", label: "🗣️ Normal Topics", words: "vocabNormalWordCount", required: "vocabNormalRequiredCount" },
+                  { key: "Story", label: "📖 Story Tasks", words: "vocabStoryWordCount", required: "vocabStoryRequiredCount" },
+                  { key: "Picture", label: "🖼️ Picture Tasks", words: "vocabPictureWordCount", required: "vocabPictureRequiredCount" },
+                ].map(({ key, label, words, required }) => (
+                  <div key={key} style={{marginBottom:"1.1rem",padding:"0.85rem 1rem",border:"1px solid var(--border)",borderRadius:12,background:"var(--bg-secondary)"}}>
+                    <div style={{fontWeight:700,marginBottom:"0.65rem"}}>{label}</div>
+                    <div style={{display:"flex",gap:"1rem",flexWrap:"wrap"}}>
+                      <label style={{fontSize:"0.78rem",color:"var(--muted)"}}>Shown
+                        <input className="form-input" type="number" min={1} max={10} value={settings[words]}
+                          onChange={e => setSettings(s => ({...s, [words]: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)), [required]: Math.min(s[required], parseInt(e.target.value) || 1)}))}
+                          required style={{display:"block",width:78,marginTop:"0.25rem",textAlign:"center"}} />
+                      </label>
+                      <label style={{fontSize:"0.78rem",color:"var(--muted)"}}>Required
+                        <input className="form-input" type="number" min={1} max={settings[words]} value={settings[required]}
+                          onChange={e => setSettings(s => ({...s, [required]: Math.max(1, Math.min(s[words], parseInt(e.target.value) || 1))}))}
+                          required style={{display:"block",width:78,marginTop:"0.25rem",textAlign:"center"}} />
+                      </label>
+                      <span style={{alignSelf:"center",fontSize:"0.78rem",color:"var(--muted)"}}>words shown; minimum required for full vocabulary credit</span>
+                    </div>
                   </div>
-                </div>
-                <div className="form-group" style={{marginBottom:"1.25rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    ✅ Words Required
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(must use at least this many)</span>
-                  </label>
-                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1}
-                      max={settings.vocabWordCount}
-                      value={settings.vocabRequiredCount}
-                      onChange={e=>setSettings(s=>({
-                        ...s,
-                        vocabRequiredCount: Math.min(parseInt(e.target.value)||3, s.vocabWordCount),
-                      }))}
-                      required
-                      style={{width:80,fontSize:"1.1rem",textAlign:"center"}}
-                    />
-                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
-                      of {settings.vocabWordCount} words for full vocab points
-                    </span>
-                  </div>
-                </div>
+                ))}
                 <div className="form-group" style={{marginBottom:"1.5rem"}}>
                   <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
                     📊 CEFR Level
@@ -1927,6 +1926,44 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
                     Currently: <strong style={{color:"var(--accent)"}}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🖼️ Picture Description Day
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(day of week auto-picture challenge runs, -1 to disable)</span>
+                  </label>
+                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+                    {[
+                      {d:-1,label:"Off"},
+                      {d:0,label:"Sun"},
+                      {d:1,label:"Mon"},
+                      {d:2,label:"Tue"},
+                      {d:3,label:"Wed"},
+                      {d:4,label:"Thu"},
+                      {d:5,label:"Fri"},
+                      {d:6,label:"Sat"},
+                    ].map(({d, label}) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSettings(s => ({...s, pictureDescriptionDay: d}))}
+                        style={{
+                          padding:"0.4rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
+                          border: settings.pictureDescriptionDay === d ? "2px solid #63b3ed" : "1px solid var(--border)",
+                          background: settings.pictureDescriptionDay === d ? "rgba(99,179,237,0.18)" : "var(--bg-secondary)",
+                          color: settings.pictureDescriptionDay === d ? "#90cdf4" : "var(--muted)",
+                          cursor:"pointer",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
+                    Currently: <strong style={{color:"#90cdf4"}}>
+                      {(settings.pictureDescriptionDay ?? 4) === -1 ? "Disabled" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.pictureDescriptionDay ?? 4]}
+                    </strong>
                   </div>
                 </div>
                 {/* Allow Private Videos toggle */}
@@ -2177,13 +2214,48 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* 6. Picture Description */}
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "#90cdf4", fontSize: "0.9rem" }}>🖼️ Picture Description Day</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationPictureFull}
+                        onChange={e => setSettings(s => ({ ...s, durationPictureFull: parseInt(e.target.value) || 180 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationPictureFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationPictureMax}
+                        onChange={e => setSettings(s => ({ ...s, durationPictureMax: parseInt(e.target.value) || 180 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationPictureMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <button type="submit" className="btn-primary" disabled={savingSection !== null}>
                   {savingSection === "duration" ? "Saving…" : "💾 Save Duration Settings"}
                 </button>
               </form>
             </div>
-
-            {/* Reset Controls */}
             <div className="card" style={{ margin: 0 }}>
               <div className="section-title">🔄 Reset Controls</div>
               <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
@@ -2878,11 +2950,18 @@ function ManualQuestionsPanel() {
     question: "",
     audioUrl: "",
     storyTranscript: "",
-    summaryGuide: ""
+    summaryGuide: "",
+    imageUrl: "",
+    imageSource: "",
+    imagePageUrl: "",
+    imagePhotographer: "",
+    imagePhotographerUrl: "",
+    imageInstructions: ""
   });
   const [saving, setSaving] = useState(false);
   const [generatingStory, setGeneratingStory] = useState(false);
   const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [generatingPicture, setGeneratingPicture] = useState(false);
   const [busy, setBusy] = useState({});
   const [toast, setToast] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -2929,6 +3008,31 @@ function ManualQuestionsPanel() {
       notify(err.response?.data?.error || "Audio generation failed", "error");
     } finally {
       setGeneratingAudio(false);
+    }
+  };
+
+  const handleGeneratePicture = async () => {
+    setGeneratingPicture(true);
+    try {
+      const res = await api.post("/questions/generate-picture");
+      const { title, instructions, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery } = res.data;
+      setForm(f => ({
+        ...f,
+        topic: title || f.topic,
+        question: instructions || f.question,
+        imageUrl: imageUrl || "",
+        imageSource: imageSource || "",
+        imagePageUrl: imagePageUrl || "",
+        imagePhotographer: imagePhotographer || "",
+        imagePhotographerUrl: imagePhotographerUrl || "",
+        imageInstructions: instructions || "",
+        category: "Picture Description",
+      }));
+      notify("Picture challenge generated! All fields have been filled in.");
+    } catch (err) {
+      notify(err.response?.data?.error || "Picture generation failed", "error");
+    } finally {
+      setGeneratingPicture(false);
     }
   };
 
@@ -3030,6 +3134,7 @@ function ManualQuestionsPanel() {
       case "monthly_goals": return getNextMonthFirst();
       case "monthly_reflection": return getNextMonthLast();
       case "story_summary": return getTodayDate();
+      case "picture_description": return getTodayDate();
       default: return "";
     }
   };
@@ -3038,14 +3143,16 @@ function ManualQuestionsPanel() {
     weekly_reflection: "Weekly Reflection (Sunday)",
     monthly_goals: "Monthly Goals (1st of month)",
     monthly_reflection: "Monthly Reflection (Last day of month)",
-    story_summary: "Story Summary (scheduled time)"
+    story_summary: "Story Summary (scheduled time)",
+    picture_description: "Picture Description (scheduled time)"
   };
 
   const groupedQuestions = {
     weekly_reflection: manualQuestions.filter(q => q.setupType === "weekly_reflection"),
     monthly_goals: manualQuestions.filter(q => q.setupType === "monthly_goals"),
     monthly_reflection: manualQuestions.filter(q => q.setupType === "monthly_reflection"),
-    story_summary: manualQuestions.filter(q => q.setupType === "story_summary")
+    story_summary: manualQuestions.filter(q => q.setupType === "story_summary"),
+    picture_description: manualQuestions.filter(q => q.setupType === "picture_description"),
   };
 
   return (
@@ -3110,10 +3217,10 @@ function ManualQuestionsPanel() {
                       ...f, 
                       setupType: newType,
                       scheduledFor: getDefaultDate(newType),
-                      scheduledTime: newType === "story_summary" ? getCurrentTime() : f.scheduledTime,
+                      scheduledTime: newType === "story_summary" ? getCurrentTime() : newType === "picture_description" ? getCurrentTime() : f.scheduledTime,
                       category: newType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
                       topic: newType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                      question: newType === "story_summary" ? "Listen to the story audio and record a short video summary in your own words." : f.question
+                      question: newType === "story_summary" ? "Listen to the story audio and record a short video summary in your own words." : newType === "picture_description" ? "Describe what you see in the image. Mention the people, setting, and actions. Share what you think might be happening." : f.question
                     }));
                     setSelectedTemplate("");
                   }}
@@ -3134,11 +3241,11 @@ function ManualQuestionsPanel() {
                 />
               </div>
               <div>
-                <label className="form-label">Scheduled Time {form.setupType === "story_summary" ? "*" : "(optional)"}</label>
+                <label className="form-label">Scheduled Time {form.setupType === "story_summary" || form.setupType === "picture_description" ? "*" : "(optional)"}</label>
                 <input
                   className="form-input"
                   type="time"
-                  required={form.setupType === "story_summary"}
+                  required={form.setupType === "story_summary" || form.setupType === "picture_description"}
                   value={form.scheduledTime}
                   onChange={e => setForm(f => ({ ...f, scheduledTime: e.target.value }))}
                 />
@@ -3255,6 +3362,95 @@ function ManualQuestionsPanel() {
                 </div>
               </>
             )}
+            {form.setupType === "picture_description" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={generatingPicture}
+                    onClick={handleGeneratePicture}
+                    style={{ width: "100%", marginBottom: "0.5rem", background: "linear-gradient(135deg,#1e40af,#1d4ed8)" }}
+                  >
+                    {generatingPicture ? "🖼️ Generating picture challenge…" : "🖼️ AI Generate Picture Challenge"}
+                  </button>
+                  <div style={{ fontSize: "0.72rem", color: "var(--muted)", textAlign: "center" }}>
+                    Generates topic, instructions, and fetches a Pexels image automatically. You can edit any field before saving.
+                  </div>
+                </div>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <label className="form-label">Image URL * <span style={{ color: "var(--muted)", fontWeight: 400 }}>(direct photo link)</span></label>
+                  <input
+                    className="form-input"
+                    type="url"
+                    placeholder="https://images.pexels.com/photos/..."
+                    required
+                    value={form.imageUrl}
+                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  />
+                  {form.imageUrl && (
+                    <img
+                      src={form.imageUrl}
+                      alt="preview"
+                      style={{ marginTop: "0.5rem", width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(99,179,237,0.3)" }}
+                      onError={e => { e.target.style.display = "none"; }}
+                    />
+                  )}
+                </div>
+                <div className="grid-cols-2" style={{ marginBottom: "0.75rem" }}>
+                  <div>
+                    <label className="form-label">Photographer Name</label>
+                    <input
+                      className="form-input"
+                      placeholder="e.g. John Smith"
+                      value={form.imagePhotographer}
+                      onChange={e => setForm(f => ({ ...f, imagePhotographer: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Image Source</label>
+                    <input
+                      className="form-input"
+                      placeholder="e.g. Pexels"
+                      value={form.imageSource}
+                      onChange={e => setForm(f => ({ ...f, imageSource: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid-cols-2" style={{ marginBottom: "0.75rem" }}>
+                  <div>
+                    <label className="form-label">Pexels Photo Page URL</label>
+                    <input
+                      className="form-input"
+                      type="url"
+                      placeholder="https://www.pexels.com/photo/..."
+                      value={form.imagePageUrl}
+                      onChange={e => setForm(f => ({ ...f, imagePageUrl: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Photographer Profile URL</label>
+                    <input
+                      className="form-input"
+                      type="url"
+                      placeholder="https://www.pexels.com/@..."
+                      value={form.imagePhotographerUrl}
+                      onChange={e => setForm(f => ({ ...f, imagePhotographerUrl: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label className="form-label">Speaking Instructions (optional)</label>
+                  <textarea
+                    className="form-input"
+                    rows={2}
+                    placeholder="e.g. Describe what you see. Mention who is in the image, what they are doing, and what the setting feels like."
+                    value={form.imageInstructions}
+                    onChange={e => setForm(f => ({ ...f, imageInstructions: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
             <button type="submit" className="btn-primary" disabled={saving} style={{ minWidth: 160 }}>
               {saving ? "Setting up…" : "📝 Setup Question"}
             </button>
@@ -3309,6 +3505,11 @@ function ManualQuestionsPanel() {
                         {q.audioUrl && (
                           <div style={{ fontSize: "0.78rem", color: "#2dd4bf", marginBottom: "0.4rem", wordBreak: "break-all" }}>
                             🎧 {q.audioUrl}
+                          </div>
+                        )}
+                        {q.imageUrl && (
+                          <div style={{ fontSize: "0.78rem", color: "#90cdf4", marginBottom: "0.4rem", wordBreak: "break-all" }}>
+                            🖼️ {q.imageUrl}
                           </div>
                         )}
 

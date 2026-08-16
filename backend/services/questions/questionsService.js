@@ -4,6 +4,7 @@
  */
 
 import Question from "../../../models/questionSchema.js";
+import Status from "../../../models/statusSchema.js";
 
 /**
  * Get a random question for practice
@@ -92,13 +93,17 @@ export async function setupManualQuestion(setupType, scheduledFor, scheduledTime
     throw new Error("setupType, scheduledFor, category, topic and question are required");
   }
 
-  const validTypes = ["weekly_reflection", "monthly_reflection", "monthly_goals", "story_summary"];
+  const validTypes = ["weekly_reflection", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
   if (!validTypes.includes(setupType)) {
     throw new Error("Invalid setupType. Must be one of: " + validTypes.join(", "));
   }
 
   if (setupType === "story_summary" && !story.audioUrl) {
     throw new Error("audioUrl is required for story summary questions");
+  }
+
+  if (setupType === "picture_description" && !story.imageUrl) {
+    throw new Error("imageUrl is required for picture description questions");
   }
 
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -135,10 +140,19 @@ export async function setupManualQuestion(setupType, scheduledFor, scheduledTime
     question,
     isManualSetup: true,
     setupType,
-    contentType: setupType === "story_summary" ? "story_audio" : "question",
+    contentType: setupType === "story_summary" ? "story_audio" : setupType === "picture_description" ? "picture_description" : "question",
     audioUrl: story.audioUrl || null,
     storyTranscript: story.storyTranscript || null,
     summaryGuide: story.summaryGuide || null,
+    imageUrl: story.imageUrl || null,
+    imageSource: story.imageSource || null,
+    imagePageUrl: story.imagePageUrl || null,
+    imagePhotographer: story.imagePhotographer || null,
+    imagePhotographerUrl: story.imagePhotographerUrl || null,
+    imageSearchQuery: story.imageSearchQuery || null,
+    imageInstructions: story.imageInstructions || null,
+    imageDifficulty: story.imageDifficulty || null,
+    speakingDuration: story.speakingDuration || null,
     scheduledFor: scheduleDate,
     scheduledTime: normalizedTime,
     createdBy,
@@ -159,8 +173,9 @@ export async function listManualQuestions(setupType, upcomingOnly = false) {
   }
   
   if (upcomingOnly) {
-    filter.scheduledFor = { $gte: new Date() };
-    filter.isUsed = false;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    filter.scheduledFor = { $gte: startOfToday };
   }
 
   const questions = await Question.find(filter)
@@ -189,9 +204,46 @@ export async function deleteManualQuestion(questionId, userPhone) {
   }
 
   if (question.isUsed) {
-    const error = new Error("Cannot delete a question that has already been used");
-    error.statusCode = 400;
-    throw error;
+    const status = await Status.findOne().lean();
+    const isActiveType = question.setupType === "story_summary"
+      ? status?.todayContentType === "story_audio"
+      : question.setupType === "picture_description"
+      ? status?.todayContentType === "picture_description"
+      : question.setupType === "weekly_reflection"
+      ? status?.isWeeklyReflectionDay === true
+      : question.setupType === "monthly_reflection"
+      ? status?.isMonthlyReflectionDay === true
+      : question.setupType === "monthly_goals"
+      ? status?.isMonthlyGoalsDay === true
+      : false;
+    const isActive = isActiveType
+      && status?.todayTopic === question.topic
+      && status?.todayQuestion === question.question;
+
+    if (isActive) {
+      await Status.updateOne({}, {
+        $set: {
+          questionSentToday: false,
+          todayContentType: "question",
+          todayTopic: null,
+          todayQuestion: null,
+          todayCategory: null,
+          todayAudioUrl: null,
+          todayStoryTranscript: null,
+          todaySummaryGuide: null,
+          todayImageUrl: null,
+          todayImageSource: null,
+          todayImagePageUrl: null,
+          todayImagePhotographer: null,
+          todayImagePhotographerUrl: null,
+          todayImageSearchQuery: null,
+          todayImageInstructions: null,
+          isStorySummaryDay: false,
+          isPictureDescriptionDay: false,
+          todayVocabulary: [],
+        }
+      }, { upsert: true });
+    }
   }
 
   await Question.findByIdAndDelete(questionId);
@@ -231,6 +283,11 @@ export async function getQuestionTemplates() {
       "Listen to the story audio. Then record a short video summary in your own words.",
       "Retell the story in order: beginning, problem, important events, ending, and lesson.",
       "Summarize the story clearly without reading a transcript."
+    ],
+    picture_description: [
+      "Describe what you see in the image. Mention the people, setting, and actions. Share what you think might be happening.",
+      "Look at the image carefully. Describe the scene in detail, then explain what you think is happening and how it makes you feel.",
+      "Describe the image from foreground to background. What stands out most? What story does this picture tell?"
     ]
   };
 

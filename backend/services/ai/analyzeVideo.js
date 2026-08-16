@@ -7,6 +7,7 @@ const execFileAsync = promisify(execFile);
 
 const FRAME_COUNT = 16;
 const GROQ_BATCH_LIMIT = 4;
+const VISION_MODEL = process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
 
 /** Formats seconds as m:ss (e.g. 75 → "1:15") */
 function formatSec(s) {
@@ -112,7 +113,7 @@ Return ONLY valid JSON (no markdown, no extra text):
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: VISION_MODEL,
         messages: [{ role: "user", content: userContent }],
         temperature: 0.2,
         max_tokens: 1500,

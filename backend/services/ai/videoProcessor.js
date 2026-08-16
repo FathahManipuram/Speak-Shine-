@@ -41,9 +41,10 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
   // Fetch today's question so topic relevance can be scored
   let questionTopic = null;
   let questionText = null;
+  let status = null;
   try {
     const Status = (await import("../../../models/statusSchema.js")).default;
-    const status = await Status.findOne().lean();
+    status = await Status.findOne().lean();
     questionTopic = status?.todayTopic || null;
     questionText  = status?.todayQuestion || null;
     if (status?.isStorySummaryDay) {
@@ -53,6 +54,19 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
         status?.todaySummaryGuide ? `Expected key points / summary guide: ${status.todaySummaryGuide}` : null,
       ].filter(Boolean).join("\n");
       questionText = [questionText, storyContext].filter(Boolean).join("\n\n");
+    }
+
+    if (status?.isPictureDescriptionDay) {
+      const pictureContext = [
+        "This is a Picture Description task. The student was shown an image and asked to describe it in detail.",
+        "Evaluate how well the speaker described: the people, objects, setting, mood, and actions visible in the image.",
+        "Also evaluate: whether they made logical inferences about what is happening, shared their personal thoughts or feelings, and spoke with fluency and coherence.",
+        status?.todayImageUrl          ? `Image: ${status.todayImageUrl}` : null,
+        status?.todayImageSearchQuery  ? `Image scene: ${status.todayImageSearchQuery}` : null,
+        status?.todayImageInstructions ? `Task instructions given to student: ${status.todayImageInstructions}` : null,
+        "Judge topic relevance (1–10) based on how thoroughly they described the image and how well they followed the task instructions.",
+      ].filter(Boolean).join("\n");
+      questionText = [questionText, pictureContext].filter(Boolean).join("\n\n");
     }
   } catch (err) {
     console.warn("[VideoProcessor] Could not fetch today's question:", err.message);
@@ -138,7 +152,8 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
             questionTopic,
             questionText,
             t.pronunciationIssues || [],
-            t.rhythm || null
+            t.rhythm || null,
+            status?.isPictureDescriptionDay ? "picture_description" : null
           ),
           Number(process.env.SPEECH_TIMEOUT_MS) || SPEECH_TIMEOUT_MS,
           "speech"

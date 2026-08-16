@@ -13,6 +13,7 @@ const videoReportSchema = new mongoose.Schema({
   videoFileName: { type: String },
   videoDuration: { type: Number }, // seconds
   submittedAt: { type: Date, default: Date.now },
+  challengeType: { type: String, default: null },
   
   // Analysis results (same structure as WhatsApp feedback)
   analysis: {
@@ -78,6 +79,7 @@ const videoReportSchema = new mongoose.Schema({
     // Vocabulary challenge
     vocabularyScore: { type: Number, min: 0, max: 10, default: null }, // out of 10
     vocabularyUsed:  { type: [String], default: [] }, // which of today's 5 words were used correctly
+    challengeType: { type: String, default: null },
 
     // Composite 100-point score (added to monthlyScore)
     compositeScore: { type: Number, default: null },  // today's earned pts (0–100)
@@ -93,6 +95,22 @@ const videoReportSchema = new mongoose.Schema({
       maxComm:      { type: Number, default: 16.67 },
       speechRatio:     { type: Number, default: null }, // % of time speaking
       speechMultiplier: { type: Number, default: null }, // 0–100 effective multiplier
+      // Picture-description scoring (25 + 20 + 10 + 5 + 13 + 7 + 20 = 100)
+      fluency:    { type: Number, default: null },
+      coherence:  { type: Number, default: null },
+      vocabulary: { type: Number, default: null },
+      grammar:    { type: Number, default: null },
+      description:{ type: Number, default: null },
+      confidence: { type: Number, default: null },
+      duration:   { type: Number, default: null },
+      isPictureDescription: { type: Boolean, default: false },
+      maxFluency:    { type: Number, default: null },
+      maxCoherence:  { type: Number, default: null },
+      maxVocabulary: { type: Number, default: null },
+      maxGrammar:    { type: Number, default: null },
+      maxDescription:{ type: Number, default: null },
+      maxConfidence: { type: Number, default: null },
+      maxDuration:   { type: Number, default: null },
     },
     // Score outcome for re-submissions
     // "new"      — first submission today, score added

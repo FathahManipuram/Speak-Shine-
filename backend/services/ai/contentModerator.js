@@ -10,6 +10,7 @@ import path from "path";
 import Groq from "groq-sdk";
 
 const execFileAsync = promisify(execFile);
+const VISION_MODEL = process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
 
 let groq = null;
 
@@ -77,7 +78,7 @@ async function analyzeFrame(framePath) {
     }
     
     const response = await groqClient.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",

@@ -15,6 +15,10 @@ import { getDurationLimits } from "../video/submitGate.js";
 import { serializeStreakBadges } from "../../utils/streakBadges.js";
 
 const withBadgeData = (user, data = {}) => ({ ...data, ...serializeStreakBadges(user) });
+const activeStoryTask = (status) => status?.todayContentType === "story_audio"
+  || (status?.isStorySummaryDay && status?.todayContentType !== "picture_description");
+const activePictureTask = (status) => status?.todayContentType === "picture_description"
+  || (status?.isPictureDescriptionDay && status?.todayContentType !== "story_audio");
 
 /**
  * Get poster image - use bot's stored PNG if available, else generate SVG fallback
@@ -61,7 +65,13 @@ export async function getTodayOverview() {
       category: status?.todayCategory || null,
       contentType: status?.todayContentType || "question",
       audioUrl: status?.todayAudioUrl || null,
-      isStorySummary: status?.isStorySummaryDay || false,
+      isStorySummary: activeStoryTask(status),
+      isPictureDescription: activePictureTask(status),
+      imageUrl:          status?.todayImageUrl || null,
+      imageSource:       status?.todayImageSource || null,
+      imagePageUrl:      status?.todayImagePageUrl || null,
+      imagePhotographer: status?.todayImagePhotographer || null,
+      imageInstructions: status?.todayImageInstructions || null,
       posterImage: getPosterImage(status),
     },
     stats: {
@@ -262,16 +272,40 @@ export async function getUserProfile(phone) {
       isMonthlyReflection: status?.isMonthlyReflectionDay || false,
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
-      isStorySummary: status?.isStorySummaryDay || false,
+      isStorySummary: activeStoryTask(status),
+      isPictureDescription: activePictureTask(status),
+      // Picture description image data (only populated on picture description days)
+      imageUrl:             status?.todayImageUrl || null,
+      imageSource:          status?.todayImageSource || null,
+      imagePageUrl:         status?.todayImagePageUrl || null,
+      imagePhotographer:    status?.todayImagePhotographer || null,
+      imagePhotographerUrl: status?.todayImagePhotographerUrl || null,
+      imageSearchQuery:     status?.todayImageSearchQuery || null,
+      imageInstructions:    status?.todayImageInstructions || null,
       vocabulary: await vocabularyPromise,
       allowPrivateVideos: status?.allowPrivateVideos ?? true,
-      vocabWordCount: status?.vocabWordCount ?? 5,
-      vocabRequiredCount: status?.vocabRequiredCount ?? 3,
+      vocabWordCount: activePictureTask(status)
+        ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+        : activeStoryTask(status)
+        ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+        : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5),
+      vocabRequiredCount: activePictureTask(status)
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : activeStoryTask(status)
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3),
+      vocabNormalWordCount: status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5,
+      vocabNormalRequiredCount: status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3,
+      vocabStoryWordCount: status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5,
+      vocabStoryRequiredCount: status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3,
+      vocabPictureWordCount: status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5,
+      vocabPictureRequiredCount: status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3,
       durationLimits: getDurationLimits({
         isMonthlyReflection: status?.isMonthlyReflectionDay || false,
         isMonthlyGoals: status?.isMonthlyGoalsDay || false,
         isWeeklyReflection: status?.isWeeklyReflectionDay || false,
-        isStorySummary: status?.isStorySummaryDay || false,
+        isStorySummary: activeStoryTask(status),
+        isPictureDescription: activePictureTask(status),
       }, status || {}),
     },
     dailyReport: showReport ? dailyReport : null,
@@ -353,6 +387,14 @@ export async function setTodayQuestion(topic, question, category) {
       todayStoryTranscript: null,
       todaySummaryGuide: null,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
+      todayImageUrl: null,
+      todayImageSource: null,
+      todayImagePageUrl: null,
+      todayImagePhotographer: null,
+      todayImagePhotographerUrl: null,
+      todayImageSearchQuery: null,
+      todayImageInstructions: null,
       questionSentToday: true,
     }
   }, { upsert: true });
@@ -374,11 +416,18 @@ export async function getSettings() {
     questionGenerateTime: status.questionGenerateTime || "07:00",
     vocabWordCount: status.vocabWordCount ?? 5,
     vocabRequiredCount: status.vocabRequiredCount ?? 3,
+    vocabNormalWordCount: status.vocabNormalWordCount ?? status.vocabWordCount ?? 5,
+    vocabNormalRequiredCount: status.vocabNormalRequiredCount ?? status.vocabRequiredCount ?? 3,
+    vocabStoryWordCount: status.vocabStoryWordCount ?? status.vocabWordCount ?? 5,
+    vocabStoryRequiredCount: status.vocabStoryRequiredCount ?? status.vocabRequiredCount ?? 3,
+    vocabPictureWordCount: status.vocabPictureWordCount ?? status.vocabWordCount ?? 5,
+    vocabPictureRequiredCount: status.vocabPictureRequiredCount ?? status.vocabRequiredCount ?? 3,
     vocabLevel: status.vocabLevel || "B2",
     storyWordCount: status.storyWordCount ?? 200,
     storyLevel: status.storyLevel || "B1",
     allowPrivateVideos: status.allowPrivateVideos ?? true,
     storyDay: status.storyDay ?? 6,
+    pictureDescriptionDay: status.pictureDescriptionDay ?? 4,
     paymentAmount: status.paymentAmount ?? 5,
     durationDefaultMax: status.durationDefaultMax ?? 300,
     durationDefaultFull: status.durationDefaultFull ?? 300,
@@ -390,6 +439,8 @@ export async function getSettings() {
     durationMonthlyReflectionFull: status.durationMonthlyReflectionFull ?? 420,
     durationMonthlyGoalsMax: status.durationMonthlyGoalsMax ?? 600,
     durationMonthlyGoalsFull: status.durationMonthlyGoalsFull ?? 420,
+    durationPictureMax: status.durationPictureMax ?? 180,
+    durationPictureFull: status.durationPictureFull ?? 180,
   };
 }
 
@@ -404,7 +455,12 @@ export async function updateSettings(
   durationWeeklyMax, durationWeeklyFull,
   durationMonthlyReflectionMax, durationMonthlyReflectionFull,
   durationMonthlyGoalsMax, durationMonthlyGoalsFull,
-  allowPrivateVideos
+  allowPrivateVideos,
+  pictureDescriptionDay,
+  durationPictureMax, durationPictureFull,
+  vocabNormalWordCount, vocabNormalRequiredCount,
+  vocabStoryWordCount, vocabStoryRequiredCount,
+  vocabPictureWordCount, vocabPictureRequiredCount
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -447,6 +503,44 @@ export async function updateSettings(
       throw error;
     }
     updates.vocabRequiredCount = required;
+  }
+
+  const vocabGroups = [
+    ["vocabNormalWordCount", vocabNormalWordCount, "vocabNormalRequiredCount", vocabNormalRequiredCount],
+    ["vocabStoryWordCount", vocabStoryWordCount, "vocabStoryRequiredCount", vocabStoryRequiredCount],
+    ["vocabPictureWordCount", vocabPictureWordCount, "vocabPictureRequiredCount", vocabPictureRequiredCount],
+  ];
+  for (const [wordKey, rawWords, requiredKey, rawRequired] of vocabGroups) {
+    if (rawWords !== undefined) {
+      const count = parseInt(rawWords, 10);
+      if (isNaN(count) || count < 1 || count > 10) {
+        const error = new Error(`${wordKey} must be between 1 and 10`);
+        error.statusCode = 400;
+        throw error;
+      }
+      updates[wordKey] = count;
+      updates.todayVocabulary = [];
+    }
+    if (rawRequired !== undefined) {
+      const required = parseInt(rawRequired, 10);
+      if (isNaN(required) || required < 1 || required > 10) {
+        const error = new Error(`${requiredKey} must be between 1 and 10`);
+        error.statusCode = 400;
+        throw error;
+      }
+      updates[requiredKey] = required;
+    }
+  }
+
+  const vocabStatus = await Status.findOne().lean();
+  for (const [wordKey, , requiredKey] of vocabGroups) {
+    const words = updates[wordKey] ?? vocabStatus?.[wordKey] ?? vocabStatus?.vocabWordCount ?? 5;
+    const required = updates[requiredKey] ?? vocabStatus?.[requiredKey] ?? vocabStatus?.vocabRequiredCount ?? 3;
+    if (required > words) {
+      const error = new Error(`${requiredKey} cannot exceed ${wordKey}`);
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   // Ensure required count never exceeds word count
@@ -503,6 +597,16 @@ export async function updateSettings(
     updates.storyDay = day;
   }
 
+  if (pictureDescriptionDay !== undefined) {
+    const day = parseInt(pictureDescriptionDay, 10);
+    if (isNaN(day) || day < -1 || day > 6) {
+      const error = new Error("pictureDescriptionDay must be -1 (disabled) or 0 (Sunday) through 6 (Saturday)");
+      error.statusCode = 400;
+      throw error;
+    }
+    updates.pictureDescriptionDay = day;
+  }
+
   if (paymentAmount !== undefined) {
     const amount = Number(paymentAmount);
     if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
@@ -525,6 +629,8 @@ export async function updateSettings(
     { name: "durationMonthlyReflectionFull", label: "Monthly Reflection Full Score Duration" },
     { name: "durationMonthlyGoalsMax", label: "Monthly Goals Max Duration" },
     { name: "durationMonthlyGoalsFull", label: "Monthly Goals Full Score Duration" },
+    { name: "durationPictureMax", label: "Picture Description Max Duration" },
+    { name: "durationPictureFull", label: "Picture Description Full Score Duration" },
   ];
 
   const durationArgs = {
@@ -533,6 +639,7 @@ export async function updateSettings(
     durationWeeklyMax, durationWeeklyFull,
     durationMonthlyReflectionMax, durationMonthlyReflectionFull,
     durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+    durationPictureMax, durationPictureFull,
   };
 
   for (const { name, label } of durationFields) {
@@ -567,6 +674,7 @@ export async function updateSettings(
   checkRelation("Weekly Reflection", "durationWeeklyMax", "durationWeeklyFull", 420, 300);
   checkRelation("Monthly Reflection", "durationMonthlyReflectionMax", "durationMonthlyReflectionFull", 420, 420);
   checkRelation("Monthly Goals", "durationMonthlyGoalsMax", "durationMonthlyGoalsFull", 600, 420);
+  checkRelation("Picture Description", "durationPictureMax", "durationPictureFull", 180, 180);
 
   if (allowPrivateVideos !== undefined) {
     updates.allowPrivateVideos = allowPrivateVideos === true || allowPrivateVideos === "true";
@@ -632,6 +740,7 @@ export async function enableMonthlyReflection() {
       isMonthlyReflectionDay: true,
       isMonthlyGoalsDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       todayContentType: "question",
       todayAudioUrl: null,
       todayStoryTranscript: null,
@@ -659,6 +768,7 @@ export async function enableMonthlyGoals() {
       isMonthlyReflectionDay: false,
       isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       todayContentType: "question",
       todayAudioUrl: null,
       todayStoryTranscript: null,
@@ -686,6 +796,7 @@ export async function enableWeeklyReflection() {
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       todayContentType: "question",
       todayAudioUrl: null,
       todayStoryTranscript: null,
@@ -723,12 +834,22 @@ export async function disableSpecialModes() {
       isMonthlyGoalsDay: false,
       isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
+      isPictureDescriptionDay: false,
       questionSentToday: false,
       todayTopic: null,
       todayQuestion: null,
       todayCategory: null,
       todayContentType: "question",
       todayAudioUrl: null,
+      todayStoryTranscript: null,
+      todaySummaryGuide: null,
+      todayImageUrl: null,
+      todayImageSource: null,
+      todayImagePageUrl: null,
+      todayImagePhotographer: null,
+      todayImagePhotographerUrl: null,
+      todayImageSearchQuery: null,
+      todayImageInstructions: null,
       todayStoryTranscript: null,
       todaySummaryGuide: null,
     }

@@ -132,6 +132,15 @@ export async function updateSettings(req, res) {
       durationMonthlyGoalsMax,
       durationMonthlyGoalsFull,
       allowPrivateVideos,
+      pictureDescriptionDay,
+      durationPictureMax,
+      durationPictureFull,
+      vocabNormalWordCount,
+      vocabNormalRequiredCount,
+      vocabStoryWordCount,
+      vocabStoryRequiredCount,
+      vocabPictureWordCount,
+      vocabPictureRequiredCount,
     } = req.body;
     const result = await dashboardService.updateSettings(
       posterSendTime,
@@ -153,7 +162,16 @@ export async function updateSettings(req, res) {
       durationMonthlyReflectionFull,
       durationMonthlyGoalsMax,
       durationMonthlyGoalsFull,
-      allowPrivateVideos
+      allowPrivateVideos,
+      pictureDescriptionDay,
+      durationPictureMax,
+      durationPictureFull,
+      vocabNormalWordCount,
+      vocabNormalRequiredCount,
+      vocabStoryWordCount,
+      vocabStoryRequiredCount,
+      vocabPictureWordCount,
+      vocabPictureRequiredCount
     );
     res.json(result);
   } catch (error) {

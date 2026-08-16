@@ -68,7 +68,7 @@ export async function deleteQuestion(req, res) {
  */
 export async function setupManualQuestion(req, res) {
   try {
-    const { setupType, scheduledFor, scheduledTime, category, topic, question, audioUrl, storyTranscript, summaryGuide } = req.body;
+    const { setupType, scheduledFor, scheduledTime, category, topic, question, audioUrl, storyTranscript, summaryGuide, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery, imageInstructions, imageDifficulty, speakingDuration } = req.body;
     const createdBy = req.user.phone;
     
     const result = await questionsService.setupManualQuestion(
@@ -79,7 +79,7 @@ export async function setupManualQuestion(req, res) {
       topic, 
       question, 
       createdBy,
-      { audioUrl, storyTranscript, summaryGuide }
+      { audioUrl, storyTranscript, summaryGuide, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery, imageInstructions, imageDifficulty, speakingDuration }
     );
     if (setupType === "story_summary") {
       try {
@@ -87,6 +87,14 @@ export async function setupManualQuestion(req, res) {
         await publishDueManualStoryQuestion();
       } catch (publishErr) {
         console.warn("[Questions] Story publish check skipped:", publishErr.message);
+      }
+    }
+    if (setupType === "picture_description") {
+      try {
+        const { publishDueManualPictureDescriptionQuestion } = await import("../services/scheduler/questionSchedulerService.js");
+        await publishDueManualPictureDescriptionQuestion();
+      } catch (publishErr) {
+        console.warn("[Questions] Picture description publish check skipped:", publishErr.message);
       }
     }
     res.status(201).json(result);
@@ -317,6 +325,23 @@ export async function generateStoryAudio(req, res) {
     res.json({ success: true, audioUrl });
   } catch (error) {
     console.error("[Questions] Story audio error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * POST /api/questions/generate-picture
+ * Generates a Picture Description challenge (Groq metadata + Pexels image).
+ * Returns title, instructions, difficulty, speakingDuration, imageUrl,
+ * imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery.
+ */
+export async function generatePictureNow(req, res) {
+  try {
+    const { generatePictureDescriptionChallenge } = await import("../services/ai/pictureDescriptionGenerator.js");
+    const challenge = await generatePictureDescriptionChallenge();
+    res.json({ success: true, ...challenge });
+  } catch (error) {
+    console.error("[Questions] Picture generation error:", error.message);
     res.status(500).json({ error: error.message });
   }
 }

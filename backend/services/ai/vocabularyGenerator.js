@@ -149,7 +149,13 @@ export async function ensureTodayVocabulary() {
     const status = await Status.findOne().lean();
 
     // Read dynamic settings (admin-configurable)
-    const wordCount = Math.max(1, Math.min(10, status?.vocabWordCount ?? 5));
+    const isPicture = status?.isPictureDescriptionDay;
+    const isStory = status?.isStorySummaryDay;
+    const wordCount = Math.max(1, Math.min(10,
+      isPicture ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+      : isStory ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+      : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5)
+    ));
     const level     = status?.vocabLevel || "B2";
 
     // Already have enough words for today — return them
