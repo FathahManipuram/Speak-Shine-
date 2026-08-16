@@ -151,8 +151,14 @@ async function fetchPexelsImage(query) {
   // Pick the best photo — prefer one with a large/original size
   const photo = data.photos[0];
 
+  // Use large2x for best resolution, appending w=1280 for crisp display
+  const baseUrl = photo.src?.large2x || photo.src?.large || photo.src?.original || "";
+  const imageUrl = baseUrl.includes("?")
+    ? baseUrl.replace(/w=\d+/, "w=1280").replace(/h=\d+/, "h=853")
+    : baseUrl + "?auto=compress&cs=tinysrgb&w=1280&h=853&fit=crop";
+
   return {
-    imageUrl: photo.src?.large2x || photo.src?.large || photo.src?.original,
+    imageUrl,
     imageSource: "Pexels",
     imagePageUrl: photo.url,
     imagePhotographer: photo.photographer,

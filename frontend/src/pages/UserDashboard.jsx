@@ -1052,7 +1052,7 @@ export default function UserDashboard() {
                   <img
                     src={data.today.imageUrl}
                     alt={data.today.topic || "Picture description challenge"}
-                    style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block", borderRadius: 12 }}
+                    style={{ width: "100%", maxHeight: 300, objectFit: "contain", background: "#0a0a14", display: "block", borderRadius: 12 }}
                     loading="lazy"
                   />
                   {data.today.imagePhotographer && (

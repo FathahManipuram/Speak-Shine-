@@ -335,6 +335,7 @@ async function processJob(job) {
         requiredVocabWords: effectiveRequiredWords,
         topicRelevance:     result.analysis?.topicRelevance ?? null,
         analysis:           result.analysis,
+        isPictureDescription: gateFlags.isPictureDescription || false,
       });
       compositeScore = score;
       // Attach breakdown + maxes to analysis so the report UI can show it

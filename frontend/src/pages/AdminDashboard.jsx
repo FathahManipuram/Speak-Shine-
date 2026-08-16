@@ -47,6 +47,7 @@ export default function AdminDashboard() {
     storyLevel: "B1",
     allowPrivateVideos: true,
     storyDay: 6,
+    pictureDescriptionDay: 4,
     paymentAmount: 5,
     durationDefaultMax: 300,
     durationDefaultFull: 300,
@@ -214,6 +215,7 @@ export default function AdminDashboard() {
         storyLevel: s.data.storyLevel || "B1",
         allowPrivateVideos: s.data.allowPrivateVideos ?? true,
         storyDay: s.data.storyDay ?? 6,
+        pictureDescriptionDay: s.data.pictureDescriptionDay ?? 4,
         paymentAmount: s.data.paymentAmount ?? 5,
         durationDefaultMax: s.data.durationDefaultMax ?? 300,
         durationDefaultFull: s.data.durationDefaultFull ?? 300,
@@ -1927,6 +1929,44 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
                     Currently: <strong style={{color:"var(--accent)"}}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
+                  </div>
+                </div>
+                <div className="form-group" style={{marginBottom:"1.5rem"}}>
+                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
+                    🖼️ Picture Description Day
+                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(day of week auto-picture challenge runs, -1 to disable)</span>
+                  </label>
+                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
+                    {[
+                      {d:-1,label:"Off"},
+                      {d:0,label:"Sun"},
+                      {d:1,label:"Mon"},
+                      {d:2,label:"Tue"},
+                      {d:3,label:"Wed"},
+                      {d:4,label:"Thu"},
+                      {d:5,label:"Fri"},
+                      {d:6,label:"Sat"},
+                    ].map(({d, label}) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSettings(s => ({...s, pictureDescriptionDay: d}))}
+                        style={{
+                          padding:"0.4rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
+                          border: settings.pictureDescriptionDay === d ? "2px solid #63b3ed" : "1px solid var(--border)",
+                          background: settings.pictureDescriptionDay === d ? "rgba(99,179,237,0.18)" : "var(--bg-secondary)",
+                          color: settings.pictureDescriptionDay === d ? "#90cdf4" : "var(--muted)",
+                          cursor:"pointer",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
+                    Currently: <strong style={{color:"#90cdf4"}}>
+                      {(settings.pictureDescriptionDay ?? 4) === -1 ? "Disabled" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.pictureDescriptionDay ?? 4]}
+                    </strong>
                   </div>
                 </div>
                 {/* Allow Private Videos toggle */}

@@ -494,8 +494,9 @@ export default function VideoAnalysis() {
                   alt={todayQuestion.topic || "Picture description challenge"}
                   style={{
                     width: "100%",
-                    maxHeight: 340,
-                    objectFit: "cover",
+                    maxHeight: 400,
+                    objectFit: "contain",
+                    background: "#0a0a14",
                     display: "block",
                     borderRadius: 12,
                   }}
