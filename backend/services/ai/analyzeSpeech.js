@@ -283,6 +283,7 @@ function mergeScores(a, b) {
     grammar:    avg(a.grammar,    b.grammar),
     confidence: avg(a.confidence, b.confidence),
     vocabulary: avg(a.vocabulary, b.vocabulary),
+    coherence:  avg(a.coherence,  b.coherence),
     grammarErrors,
     strongPoints: dedup(a.strongPoints, b.strongPoints).slice(0, 4),
     suggestions:  dedup(a.suggestions,  b.suggestions).slice(0, 4),
@@ -405,6 +406,7 @@ The student was shown an image and asked to describe it. This is a spontaneous s
 • Fluency and natural delivery under unprepared conditions
 • Vocabulary variety (colours, adjectives, scene vocabulary, spatial language: "in the background", "on the left", etc.)
 • Coherence — do they describe in an organised way (general → specific, or spatial order)?
+• Content development — do they connect observations, explain what they notice, and form sensible inferences?
 • Use of inference language ("it looks like", "they seem to be", "this might be")
 • Grammar in spontaneous speech (less forgiving than prepared speeches)
 When writing suggestions, give concrete image-description tips (e.g. "Try describing the background before the foreground", "Use more specific adjectives like 'crowded' instead of 'many people'").
@@ -440,6 +442,7 @@ TASK: Analyze this spoken English and return ONLY a valid JSON object with this 
   "grammar": <integer 1-10>,
   "confidence": <integer 1-10>,
   "vocabulary": <integer 1-10>,
+  "coherence": <integer 1-10, especially for picture descriptions; null otherwise>,
   "grammarErrors": [
     { "original": "<exact phrase from transcript>", "correction": "<corrected version>", "rule": "<brief grammar rule>" }
   ],
@@ -464,6 +467,7 @@ SCORING GUIDE:
 - confidence: assertiveness, clarity, not trailing off
   → Stat-based anchor: ${confidenceAnchor}/10 (adjust ±1-2 based on transcript tone)
 - vocabulary: range and appropriateness of words used
+- coherence: logical organisation, connected ideas, and ability to develop observations (especially for picture descriptions)
 - cefrLevel: assess the OVERALL spoken English level using ALL of these signals together:
     VOCABULARY: word range, precision, idioms, collocations
     GRAMMAR: tense variety, clause complexity, passive/conditional use, article/preposition accuracy
@@ -651,5 +655,3 @@ function mergeGrammarErrors(aiErrors, ltErrors) {
   }
   return merged;
 }
-
-

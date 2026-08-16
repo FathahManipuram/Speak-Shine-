@@ -22,6 +22,7 @@ const videoReportSchema = new mongoose.Schema({
     grammar: { type: Number, min: 0, max: 10 },
     confidence: { type: Number, min: 0, max: 10 },
     vocabulary: { type: Number, min: 0, max: 10 },
+    coherence: { type: Number, min: 0, max: 10 },
     topicRelevance: { type: Number, min: 0, max: 10 },
     
     // Visual scores
@@ -59,6 +60,7 @@ const videoReportSchema = new mongoose.Schema({
       fillerWords: mongoose.Schema.Types.Mixed,
       fillerTotal: Number,
       pauses: Number,
+      wordCount: Number,
       cefrLevel: {
         level: String,
         description: String,
@@ -95,7 +97,12 @@ const videoReportSchema = new mongoose.Schema({
       maxComm:      { type: Number, default: 16.67 },
       speechRatio:     { type: Number, default: null }, // % of time speaking
       speechMultiplier: { type: Number, default: null }, // 0–100 effective multiplier
-      // Picture-description scoring (25 + 20 + 10 + 5 + 13 + 7 + 20 = 100)
+      // Picture-description scoring (Communication 30 + Content 40 + Vocabulary 10 + Duration 20 = 100)
+      communication: { type: Number, default: null },
+      content:      { type: Number, default: null },
+      maxCommunication: { type: Number, default: null },
+      maxContent:       { type: Number, default: null },
+      // Legacy picture fields retained so older reports remain readable.
       fluency:    { type: Number, default: null },
       coherence:  { type: Number, default: null },
       vocabulary: { type: Number, default: null },

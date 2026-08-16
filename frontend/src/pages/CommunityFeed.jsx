@@ -161,10 +161,10 @@ function DetailedReport({ a }) {
 
   const improvementTips = [];
   if (bd) {
-    const lenGap = (bd.maxLength  || 33.33) - (bd.length    || 0);
-    const vocGap = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
-    const topGap = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
-    const comGap = (bd.maxComm    || 16.67) - (bd.comm      || 0);
+    const lenGap = isPictureBd ? (bd.maxDuration || 20) - (bd.duration || 0) : (bd.maxLength || 33.33) - (bd.length || 0);
+    const vocGap = isPictureBd ? (bd.maxVocabulary || 10) - (bd.vocabulary || 0) : (bd.maxVocab || 33.33) - (bd.vocabUsed || 0);
+    const topGap = isPictureBd ? (bd.maxContent || 40) - (bd.content || 0) : (bd.maxTopic || 16.67) - (bd.topic || 0);
+    const comGap = isPictureBd ? (bd.maxCommunication || 30) - (bd.communication || 0) : (bd.maxComm || 16.67) - (bd.comm || 0);
     if (lenGap > 2) improvementTips.push({ icon: "⏱️", label: "Record longer",          detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`,                      gap: lenGap });
     if (vocGap > 2) {
       const requiredVocabWords = bd.requiredVocabWords || 3;
@@ -216,13 +216,10 @@ function DetailedReport({ a }) {
           {bd && (
             <div style={{ padding: "0 1.1rem 0.85rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {(isPictureBd ? [
-                { label: "🗣️ Fluency",                 earned: bd.fluency     || 0, max: bd.maxFluency     || 25, color: "#60a5fa" },
-                { label: "🧠 Coherence",                earned: bd.coherence   || 0, max: bd.maxCoherence   || 20, color: "#a78bfa" },
-                { label: "📚 Vocabulary",               earned: bd.vocabulary  || 0, max: bd.maxVocabulary  || 10, color: "#34d399" },
-                { label: "✍️ Grammar",                   earned: bd.grammar     || 0, max: bd.maxGrammar     || 5,  color: "#f472b6" },
-                { label: "👀 Description & Relevance",  earned: bd.description || 0, max: bd.maxDescription || 13, color: "#fbbf24" },
-                { label: "💪 Confidence",               earned: bd.confidence  || 0, max: bd.maxConfidence  || 7,  color: "#fb923c" },
-                { label: "⏱️ Duration",                 earned: bd.duration    || 0, max: bd.maxDuration    || 20, color: "#94a3b8" },
+                { label: "🗣️ Communication & Fluency", earned: bd.communication || 0, max: bd.maxCommunication || 30, color: "#60a5fa" },
+                { label: "🧠 Content & Relevance",      earned: bd.content       || 0, max: bd.maxContent       || 40, color: "#a78bfa" },
+                { label: "📚 Vocabulary",               earned: bd.vocabulary    || 0, max: bd.maxVocabulary    || 10, color: "#34d399" },
+                { label: "⏱️ Duration",                 earned: bd.duration      || 0, max: bd.maxDuration      || 20, color: "#fbbf24" },
               ] : [
                 { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
                 { label: "📚 Vocab used", earned: bd.vocabUsed || 0, max: bd.maxVocab || 33.33, color: "#a78bfa" },

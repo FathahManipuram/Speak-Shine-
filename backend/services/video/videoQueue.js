@@ -296,7 +296,7 @@ async function processJob(job) {
       const status = await Status.findOne().lean();
       const todayVocab = status?.todayVocabulary || [];
       const taskType = reportMeta?.challengeType || (
-        status?.isPictureDescriptionDay ? "picture_description"
+        (status?.todayContentType === "picture_description" || status?.isPictureDescriptionDay) ? "picture_description"
         : status?.isStorySummaryDay ? "story_summary"
         : "topic"
       );
@@ -371,14 +371,11 @@ async function processJob(job) {
       result.analysis._compositeScore = score;
       result.analysis._scoreBreakdown = breakdown.isPictureDescription ? {
         ...breakdown,
-        // Picture Description custom max labels for UI
-        maxFluency:    25,
-        maxCoherence:  20,
-        maxVocabulary: 10,
-        maxGrammar:    5,
-        maxDescription: 13,
-        maxConfidence: 7,
-        maxDuration:   20,
+        // Picture Description category weights for UI
+        maxCommunication: 30,
+        maxContent:       40,
+        maxVocabulary:    10,
+        maxDuration:      20,
       } : {
         ...breakdown,
         maxLength:    33.33,
