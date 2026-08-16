@@ -3446,11 +3446,11 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
       // Picture Description tips
       const fluGap  = 25  - (bd.fluency      || 0);
       const cohGap  = 20  - (bd.coherence    || 0);
-      const vocGap  = 15  - (bd.vocabulary   || 0);
-      const graGap  = 15  - (bd.grammar      || 0);
-      const desGap  = 10  - (bd.description  || 0);
-      const conGap  = 10  - (bd.confidence   || 0);
-      const durGap  =  5  - (bd.duration     || 0);
+      const vocGap  = 10  - (bd.vocabulary   || 0);
+      const graGap  = 5  - (bd.grammar      || 0);
+      const desGap  = 13  - (bd.description  || 0);
+      const conGap  = 7  - (bd.confidence   || 0);
+      const durGap  = 20  - (bd.duration     || 0);
       if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
         improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout`, gap: fluGap });
       }
@@ -3628,11 +3628,11 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
               {(isPictureBd ? [
                 { label: `🗣️ Fluency`,              earned: bd.fluency     || 0, max: 25,  color: "#60a5fa" },
                 { label: `🧠 Coherence`,             earned: bd.coherence   || 0, max: 20,  color: "#a78bfa" },
-                { label: `📚 Vocabulary`,            earned: bd.vocabulary  || 0, max: 15,  color: "#34d399" },
-                { label: `✍️ Grammar`,               earned: bd.grammar     || 0, max: 15,  color: "#f472b6" },
-                { label: `👀 Description & Relevance`, earned: bd.description || 0, max: 10, color: "#fbbf24" },
-                { label: `💪 Confidence`,            earned: bd.confidence  || 0, max: 10,  color: "#fb923c" },
-                { label: `⏱️ Completion`,            earned: bd.duration    || 0, max: 5,   color: "#94a3b8" },
+                { label: `📚 Vocabulary`,            earned: bd.vocabulary  || 0, max: 10,  color: "#34d399" },
+                { label: `✍️ Grammar`,               earned: bd.grammar     || 0, max: 5,   color: "#f472b6" },
+                { label: `👀 Description & Relevance`, earned: bd.description || 0, max: 13, color: "#fbbf24" },
+                { label: `💪 Confidence`,            earned: bd.confidence  || 0, max: 7,   color: "#fb923c" },
+                { label: `⏱️ Duration`,              earned: bd.duration    || 0, max: 20,  color: "#94a3b8" },
               ] : [
                 { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
                 { label: "📚 Vocab used",    earned: bd.vocabUsed || 0, max: bd.maxVocab   || 33.33, color: "#a78bfa" },

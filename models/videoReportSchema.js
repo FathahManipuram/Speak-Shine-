@@ -95,7 +95,7 @@ const videoReportSchema = new mongoose.Schema({
       maxComm:      { type: Number, default: 16.67 },
       speechRatio:     { type: Number, default: null }, // % of time speaking
       speechMultiplier: { type: Number, default: null }, // 0–100 effective multiplier
-      // Picture-description scoring (25 + 20 + 15 + 15 + 10 + 10 + 5 = 100)
+      // Picture-description scoring (25 + 20 + 10 + 5 + 13 + 7 + 20 = 100)
       fluency:    { type: Number, default: null },
       coherence:  { type: Number, default: null },
       vocabulary: { type: Number, default: null },

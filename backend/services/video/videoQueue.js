@@ -374,11 +374,11 @@ async function processJob(job) {
         // Picture Description custom max labels for UI
         maxFluency:    25,
         maxCoherence:  20,
-        maxVocabulary: 15,
-        maxGrammar:    15,
-        maxDescription: 10,
-        maxConfidence: 10,
-        maxDuration:   5,
+        maxVocabulary: 10,
+        maxGrammar:    5,
+        maxDescription: 13,
+        maxConfidence: 7,
+        maxDuration:   20,
       } : {
         ...breakdown,
         maxLength:    33.33,

@@ -225,20 +225,20 @@ export function calculateCompositeScore({
 }) {
 
   // ── Picture Description: custom weighted formula ─────────────────────────
-  // Fluency 25 | Coherence 20 | Vocabulary 15 | Grammar 15 |
-  // Description Relevance 10 | Confidence 10 | Duration 5 = 100
+  // Fluency 25 | Coherence 20 | Vocabulary 10 | Grammar 5 |
+  // Description Relevance 13 | Confidence 7 | Duration 20 = 100
   if (isPictureDescription) {
     const statsObj = analysis._stats || analysis.stats || {};
     const rawSpeechRatio = statsObj?.rhythm?.speechRatio;
     const wpm = statsObj?.wpm;
 
-    // Duration score (max 5) — full marks at 60 s+, scaled linearly, no harsh penalty for shorter
+    // Duration score (max 20) — full marks at the configured full-score duration
     const maxDur = maxDurationSeconds || 180;
     const minDur = 45;
     const actualDur = Math.min(durationSeconds || 0, maxDur);
     const durationScore = actualDur >= minDur
-      ? Math.min(5, ((actualDur - minDur) / (maxDur - minDur)) * 5 + 2.5)
-      : (actualDur / minDur) * 2.5;
+      ? Math.min(20, ((actualDur - minDur) / (maxDur - minDur)) * 20 + 10)
+      : (actualDur / minDur) * 10;
 
     // Speech ratio multiplier for fluency & confidence
     let speechMult = 1;
@@ -263,10 +263,14 @@ export function calculateCompositeScore({
 
     const fluencyScore      = fluency    != null ? (fluency    / 10) * 25 * speechMult : 12.5 * speechMult;
     const coherenceScore    =                       (coherenceProxy / 10) * 20;
-    const vocabularyScore   = vocabulary != null ? (vocabulary / 10) * 15 : 7.5;
-    const grammarScore      = grammar    != null ? (grammar    / 10) * 15 : 7.5;
-    const descScore         =                       (descRelevance / 10) * 10;
-    const confidenceScore   = confidence != null ? (confidence / 10) * 10 * speechMult : 5 * speechMult;
+    // Picture vocabulary is a challenge: using the configured number of
+    // target words earns full credit (e.g. 1 of 3 when requiredCount = 1).
+    const requiredTargetWords = Math.max(1, Number(requiredVocabWords) || 1);
+    const usedTargetWords = Array.isArray(vocabularyUsed) ? vocabularyUsed.length : 0;
+    const vocabularyScore   = Math.min(10, (usedTargetWords / requiredTargetWords) * 10);
+    const grammarScore      = grammar    != null ? (grammar    / 10) * 5 : 2.5;
+    const descScore         =                       (descRelevance / 10) * 13;
+    const confidenceScore   = confidence != null ? (confidence / 10) * 7 * speechMult : 3.5 * speechMult;
 
     const total100 = Math.min(100, Math.round(
       (fluencyScore + coherenceScore + vocabularyScore + grammarScore + descScore + confidenceScore + durationScore) * 100
