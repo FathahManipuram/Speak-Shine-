@@ -44,6 +44,16 @@ const MIME_BY_EXTENSION = Object.entries(VIDEO_EXTENSIONS_BY_MIME).reduce((acc, 
 
 const MAX_ANALYSIS_MB = 200; // Increased limit for larger videos (Railway has enough RAM)
 
+function isActiveStoryTask(status) {
+  return status?.todayContentType === "story_audio"
+    || (status?.isStorySummaryDay && status?.todayContentType !== "picture_description");
+}
+
+function isActivePictureTask(status) {
+  return status?.todayContentType === "picture_description"
+    || (status?.isPictureDescriptionDay && status?.todayContentType !== "story_audio");
+}
+
 /**
  * Sanitize filename to prevent path traversal
  */
@@ -533,8 +543,8 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
       isMonthlyReflection: status?.isMonthlyReflectionDay || false,
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
-      isStorySummary: status?.isStorySummaryDay || false,
-      isPictureDescription: status?.isPictureDescriptionDay || false,
+      isStorySummary: isActiveStoryTask(status),
+      isPictureDescription: isActivePictureTask(status),
     };
 
     const gate = evaluateSubmitGate({
@@ -597,8 +607,8 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
     isMonthlyReflection: reportStatus?.isMonthlyReflectionDay || false,
     isMonthlyGoals: reportStatus?.isMonthlyGoalsDay || false,
     isWeeklyReflection: reportStatus?.isWeeklyReflectionDay || false,
-    isStorySummary: reportStatus?.isStorySummaryDay || false,
-    isPictureDescription: reportStatus?.isPictureDescriptionDay || false,
+    isStorySummary: isActiveStoryTask(reportStatus),
+    isPictureDescription: isActivePictureTask(reportStatus),
   };
   const allowPrivateVideos = reportStatus?.allowPrivateVideos ?? true;
   const reportData = {

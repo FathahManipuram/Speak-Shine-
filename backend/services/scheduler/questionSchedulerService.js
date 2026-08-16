@@ -222,6 +222,7 @@ async function publishStoryQuestion(storyQuestion) {
     $set: {
       questionSentToday: true,
       isStorySummaryDay: true,
+      isPictureDescriptionDay: false,
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
       isWeeklyReflectionDay: false,
@@ -232,6 +233,13 @@ async function publishStoryQuestion(storyQuestion) {
       todayAudioUrl: storyQuestion.audioUrl || null,
       todayStoryTranscript: storyQuestion.storyTranscript || null,
       todaySummaryGuide: storyQuestion.summaryGuide || null,
+      todayImageUrl: null,
+      todayImageSource: null,
+      todayImagePageUrl: null,
+      todayImagePhotographer: null,
+      todayImagePhotographerUrl: null,
+      todayImageSearchQuery: null,
+      todayImageInstructions: null,
       todayPosterImage: null,
       todayVocabulary: [],
     }

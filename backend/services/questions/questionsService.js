@@ -4,6 +4,7 @@
  */
 
 import Question from "../../../models/questionSchema.js";
+import Status from "../../../models/statusSchema.js";
 
 /**
  * Get a random question for practice
@@ -172,8 +173,9 @@ export async function listManualQuestions(setupType, upcomingOnly = false) {
   }
   
   if (upcomingOnly) {
-    filter.scheduledFor = { $gte: new Date() };
-    filter.isUsed = false;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    filter.scheduledFor = { $gte: startOfToday };
   }
 
   const questions = await Question.find(filter)
@@ -202,9 +204,46 @@ export async function deleteManualQuestion(questionId, userPhone) {
   }
 
   if (question.isUsed) {
-    const error = new Error("Cannot delete a question that has already been used");
-    error.statusCode = 400;
-    throw error;
+    const status = await Status.findOne().lean();
+    const isActiveType = question.setupType === "story_summary"
+      ? status?.todayContentType === "story_audio"
+      : question.setupType === "picture_description"
+      ? status?.todayContentType === "picture_description"
+      : question.setupType === "weekly_reflection"
+      ? status?.isWeeklyReflectionDay === true
+      : question.setupType === "monthly_reflection"
+      ? status?.isMonthlyReflectionDay === true
+      : question.setupType === "monthly_goals"
+      ? status?.isMonthlyGoalsDay === true
+      : false;
+    const isActive = isActiveType
+      && status?.todayTopic === question.topic
+      && status?.todayQuestion === question.question;
+
+    if (isActive) {
+      await Status.updateOne({}, {
+        $set: {
+          questionSentToday: false,
+          todayContentType: "question",
+          todayTopic: null,
+          todayQuestion: null,
+          todayCategory: null,
+          todayAudioUrl: null,
+          todayStoryTranscript: null,
+          todaySummaryGuide: null,
+          todayImageUrl: null,
+          todayImageSource: null,
+          todayImagePageUrl: null,
+          todayImagePhotographer: null,
+          todayImagePhotographerUrl: null,
+          todayImageSearchQuery: null,
+          todayImageInstructions: null,
+          isStorySummaryDay: false,
+          isPictureDescriptionDay: false,
+          todayVocabulary: [],
+        }
+      }, { upsert: true });
+    }
   }
 
   await Question.findByIdAndDelete(questionId);

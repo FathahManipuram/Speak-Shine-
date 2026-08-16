@@ -15,6 +15,10 @@ import { getDurationLimits } from "../video/submitGate.js";
 import { serializeStreakBadges } from "../../utils/streakBadges.js";
 
 const withBadgeData = (user, data = {}) => ({ ...data, ...serializeStreakBadges(user) });
+const activeStoryTask = (status) => status?.todayContentType === "story_audio"
+  || (status?.isStorySummaryDay && status?.todayContentType !== "picture_description");
+const activePictureTask = (status) => status?.todayContentType === "picture_description"
+  || (status?.isPictureDescriptionDay && status?.todayContentType !== "story_audio");
 
 /**
  * Get poster image - use bot's stored PNG if available, else generate SVG fallback
@@ -61,8 +65,8 @@ export async function getTodayOverview() {
       category: status?.todayCategory || null,
       contentType: status?.todayContentType || "question",
       audioUrl: status?.todayAudioUrl || null,
-      isStorySummary: status?.isStorySummaryDay || false,
-      isPictureDescription: status?.isPictureDescriptionDay || false,
+      isStorySummary: activeStoryTask(status),
+      isPictureDescription: activePictureTask(status),
       imageUrl:          status?.todayImageUrl || null,
       imageSource:       status?.todayImageSource || null,
       imagePageUrl:      status?.todayImagePageUrl || null,
@@ -268,8 +272,8 @@ export async function getUserProfile(phone) {
       isMonthlyReflection: status?.isMonthlyReflectionDay || false,
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
       isWeeklyReflection: status?.isWeeklyReflectionDay || false,
-      isStorySummary: status?.isStorySummaryDay || false,
-      isPictureDescription: status?.isPictureDescriptionDay || false,
+      isStorySummary: activeStoryTask(status),
+      isPictureDescription: activePictureTask(status),
       // Picture description image data (only populated on picture description days)
       imageUrl:             status?.todayImageUrl || null,
       imageSource:          status?.todayImageSource || null,
@@ -280,14 +284,14 @@ export async function getUserProfile(phone) {
       imageInstructions:    status?.todayImageInstructions || null,
       vocabulary: await vocabularyPromise,
       allowPrivateVideos: status?.allowPrivateVideos ?? true,
-      vocabWordCount: status?.isPictureDescriptionDay
+      vocabWordCount: activePictureTask(status)
         ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
-        : status?.isStorySummaryDay
+        : activeStoryTask(status)
         ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
         : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5),
-      vocabRequiredCount: status?.isPictureDescriptionDay
+      vocabRequiredCount: activePictureTask(status)
         ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
-        : status?.isStorySummaryDay
+        : activeStoryTask(status)
         ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
         : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3),
       vocabNormalWordCount: status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5,
@@ -300,8 +304,8 @@ export async function getUserProfile(phone) {
         isMonthlyReflection: status?.isMonthlyReflectionDay || false,
         isMonthlyGoals: status?.isMonthlyGoalsDay || false,
         isWeeklyReflection: status?.isWeeklyReflectionDay || false,
-        isStorySummary: status?.isStorySummaryDay || false,
-        isPictureDescription: status?.isPictureDescriptionDay || false,
+        isStorySummary: activeStoryTask(status),
+        isPictureDescription: activePictureTask(status),
       }, status || {}),
     },
     dailyReport: showReport ? dailyReport : null,
