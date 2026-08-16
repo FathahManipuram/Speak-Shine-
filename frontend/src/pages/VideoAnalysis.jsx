@@ -745,7 +745,11 @@ export default function VideoAnalysis() {
             )}
             {report.status === "completed" && report.analysis && (
               <ReportView 
-                analysis={report.analysis} 
+                analysis={{
+                  ...report.analysis,
+                  challengeType: report.analysis?.challengeType
+                    || report.challengeType,
+                }}
                 expiresAt={report.expiresAt} 
                 formatTimeRemaining={formatTimeRemaining} 
                 videoUrl={report.videoUrl} 
@@ -3351,27 +3355,50 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
   // ── Today's composite score breakdown ────────────────────────────────────
   const bd = a.scoreBreakdown || a._scoreBreakdown || null;
   const cs = a.compositeScore ?? a._compositeScore ?? null;
+  // Detect picture description from challengeType (new reports) OR bd flag (processed after scoring change)
+  const isPictureBd = a.challengeType === "picture_description" || bd?.isPictureDescription === true;
 
   // Generate improvement tips based on what's missing from full score
   const improvementTips = [];
   if (bd) {
-    const lenGap  = (bd.maxLength  || 33.33) - (bd.length   || 0);
-    const vocGap  = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
-    const topGap  = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
-    const comGap  = (bd.maxComm    || 16.67) - (bd.comm      || 0);
-    // Show speech ratio tip if multiplier was low (silent/quiet video)
-    if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
-      improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Your speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout the video for full duration points`, gap: lenGap });
-    } else if (lenGap > 2) {
-      improvementTips.push({ icon: "⏱️", label: "Record longer", detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`, gap: lenGap });
+    if (isPictureBd) {
+      // Picture Description tips
+      const fluGap  = 25  - (bd.fluency      || 0);
+      const cohGap  = 20  - (bd.coherence    || 0);
+      const vocGap  = 15  - (bd.vocabulary   || 0);
+      const graGap  = 15  - (bd.grammar      || 0);
+      const desGap  = 10  - (bd.description  || 0);
+      const conGap  = 10  - (bd.confidence   || 0);
+      const durGap  =  5  - (bd.duration     || 0);
+      if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
+        improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout`, gap: fluGap });
+      }
+      if (fluGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve fluency",    detail: `+${fluGap.toFixed(1)} pts possible — smoother continuous speech`, gap: fluGap });
+      if (cohGap > 2)  improvementTips.push({ icon: "🧠", label: "Better coherence",   detail: `+${cohGap.toFixed(1)} pts possible — connect your ideas more logically`, gap: cohGap });
+      if (vocGap > 2)  improvementTips.push({ icon: "📚", label: "Richer vocabulary",  detail: `+${vocGap.toFixed(1)} pts possible — use more varied and precise words`, gap: vocGap });
+      if (graGap > 2)  improvementTips.push({ icon: "✍️", label: "Fix grammar",        detail: `+${graGap.toFixed(1)} pts possible — watch tenses and sentence structure`, gap: graGap });
+      if (desGap > 2)  improvementTips.push({ icon: "👀", label: "Describe the image", detail: `+${desGap.toFixed(1)} pts possible — mention more people, objects, and details`, gap: desGap });
+      if (conGap > 2)  improvementTips.push({ icon: "💪", label: "Speak with confidence", detail: `+${conGap.toFixed(1)} pts possible — reduce hesitation, be more assertive`, gap: conGap });
+      if (durGap > 0.5) improvementTips.push({ icon: "⏱️", label: "Speak longer",      detail: `+${durGap.toFixed(1)} pts possible — aim for a more complete response`, gap: durGap });
+    } else {
+      // Normal / standard tips
+      const lenGap  = (bd.maxLength  || 33.33) - (bd.length   || 0);
+      const vocGap  = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
+      const topGap  = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
+      const comGap  = (bd.maxComm    || 16.67) - (bd.comm      || 0);
+      if (bd.speechMultiplier != null && bd.speechMultiplier < 85) {
+        improvementTips.push({ icon: "🎙️", label: "Speak more actively", detail: `Your speech ratio was ${bd.speechRatio ?? "?"}% — keep talking throughout the video for full duration points`, gap: lenGap });
+      } else if (lenGap > 2) {
+        improvementTips.push({ icon: "⏱️", label: "Record longer", detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`, gap: lenGap });
+      }
+      if (vocGap > 2) {
+        const requiredVocabWords = bd.requiredVocabWords || 3;
+        const totalVocabWords = bd.totalVocabWords || 5;
+        improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`, gap: vocGap });
+      }
+      if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`, gap: topGap });
+      if (comGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve communication", detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`, gap: comGap });
     }
-    if (vocGap > 2) {
-      const requiredVocabWords = bd.requiredVocabWords || 3;
-      const totalVocabWords = bd.totalVocabWords || 5;
-      improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`, gap: vocGap });
-    }
-    if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`, gap: topGap });
-    if (comGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve communication", detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`, gap: comGap });
     improvementTips.sort((x, y) => y.gap - x.gap);
   }
 
@@ -3517,12 +3544,20 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
           {/* Breakdown bars */}
           {bd && (
             <div style={{ padding: "0 1.25rem 1rem", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-              {[
+              {(isPictureBd ? [
+                { label: `🗣️ Fluency`,              earned: bd.fluency     || 0, max: 25,  color: "#60a5fa" },
+                { label: `🧠 Coherence`,             earned: bd.coherence   || 0, max: 20,  color: "#a78bfa" },
+                { label: `📚 Vocabulary`,            earned: bd.vocabulary  || 0, max: 15,  color: "#34d399" },
+                { label: `✍️ Grammar`,               earned: bd.grammar     || 0, max: 15,  color: "#f472b6" },
+                { label: `👀 Description & Relevance`, earned: bd.description || 0, max: 10, color: "#fbbf24" },
+                { label: `💪 Confidence`,            earned: bd.confidence  || 0, max: 10,  color: "#fb923c" },
+                { label: `⏱️ Completion`,            earned: bd.duration    || 0, max: 5,   color: "#94a3b8" },
+              ] : [
                 { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
                 { label: "📚 Vocab used",    earned: bd.vocabUsed || 0, max: bd.maxVocab   || 33.33, color: "#a78bfa" },
                 ...(!bd.isSpecialDay ? [{ label: "🎯 Topic relevance", earned: bd.topic || 0, max: bd.maxTopic || 16.67, color: "#34d399" }] : []),
                 { label: "🗣️ Communication", earned: bd.comm     || 0, max: bd.maxComm    || 16.67, color: "#fbbf24" },
-              ].map(({ label, earned, max, color }) => (
+              ]).map(({ label, earned, max, color }) => (
                 <div key={label}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "0.2rem" }}>
                     <span style={{ color: "var(--muted)" }}>{label}</span>

@@ -59,6 +59,8 @@ export default function AdminDashboard() {
     durationMonthlyReflectionFull: 420,
     durationMonthlyGoalsMax: 600,
     durationMonthlyGoalsFull: 420,
+    durationPictureMax: 180,
+    durationPictureFull: 180,
   });
   const [savingSection, setSavingSection] = useState(null); // null, "schedule", "vocab", "duration"
   const [resetting, setResetting] = useState("");
@@ -227,6 +229,8 @@ export default function AdminDashboard() {
         durationMonthlyReflectionFull: s.data.durationMonthlyReflectionFull ?? 420,
         durationMonthlyGoalsMax: s.data.durationMonthlyGoalsMax ?? 600,
         durationMonthlyGoalsFull: s.data.durationMonthlyGoalsFull ?? 420,
+        durationPictureMax:  s.data.durationPictureMax  ?? 180,
+        durationPictureFull: s.data.durationPictureFull ?? 180,
       });
       setDataLoaded(prev => ({ ...prev, settings: true }));
     } catch (err) {
@@ -413,6 +417,8 @@ export default function AdminDashboard() {
         durationMonthlyReflectionFull: fresh.data.durationMonthlyReflectionFull ?? 420,
         durationMonthlyGoalsMax: fresh.data.durationMonthlyGoalsMax ?? 600,
         durationMonthlyGoalsFull: fresh.data.durationMonthlyGoalsFull ?? 420,
+        durationPictureMax:  fresh.data.durationPictureMax  ?? 180,
+        durationPictureFull: fresh.data.durationPictureFull ?? 180,
       }));
       msg("Settings saved!");
     } catch (err) {
@@ -2217,13 +2223,48 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* 6. Picture Description */}
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.75rem 0", color: "#90cdf4", fontSize: "0.9rem" }}>🖼️ Picture Description Day</h4>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationPictureFull}
+                        onChange={e => setSettings(s => ({ ...s, durationPictureFull: parseInt(e.target.value) || 180 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationPictureFull / 60)} min
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={60} max={1200}
+                        value={settings.durationPictureMax}
+                        onChange={e => setSettings(s => ({ ...s, durationPictureMax: parseInt(e.target.value) || 180 }))}
+                        required
+                        style={{ textAlign: "center", padding: "0.4rem" }}
+                      />
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                        ≈ {Math.round(settings.durationPictureMax / 60)} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <button type="submit" className="btn-primary" disabled={savingSection !== null}>
                   {savingSection === "duration" ? "Saving…" : "💾 Save Duration Settings"}
                 </button>
               </form>
             </div>
-
-            {/* Reset Controls */}
             <div className="card" style={{ margin: 0 }}>
               <div className="section-title">🔄 Reset Controls</div>
               <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>

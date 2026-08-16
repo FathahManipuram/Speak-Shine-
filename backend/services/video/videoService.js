@@ -15,6 +15,7 @@ import { getVideoDuration } from "../ai/videoProcessor.js";
 import { scanFile } from "../ai/virusScanner.js";
 import { validateVideoCodecs } from "../ai/videoValidator.js";
 import { moderateVideo } from "../ai/contentModerator.js";
+import { calculateCompositeScore } from "./submitGate.js";
 import { checkSecurityCache, saveSecurityCache } from "../ai/securityCache.js";
 import { fileTypeFromBuffer, fileTypeFromFile } from "file-type";
 import fs from "fs";
@@ -591,12 +592,26 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
   );
 
   // Create report with recorded duration if provided
-  const allowPrivateVideos = (await Status.findOne().lean())?.allowPrivateVideos ?? true;
+  const reportStatus = await Status.findOne().lean();
+  const reportGateFlags = {
+    isMonthlyReflection: reportStatus?.isMonthlyReflectionDay || false,
+    isMonthlyGoals: reportStatus?.isMonthlyGoalsDay || false,
+    isWeeklyReflection: reportStatus?.isWeeklyReflectionDay || false,
+    isStorySummary: reportStatus?.isStorySummaryDay || false,
+    isPictureDescription: reportStatus?.isPictureDescriptionDay || false,
+  };
+  const allowPrivateVideos = reportStatus?.allowPrivateVideos ?? true;
   const reportData = {
-    userId,
-    phone,
-    videoFileName: path.basename(key),
-    status: "processing",
+      userId,
+      phone,
+      videoFileName: path.basename(key),
+      challengeType: reportGateFlags.isPictureDescription ? "picture_description"
+        : reportGateFlags.isStorySummary ? "story_summary"
+        : reportGateFlags.isWeeklyReflection ? "weekly_reflection"
+        : reportGateFlags.isMonthlyReflection ? "monthly_reflection"
+        : reportGateFlags.isMonthlyGoals ? "monthly_goals"
+        : "topic",
+      status: "processing",
     videoUrl: publicUrl,
     videoKey: key,
     // Never trust the client with visibility. Admins can force all new videos public.
@@ -876,6 +891,12 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       userId,
       phone,
       videoFileName: safeFilename,
+      challengeType: isPictureDescription ? "picture_description"
+        : isStorySummary ? "story_summary"
+        : isWeeklyReflection ? "weekly_reflection"
+        : isMonthlyReflection ? "monthly_reflection"
+        : isMonthlyGoals ? "monthly_goals"
+        : "topic",
       videoDuration: duration,
       status: "processing",
       videoUrl,
@@ -985,6 +1006,34 @@ export async function getVideoReport(reportId, authId) {
     }
   }
 
+  let reportAnalysis = report.status === "completed" ? report.analysis : null;
+  let challengeType = report.challengeType || reportAnalysis?.challengeType || null;
+
+  // Compatibility for reports created before challengeType/picture breakdown
+  // fields were persisted. These reports can still be identified while the
+  // current picture-description task is active, and their breakdown can be
+  // reconstructed from the saved analysis without changing their score.
+  if (!challengeType && reportAnalysis && (await Status.findOne().lean())?.isPictureDescriptionDay) {
+    const status = await Status.findOne().lean();
+    const source = reportAnalysis.toObject ? reportAnalysis.toObject() : { ...reportAnalysis };
+    const { breakdown } = calculateCompositeScore({
+      durationSeconds: report.videoDuration || 0,
+      maxDurationSeconds: status?.durationPictureFull ?? 180,
+      vocabularyUsed: source.vocabularyUsed || [],
+      totalVocabWords: status?.todayVocabulary?.length || status?.vocabWordCount || 5,
+      requiredVocabWords: Math.min(status?.vocabRequiredCount ?? 3, status?.todayVocabulary?.length || status?.vocabWordCount || 5),
+      topicRelevance: source.topicRelevance ?? null,
+      analysis: source,
+      isPictureDescription: true,
+    });
+    reportAnalysis = {
+      ...source,
+      scoreBreakdown: breakdown,
+      challengeType: "picture_description",
+    };
+    challengeType = "picture_description";
+  }
+
   return {
     reportId: report._id,
     status: report.status,
@@ -992,9 +1041,10 @@ export async function getVideoReport(reportId, authId) {
     expiresAt: report.expiresAt,
     videoFileName: report.videoFileName,
     videoDuration: report.videoDuration,
+    challengeType,
     videoUrl: videoUrl || null,
     isPublic: report.isPublic || false,
-    analysis: report.status === "completed" ? report.analysis : null,
+    analysis: reportAnalysis,
     errorMessage: report.errorMessage,
   };
 }

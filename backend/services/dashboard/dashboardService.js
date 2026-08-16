@@ -432,7 +432,8 @@ export async function updateSettings(
   durationMonthlyReflectionMax, durationMonthlyReflectionFull,
   durationMonthlyGoalsMax, durationMonthlyGoalsFull,
   allowPrivateVideos,
-  pictureDescriptionDay
+  pictureDescriptionDay,
+  durationPictureMax, durationPictureFull
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -563,6 +564,8 @@ export async function updateSettings(
     { name: "durationMonthlyReflectionFull", label: "Monthly Reflection Full Score Duration" },
     { name: "durationMonthlyGoalsMax", label: "Monthly Goals Max Duration" },
     { name: "durationMonthlyGoalsFull", label: "Monthly Goals Full Score Duration" },
+    { name: "durationPictureMax", label: "Picture Description Max Duration" },
+    { name: "durationPictureFull", label: "Picture Description Full Score Duration" },
   ];
 
   const durationArgs = {
@@ -571,6 +574,7 @@ export async function updateSettings(
     durationWeeklyMax, durationWeeklyFull,
     durationMonthlyReflectionMax, durationMonthlyReflectionFull,
     durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+    durationPictureMax, durationPictureFull,
   };
 
   for (const { name, label } of durationFields) {
@@ -605,6 +609,7 @@ export async function updateSettings(
   checkRelation("Weekly Reflection", "durationWeeklyMax", "durationWeeklyFull", 420, 300);
   checkRelation("Monthly Reflection", "durationMonthlyReflectionMax", "durationMonthlyReflectionFull", 420, 420);
   checkRelation("Monthly Goals", "durationMonthlyGoalsMax", "durationMonthlyGoalsFull", 600, 420);
+  checkRelation("Picture Description", "durationPictureMax", "durationPictureFull", 180, 180);
 
   if (allowPrivateVideos !== undefined) {
     updates.allowPrivateVideos = allowPrivateVideos === true || allowPrivateVideos === "true";
