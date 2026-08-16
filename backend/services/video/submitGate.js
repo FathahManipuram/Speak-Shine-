@@ -224,21 +224,29 @@ export function calculateCompositeScore({
   isPictureDescription = false,
 }) {
 
-  // ── Picture Description: custom weighted formula ─────────────────────────
-  // Fluency 25 | Coherence 20 | Vocabulary 10 | Grammar 5 |
-  // Description Relevance 13 | Confidence 7 | Duration 20 = 100
+  // ── Picture Description: four-category weighted formula ──────────────────
+  // Communication & Fluency 30 | Content & Relevance 40 |
+  // Vocabulary 10 | Duration 20 = 100.
+  // Keep this branch isolated so TOPIC/STORY_SUMMARY scoring below is unchanged.
   if (isPictureDescription) {
     const statsObj = analysis._stats || analysis.stats || {};
     const rawSpeechRatio = statsObj?.rhythm?.speechRatio;
     const wpm = statsObj?.wpm;
+    const paceConsistency = statsObj?.rhythm?.paceConsistency;
+    const fillerTotal = Number(statsObj?.fillerTotal) || 0;
+    const pauseCount = Number(statsObj?.pauses) || 0;
+    const wordCount = Number(statsObj?.wordCount) || Math.round((Number(wpm) || 0) * (Number(durationSeconds) || 0) / 60);
 
-    // Duration score (max 20) — full marks at the configured full-score duration
+    // Duration measures a reasonable speaking attempt, not talking until the
+    // maximum. Picture tasks get full duration credit at 60 seconds (or the
+    // configured maximum if it is shorter).
     const maxDur = maxDurationSeconds || 180;
-    const minDur = 45;
+    const minDur = 30;
+    const reasonableDur = Math.min(maxDur, 60);
     const actualDur = Math.min(durationSeconds || 0, maxDur);
-    const durationScore = actualDur >= minDur
-      ? Math.min(20, ((actualDur - minDur) / (maxDur - minDur)) * 20 + 10)
-      : (actualDur / minDur) * 10;
+    const durationScore = actualDur >= reasonableDur
+      ? 20
+      : Math.max(0, (actualDur / reasonableDur) * 20);
 
     // Speech ratio multiplier for fluency & confidence
     let speechMult = 1;
@@ -251,41 +259,63 @@ export function calculateCompositeScore({
 
     const get = (field) => (typeof analysis[field] === "number" && !Number.isNaN(analysis[field]) ? analysis[field] : null);
 
-    const fluency    = get("fluency");
-    const grammar    = get("grammar");
-    const confidence = get("confidence");
-    const vocabulary = get("vocabulary");
-    // topicRelevance is used as "Description & Relevance"
-    const descRelevance = typeof topicRelevance === "number" ? topicRelevance : 5; // default mid if missing
+    const fluency       = get("fluency") ?? 5;
+    const grammar       = get("grammar") ?? 5;
+    const confidence    = get("confidence") ?? 5;
+    const vocabulary    = get("vocabulary") ?? 5;
+    const coherence     = get("coherence") ?? (typeof topicRelevance === "number" ? topicRelevance : 5);
+    const contentRel    = typeof topicRelevance === "number" ? topicRelevance : 5;
+    const rhythmScore = typeof paceConsistency === "number" ? paceConsistency : fluency;
+    const minutes = Math.max((Number(durationSeconds) || 0) / 60, 1 / 60);
+    const pausesPerMinute = pauseCount / minutes;
+    const fillerRate = wordCount > 0 ? (fillerTotal / wordCount) * 100 : 0;
+    const objectiveFlow = speechMult * 10;
+    const pauseScore = pausesPerMinute <= 1 ? 10 : pausesPerMinute <= 3 ? 8 : pausesPerMinute <= 5 ? 6 : pausesPerMinute <= 8 ? 4 : 2;
+    const fillerScore = fillerRate <= 1 ? 10 : fillerRate <= 3 ? 8 : fillerRate <= 6 ? 6 : fillerRate <= 10 ? 4 : 2;
+    const paceScore = typeof wpm !== "number" || wpm <= 0
+      ? 5
+      : wpm >= 90 && wpm <= 170 ? 10
+      : wpm >= 70 && wpm <= 190 ? 8
+      : wpm >= 50 && wpm <= 220 ? 6
+      : 4;
+    const objectiveRhythm = (objectiveFlow * 0.45) + (paceScore * 0.2) + (pauseScore * 0.2) + (fillerScore * 0.15);
+    const languageScore = (fluency * 0.4) + (confidence * 0.3) + (grammar * 0.2) + (rhythmScore * 0.1);
 
-    // Coherence — no direct AI field yet; proxy from overallPresence or commAvg
-    const coherenceProxy = get("overallPresence") ?? ((fluency ?? 5) + (vocabulary ?? 5)) / 2;
-
-    const fluencyScore      = fluency    != null ? (fluency    / 10) * 25 * speechMult : 12.5 * speechMult;
-    const coherenceScore    =                       (coherenceProxy / 10) * 20;
-    // Picture vocabulary is a challenge: using the configured number of
-    // target words earns full credit (e.g. 1 of 3 when requiredCount = 1).
-    const requiredTargetWords = Math.max(1, Number(requiredVocabWords) || 1);
+    // Communication is primarily grounded in measured speech behaviour from
+    // transcription/timestamps. Grammar and LLM judgement remain useful but
+    // cannot dominate a score when transcription is imperfect.
+    const communicationBase = objectiveRhythm * 0.8 + languageScore * 0.2;
+    const communicationScore = (communicationBase / 10) * 30 * speechMult;
+    const contentBase        = coherence * 0.60 + contentRel * 0.40;
+    const contentScore       = (contentBase / 10) * 40;
+    // Picture vocabulary is challenge-based: use the transcript-matched
+    // words, and award the full 10 points once the configured required count
+    // is met. This makes a required count of 1 behave as intended.
+    const configuredTotalWords = Number(totalVocabWords) || 0;
+    const requiredTargetWords = Math.max(1, Math.min(
+      Number(requiredVocabWords) || 1,
+      configuredTotalWords || Number(requiredVocabWords) || 1,
+    ));
     const usedTargetWords = Array.isArray(vocabularyUsed) ? vocabularyUsed.length : 0;
-    const vocabularyScore   = Math.min(10, (usedTargetWords / requiredTargetWords) * 10);
-    const grammarScore      = grammar    != null ? (grammar    / 10) * 5 : 2.5;
-    const descScore         =                       (descRelevance / 10) * 13;
-    const confidenceScore   = confidence != null ? (confidence / 10) * 7 * speechMult : 3.5 * speechMult;
+    const vocabularyScore = configuredTotalWords > 0
+      ? Math.min(10, (usedTargetWords / requiredTargetWords) * 10)
+      : (vocabulary / 10) * 10;
 
     const total100 = Math.min(100, Math.round(
-      (fluencyScore + coherenceScore + vocabularyScore + grammarScore + descScore + confidenceScore + durationScore) * 100
+      (communicationScore + contentScore + vocabularyScore + durationScore) * 100
     ) / 100);
 
     return {
       score: total100,
       breakdown: {
-        fluency:         Math.round(fluencyScore    * 100) / 100,
-        coherence:       Math.round(coherenceScore  * 100) / 100,
-        vocabulary:      Math.round(vocabularyScore * 100) / 100,
-        grammar:         Math.round(grammarScore    * 100) / 100,
-        description:     Math.round(descScore       * 100) / 100,
-        confidence:      Math.round(confidenceScore * 100) / 100,
-        duration:        Math.round(durationScore   * 100) / 100,
+        communication:   Math.round(communicationScore * 100) / 100,
+        content:         Math.round(contentScore       * 100) / 100,
+        vocabulary:      Math.round(vocabularyScore    * 100) / 100,
+        duration:        Math.round(durationScore       * 100) / 100,
+        maxCommunication: 30,
+        maxContent:       40,
+        maxVocabulary:    10,
+        maxDuration:      20,
         speechMultiplier: Math.round(speechMult * 100),
         isPictureDescription: true,
         isSpecialDay: false,

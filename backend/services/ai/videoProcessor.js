@@ -56,7 +56,7 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
       questionText = [questionText, storyContext].filter(Boolean).join("\n\n");
     }
 
-    if (status?.isPictureDescriptionDay) {
+    if (status?.todayContentType === "picture_description" || status?.isPictureDescriptionDay) {
       const pictureContext = [
         "This is a Picture Description task. The student was shown an image and asked to describe it in detail.",
         "Evaluate how well the speaker described: the people, objects, setting, mood, and actions visible in the image.",
@@ -153,7 +153,8 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
             questionText,
             t.pronunciationIssues || [],
             t.rhythm || null,
-            status?.isPictureDescriptionDay ? "picture_description" : null
+            (status?.todayContentType === "picture_description" || status?.isPictureDescriptionDay)
+              ? "picture_description" : null
           ),
           Number(process.env.SPEECH_TIMEOUT_MS) || SPEECH_TIMEOUT_MS,
           "speech"
@@ -220,6 +221,7 @@ function buildStructuredAnalysis(speechResult, visual, qualityWarning, transcrip
     grammar:        speechResult.grammar,
     confidence:     speechResult.confidence,
     vocabulary:     speechResult.vocabulary,
+    coherence:      speechResult.coherence ?? null,
     topicRelevance: speechResult.topicRelevance ?? null,
 
     // Visual scores
@@ -255,6 +257,7 @@ function buildStructuredAnalysis(speechResult, visual, qualityWarning, transcrip
       fillerWords: s.fillerWords ?? {},
       fillerTotal: s.fillerTotal ?? 0,
       pauses:      s.pauses ?? 0,
+      wordCount:   s.wordCount ?? 0,
       cefrLevel:   s.cefrLevel ?? null,
       rhythm:      s.rhythm ?? null,
     },

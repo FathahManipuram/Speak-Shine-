@@ -1016,33 +1016,7 @@ export async function getVideoReport(reportId, authId) {
     }
   }
 
-  let reportAnalysis = report.status === "completed" ? report.analysis : null;
-  let challengeType = report.challengeType || reportAnalysis?.challengeType || null;
-
-  // Compatibility for reports created before challengeType/picture breakdown
-  // fields were persisted. These reports can still be identified while the
-  // current picture-description task is active, and their breakdown can be
-  // reconstructed from the saved analysis without changing their score.
-  if (!challengeType && reportAnalysis && (await Status.findOne().lean())?.isPictureDescriptionDay) {
-    const status = await Status.findOne().lean();
-    const source = reportAnalysis.toObject ? reportAnalysis.toObject() : { ...reportAnalysis };
-    const { breakdown } = calculateCompositeScore({
-      durationSeconds: report.videoDuration || 0,
-      maxDurationSeconds: status?.durationPictureFull ?? 180,
-      vocabularyUsed: source.vocabularyUsed || [],
-      totalVocabWords: status?.todayVocabulary?.length || status?.vocabWordCount || 5,
-      requiredVocabWords: Math.min(status?.vocabRequiredCount ?? 3, status?.todayVocabulary?.length || status?.vocabWordCount || 5),
-      topicRelevance: source.topicRelevance ?? null,
-      analysis: source,
-      isPictureDescription: true,
-    });
-    reportAnalysis = {
-      ...source,
-      scoreBreakdown: breakdown,
-      challengeType: "picture_description",
-    };
-    challengeType = "picture_description";
-  }
+  const { analysis: reportAnalysis, challengeType } = await prepareReportAnalysis(report);
 
   return {
     reportId: report._id,
@@ -1057,6 +1031,45 @@ export async function getVideoReport(reportId, authId) {
     analysis: reportAnalysis,
     errorMessage: report.errorMessage,
   };
+}
+
+/**
+ * Keep every report surface on the same task type and composite breakdown.
+ * In particular, older picture-task reports may not have persisted these
+ * fields inside `analysis`, even though the report endpoint can reconstruct
+ * them for the Video Analysis page.
+ */
+async function prepareReportAnalysis(report) {
+  let analysis = report.status === "completed" ? report.analysis : null;
+  let challengeType = report.challengeType || analysis?.challengeType || null;
+
+  // Compatibility for reports created before challengeType/picture breakdown
+  // fields were persisted. Do not change the stored score; only hydrate the
+  // display payload exactly as the individual report endpoint does.
+  const status = analysis && !challengeType ? await Status.findOne().lean() : null;
+  if (!challengeType && analysis && status?.isPictureDescriptionDay) {
+    const source = analysis.toObject ? analysis.toObject() : { ...analysis };
+    const { breakdown } = calculateCompositeScore({
+      durationSeconds: report.videoDuration || 0,
+      maxDurationSeconds: status.durationPictureFull ?? 180,
+      vocabularyUsed: source.vocabularyUsed || [],
+      totalVocabWords: status.todayVocabulary?.length || status.vocabWordCount || 5,
+      requiredVocabWords: Math.min(status.vocabRequiredCount ?? 3, status.todayVocabulary?.length || status.vocabWordCount || 5),
+      topicRelevance: source.topicRelevance ?? null,
+      analysis: source,
+      isPictureDescription: true,
+    });
+    analysis = { ...source, scoreBreakdown: breakdown };
+    challengeType = "picture_description";
+  }
+
+  // The community endpoint receives a lean report and must expose the same
+  // task type through the nested object consumed by DetailedReport.
+  if (analysis && challengeType && !analysis.challengeType) {
+    analysis = { ...(analysis.toObject ? analysis.toObject() : analysis), challengeType };
+  }
+
+  return { analysis, challengeType };
 }
 
 /**
@@ -1109,7 +1122,7 @@ export async function getCommunityFeed(authIdOrPhone, myRole = "user") {
   })
     .sort({ submittedAt: -1 })
     .limit(20)
-    .select("userId uploaderName submittedAt videoDuration videoUrl videoKey phone analysis expiresAt likes dislikes comments isPublic")
+    .select("userId uploaderName submittedAt videoDuration videoUrl videoKey phone challengeType analysis status expiresAt likes dislikes comments isPublic")
     .lean();
 
   const feedUserIds = feed.map(item => item.userId).filter(Boolean);
@@ -1143,7 +1156,8 @@ export async function getCommunityFeed(authIdOrPhone, myRole = "user") {
       submittedAt: item.submittedAt,
       videoDuration: item.videoDuration,
       videoUrl,
-      analysis: item.analysis,
+      challengeType: item.challengeType || item.analysis?.challengeType || null,
+      analysis: (await prepareReportAnalysis(item)).analysis,
       expiresAt: item.expiresAt,
       likeCount:    item.likes?.length    || 0,
       dislikeCount: item.dislikes?.length || 0,

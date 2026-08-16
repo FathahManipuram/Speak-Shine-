@@ -155,15 +155,16 @@ function DetailedReport({ a }) {
   const s = a.stats || {};
 
   // ── Composite score card (same data as VideoAnalysis page) ────────────────
-  const bd = a.scoreBreakdown || null;
-  const cs = a.compositeScore ?? null;
+  const bd = a.scoreBreakdown || a._scoreBreakdown || null;
+  const cs = a.compositeScore ?? a._compositeScore ?? null;
+  const isPictureBd = a.challengeType === "picture_description" || bd?.isPictureDescription === true;
 
   const improvementTips = [];
   if (bd) {
-    const lenGap = (bd.maxLength  || 33.33) - (bd.length    || 0);
-    const vocGap = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
-    const topGap = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
-    const comGap = (bd.maxComm    || 16.67) - (bd.comm      || 0);
+    const lenGap = isPictureBd ? (bd.maxDuration || 20) - (bd.duration || 0) : (bd.maxLength || 33.33) - (bd.length || 0);
+    const vocGap = isPictureBd ? (bd.maxVocabulary || 10) - (bd.vocabulary || 0) : (bd.maxVocab || 33.33) - (bd.vocabUsed || 0);
+    const topGap = isPictureBd ? (bd.maxContent || 40) - (bd.content || 0) : (bd.maxTopic || 16.67) - (bd.topic || 0);
+    const comGap = isPictureBd ? (bd.maxCommunication || 30) - (bd.communication || 0) : (bd.maxComm || 16.67) - (bd.comm || 0);
     if (lenGap > 2) improvementTips.push({ icon: "⏱️", label: "Record longer",          detail: `+${lenGap.toFixed(1)} pts possible — speak closer to the full-score time`,                      gap: lenGap });
     if (vocGap > 2) {
       const requiredVocabWords = bd.requiredVocabWords || 3;
@@ -214,12 +215,17 @@ function DetailedReport({ a }) {
           {/* Breakdown bars */}
           {bd && (
             <div style={{ padding: "0 1.1rem 0.85rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {[
-                { label: "⏱️ Duration",       earned: bd.length    || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
-                { label: "📚 Vocab used",     earned: bd.vocabUsed || 0, max: bd.maxVocab  || 33.33, color: "#a78bfa" },
+              {(isPictureBd ? [
+                { label: "🗣️ Communication & Fluency", earned: bd.communication || 0, max: bd.maxCommunication || 30, color: "#60a5fa" },
+                { label: "🧠 Content & Relevance",      earned: bd.content       || 0, max: bd.maxContent       || 40, color: "#a78bfa" },
+                { label: "📚 Vocabulary",               earned: bd.vocabulary    || 0, max: bd.maxVocabulary    || 10, color: "#34d399" },
+                { label: "⏱️ Duration",                 earned: bd.duration      || 0, max: bd.maxDuration      || 20, color: "#fbbf24" },
+              ] : [
+                { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
+                { label: "📚 Vocab used", earned: bd.vocabUsed || 0, max: bd.maxVocab || 33.33, color: "#a78bfa" },
                 ...(!bd.isSpecialDay ? [{ label: "🎯 Topic relevance", earned: bd.topic || 0, max: bd.maxTopic || 16.67, color: "#34d399" }] : []),
-                { label: "🗣️ Communication",  earned: bd.comm      || 0, max: bd.maxComm   || 16.67, color: "#fbbf24" },
-              ].map(({ label, earned, max, color }) => (
+                { label: "🗣️ Communication", earned: bd.comm || 0, max: bd.maxComm || 16.67, color: "#fbbf24" },
+              ]).map(({ label, earned, max, color }) => (
                 <div key={label}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "0.18rem" }}>
                     <span style={{ color: "var(--muted)" }}>{label}</span>
@@ -1322,8 +1328,7 @@ export default function CommunityFeed() {
               )}
 
               {/* Feedback / Report toggle buttons */}
-              {item.analysis && (
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
                   <button onClick={() => toggleView(item._id, "feedback")} style={{
                     flex: 1, padding: "0.5rem", borderRadius: "8px", background: "transparent",
                     border: `1px solid ${view[item._id] === "feedback" ? "var(--primary)" : "var(--border2)"}`,
@@ -1338,10 +1343,9 @@ export default function CommunityFeed() {
                     color: view[item._id] === "report" ? "var(--primary)" : "var(--muted)",
                     fontSize: "0.78rem", cursor: "pointer", transition: "all 0.18s",
                   }}>
-                    {view[item._id] === "report" ? "▲ Hide" : "📋 Full Report"}
+                    {view[item._id] === "report" ? "▲ Hide" : "📋 Report"}
                   </button>
                 </div>
-              )}
 
               {/* Quick feedback panel — scores + one-liner */}
               {view[item._id] === "feedback" && item.analysis && (
@@ -1352,10 +1356,12 @@ export default function CommunityFeed() {
               )}
 
               {/* Full detailed report — everything */}
-              {view[item._id] === "report" && item.analysis && (
+              {view[item._id] === "report" && (
                 <div style={{ marginTop: "0.75rem", padding: "1rem", borderRadius: "10px", background: "var(--card2)", border: "1px solid var(--border2)" }}>
                   <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.5rem" }}>📋 Detailed Analysis Report</div>
-                  <DetailedReport a={item.analysis} />
+                  {item.analysis
+                    ? <DetailedReport a={item.analysis} />
+                    : <p style={{ color: "var(--muted)", fontSize: "0.82rem" }}>The detailed report is not available for this submission.</p>}
                 </div>
               )}
 
