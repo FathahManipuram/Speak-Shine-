@@ -35,10 +35,12 @@ const GROQ_PROMPT = `You are creating a daily Picture Description speaking chall
 Generate ONE challenge. Return ONLY valid JSON — no markdown, no extra text.
 
 Rules:
-- imageQuery: a vivid, specific 3–8 word phrase suitable for a photo search (e.g. "busy fish market early morning" or "elderly man reading in library")
+- imageQuery: a vivid, specific 5–10 word phrase suitable for a photo search. Prefer scenes with at least two visible people doing different, clear activities (for example, "two chefs preparing food in a busy kitchen").
 - Avoid generic queries like "people", "nature", "city"
+- Choose visually rich scenes with several concrete details: foreground and background objects, a recognizable location, different actions or interactions, clothing or colors, and a clear time-of-day or weather cue.
+- Avoid empty landscapes, close-up portraits, single-object images, heavily obscured faces, text-heavy images, and scenes where the people are too small to describe.
 - title: 2–5 word label describing the scene (e.g. "A Morning at the Market")
-- instructions: 1–2 sentences telling the speaker what to describe and discuss. It must naturally encourage these four points: what they see, what they think is happening, the atmosphere, and what might happen next.
+- instructions: 2–3 sentences telling the speaker what to describe and discuss. Encourage details about the people, their actions and interactions, the setting, foreground/background objects, colors, atmosphere, possible meaning, and what might happen next.
 - difficulty: one of "easy", "medium", or "hard"
 - speakingDuration: seconds — 60 for easy, 90 for medium, 120 for hard
 
