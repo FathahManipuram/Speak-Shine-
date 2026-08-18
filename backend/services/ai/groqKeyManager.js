@@ -174,3 +174,22 @@ export function keyStatus() {
   const exhausted = countExhausted();
   return `${total} key(s) configured (${total - exhausted} available, ${exhausted} exhausted)`;
 }
+
+/**
+ * Returns the configured Groq text model, with fallbacks.
+ * Default is 'openai/gpt-oss-120b'.
+ * @returns {string}
+ */
+export function getTextModel() {
+  return process.env.GROQ_TEXT_MODEL || process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+}
+
+/**
+ * Returns the configured Groq vision model, with fallbacks.
+ * Default is 'meta-llama/llama-4-scout-17b-16e-instruct'.
+ * @returns {string}
+ */
+export function getVisionModel() {
+  return process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
+}
+

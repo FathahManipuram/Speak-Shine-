@@ -8,9 +8,9 @@ import { promisify } from "util";
 import fs from "fs";
 import path from "path";
 import Groq from "groq-sdk";
+import { getVisionModel } from "./groqKeyManager.js";
 
 const execFileAsync = promisify(execFile);
-const VISION_MODEL = process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
 
 let groq = null;
 
@@ -78,7 +78,7 @@ async function analyzeFrame(framePath) {
     }
     
     const response = await groqClient.chat.completions.create({
-      model: VISION_MODEL,
+      model: getVisionModel(),
       messages: [
         {
           role: "user",

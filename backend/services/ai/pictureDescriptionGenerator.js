@@ -23,7 +23,7 @@
  */
 
 import fetch from "node-fetch";
-import { getTextKey, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
+import { getTextKey, getTextModel, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
 
 // ── Difficulty pool ───────────────────────────────────────────────────────────
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -65,7 +65,7 @@ async function generateChallengeMetadata() {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: getTextModel(),
         messages: [{ role: "user", content: GROQ_PROMPT }],
         temperature: 0.9,
         max_tokens: 300,

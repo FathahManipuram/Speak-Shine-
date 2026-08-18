@@ -2,7 +2,7 @@
  * Helpers shared between WhatsApp feedback and web video processor.
  */
 
-import { getTextKey, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
+import { getTextKey, getTextModel, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
 
 /**
  * Synthesizes a unified overall comment from speech + visual results.
@@ -52,7 +52,7 @@ Rules:
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: getTextModel(),
           messages: [{ role: "user", content: prompt }],
           temperature: 0.4,
           max_tokens: 200,

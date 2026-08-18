@@ -1,7 +1,7 @@
 /**
  * Payment Controller
  * Handles Razorpay order creation, signature verification, admin paid toggle,
- * and transaction history for users and admins.
+ * webhook events, and transaction history for users and admins.
  */
 
 import Razorpay from "razorpay";
@@ -30,6 +30,36 @@ async function findUserByPhone(phone) {
     });
   }
   return user;
+}
+
+/**
+ * Normalize a phone number to bare 10-digit format so webhook contact
+ * strings like "+919876543210" or "919876543210" match stored records.
+ * Returns original string unchanged if it doesn't look like an Indian mobile.
+ */
+function normalizePhone(raw = "") {
+  const digits = raw.replace(/\D/g, ""); // strip all non-digits
+  // Indian numbers: 12 digits starting with 91, or 13 starting with 091
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  if (digits.length === 13 && digits.startsWith("091")) return digits.slice(3);
+  return raw; // already bare / international non-Indian
+}
+
+/**
+ * Try to resolve a user from a Razorpay contact string.
+ * Attempts: raw → stripped 10-digit → WhatsApp suffix variants.
+ */
+async function findUserByContact(contact) {
+  if (!contact) return null;
+  const normalized = normalizePhone(contact);
+
+  // Try raw contact first, then normalized
+  const candidates = [...new Set([contact, normalized])];
+  for (const phone of candidates) {
+    const user = await findUserByPhone(phone);
+    if (user) return user;
+  }
+  return null;
 }
 
 function getRequestPhone(rawPhone = "") {
@@ -110,14 +140,25 @@ export async function verifyPayment(req, res) {
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
     if (!key_secret) return res.status(500).json({ error: "Razorpay not configured" });
 
-    // Verify HMAC-SHA256 signature
+    // Verify HMAC-SHA256 signature using constant-time comparison (prevents timing attacks)
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
       .createHmac("sha256", key_secret)
       .update(body)
       .digest("hex");
 
-    if (expectedSignature !== razorpay_signature) {
+    let sigValid = false;
+    try {
+      sigValid = crypto.timingSafeEqual(
+        Buffer.from(expectedSignature, "hex"),
+        Buffer.from(razorpay_signature, "hex")
+      );
+    } catch {
+      // Buffer lengths differ if signature is malformed — treat as invalid
+      sigValid = false;
+    }
+
+    if (!sigValid) {
       console.warn("[Payment] Signature mismatch for order:", razorpay_order_id);
 
       // Log failed transaction
@@ -328,4 +369,143 @@ export async function adminGetAllTransactions(req, res) {
     console.error("[Payment] admin-all error:", err.message);
     res.status(500).json({ error: "Failed to fetch transactions" });
   }
+}
+
+/**
+ * POST /api/payments/webhook
+ * Razorpay server-to-server webhook — no JWT auth, verified by HMAC signature.
+ * Called by Razorpay even when the user closes the browser before the checkout
+ * handler() fires.  Must respond HTTP 200 within ~5 s or Razorpay will retry.
+ *
+ * Setup: Razorpay Dashboard → Settings → Webhooks → Add
+ *   URL:    https://<your-domain>/api/payments/webhook
+ *   Events: payment.captured
+ *   Secret: set RAZORPAY_WEBHOOK_SECRET in .env to the value you enter here
+ */
+export async function handleWebhook(req, res) {
+  // ── 1. Ensure webhook secret is configured ────────────────────────────────
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured — ignoring event");
+    return res.status(500).end();
+  }
+
+  // ── 2. Verify HMAC-SHA256 signature using constant-time comparison ─────────
+  // req.body is a raw Buffer here (express.raw() middleware in server.js).
+  const signature = req.headers["x-razorpay-signature"] || "";
+  const rawBody   = req.body; // Buffer
+
+  if (!Buffer.isBuffer(rawBody) || !rawBody.length) {
+    console.warn("[Webhook] Empty or non-Buffer body — likely middleware misconfiguration");
+    return res.status(400).end();
+  }
+
+  const expectedSig = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  let sigValid = false;
+  try {
+    sigValid = crypto.timingSafeEqual(
+      Buffer.from(expectedSig, "hex"),
+      Buffer.from(signature,    "hex")
+    );
+  } catch {
+    sigValid = false; // mismatched lengths = invalid sig
+  }
+
+  if (!sigValid) {
+    console.warn("[Webhook] ❌ Invalid signature — request rejected");
+    return res.status(400).end();
+  }
+
+  // ── 3. Parse event ─────────────────────────────────────────────────────────
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString("utf8"));
+  } catch {
+    console.error("[Webhook] Failed to parse JSON body");
+    return res.status(400).end();
+  }
+
+  const eventType = event.event;
+  console.log(`[Webhook] Received event: ${eventType}`);
+
+  // We only care about payment.captured — acknowledge everything else silently
+  if (eventType !== "payment.captured") {
+    return res.status(200).json({ received: true, note: "event ignored" });
+  }
+
+  // ── 4. Extract payment entity ──────────────────────────────────────────────
+  const payment   = event?.payload?.payment?.entity;
+  const orderId   = payment?.order_id;
+  const paymentId = payment?.id;
+  const amountINR = (payment?.amount ?? 0) / 100;
+  const contact   = payment?.contact || null; // phone the user entered in modal
+
+  if (!orderId || !paymentId) {
+    console.error("[Webhook] Missing order_id or payment id in payload");
+    return res.status(200).json({ received: true, note: "payload incomplete" });
+  }
+
+  // ── 5. Idempotency guard — skip if already processed ──────────────────────
+  try {
+    const already = await Transaction.findOne({
+      razorpayOrderId: orderId,
+      status: "success",
+    }).lean();
+
+    if (already) {
+      console.log(`[Webhook] Duplicate event ignored — order already recorded: ${orderId}`);
+      return res.status(200).json({ received: true, note: "duplicate" });
+    }
+  } catch (err) {
+    // Non-fatal — continue and let the upsert handle it
+    console.warn("[Webhook] Idempotency check failed:", err.message);
+  }
+
+  // ── 6. Resolve user from contact phone ────────────────────────────────────
+  // Razorpay sends payment.contact = the phone the user typed in the modal.
+  // We try raw contact and normalized (stripped country code) variants.
+  const user = await findUserByContact(contact);
+
+  if (!user) {
+    // Return 200 so Razorpay doesn't retry — but log for manual follow-up.
+    // A user not found means either they didn't enter their phone in the modal
+    // or the number format didn't match any record.
+    console.error(
+      `[Webhook] ❌ User not found for contact: ${contact} — orderId: ${orderId}` +
+      " — manual resolution needed in admin panel"
+    );
+    return res.status(200).json({ received: true, note: "user not found" });
+  }
+
+  // ── 7. Mark user as paid ───────────────────────────────────────────────────
+  user.paid = true;
+  user.razorpayOrderId   = orderId;
+  user.razorpayPaymentId = paymentId;
+  user.paidAt = user.paidAt || new Date(); // don't overwrite existing paidAt
+  await user.save();
+
+  // ── 8. Log transaction ─────────────────────────────────────────────────────
+  try {
+    await Transaction.create({
+      phone:  user.phone || contact || "unknown",
+      name:   user.name  || null,
+      userId: user.userId || null,
+      razorpayOrderId:   orderId,
+      razorpayPaymentId: paymentId,
+      amount: amountINR,
+      status: "success",
+      source: "razorpay",
+      note:   "captured via webhook",
+    });
+  } catch (logErr) {
+    // Log failure is non-critical — user is already marked paid
+    console.warn("[Webhook] Transaction log failed:", logErr.message);
+  }
+
+  console.log(`[Webhook] ✅ Payment captured: ${user.phone} ₹${amountINR} (order: ${orderId})`);
+  return res.status(200).json({ received: true });
 }

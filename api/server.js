@@ -277,6 +277,12 @@ app.use(cors({
 // Limit JSON body size to prevent payload DoS
 // /api/video/upload-frames sends 16 base64 frames (~5.6MB), so allow 10MB for that route
 app.use("/api/video/upload-frames", express.json({ limit: "10mb" }));
+
+// ── Razorpay webhook — MUST receive raw Buffer before express.json() parses it ──
+// express.json() consumes the body stream; once consumed the raw bytes are gone.
+// HMAC verification requires the exact original bytes, so we capture them here.
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
+
 // /api/video/proxy-upload — skip ALL body parsing so the controller can stream
 // the request body directly to R2 (avoids buffering the entire file in RAM).
 // The global JSON parser below must also skip this route.

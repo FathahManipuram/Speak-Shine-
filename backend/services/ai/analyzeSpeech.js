@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 import { checkGrammar, filterGrammarErrors } from "./grammarCheck.js";
-import { getTextKey, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
+import { getTextKey, getTextModel, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
 
 // ---------------------------------------------------------------------------
 // Filler word detection
@@ -512,7 +512,7 @@ RULES:
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: getTextModel(),
           messages: [{ role: "user", content: prompt }],
           temperature: 0.2,
           max_tokens: 2000,

@@ -89,6 +89,8 @@ const env = {
 
   GROQ_API_KEY: getVar('GROQ_API_KEY', ''),
   GROQ_API_KEYS: (getVar('GROQ_API_KEYS', '') || '').split(',').map((s) => s.trim()).filter(Boolean),
+  GROQ_TEXT_MODEL: getVar('GROQ_TEXT_MODEL', getVar('GROQ_MODEL', 'openai/gpt-oss-120b')),
+  GROQ_VISION_MODEL: getVar('GROQ_VISION_MODEL', 'meta-llama/llama-4-scout-17b-16e-instruct'),
   ELEVENLABS_API_KEY: getVar('ELEVENLABS_API_KEY', ''),
   PEXELS_API_KEY: getVar('PEXELS_API_KEY', ''),
 

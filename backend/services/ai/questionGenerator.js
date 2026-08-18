@@ -11,7 +11,7 @@
 
 import fetch from "node-fetch";
 import Question from "../../../models/questionSchema.js";
-import { getTextKey, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
+import { getTextKey, getTextModel, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
 
 export const CATEGORIES = [
   "Daily Life",
@@ -226,7 +226,7 @@ Return ONLY the rewritten question text, nothing else.`;
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: getTextModel(),
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
         max_tokens: 150,
@@ -347,7 +347,7 @@ Return ONLY a valid JSON array, no markdown, no extra text:
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: getTextModel(),
         messages: [{ role: "user", content: prompt }],
         temperature: 0.9,
         max_tokens: 3500,

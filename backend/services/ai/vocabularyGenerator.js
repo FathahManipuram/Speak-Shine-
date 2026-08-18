@@ -6,7 +6,7 @@
 
 import fetch from "node-fetch";
 import Status from "../../../models/statusSchema.js";
-import { getTextKey, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
+import { getTextKey, getTextModel, markKeyExhausted, parseRetryAfter } from "./groqKeyManager.js";
 
 // CEFR level descriptors for the prompt
 const LEVEL_DESCRIPTORS = {
@@ -67,7 +67,7 @@ Return ONLY a valid JSON array, no markdown, no extra text:
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: getTextModel(),
             messages: [{ role: "user", content: prompt }],
             temperature: 0.5,
             max_tokens: Math.max(300, count * 120),
