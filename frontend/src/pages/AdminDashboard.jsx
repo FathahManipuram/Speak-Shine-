@@ -22,8 +22,119 @@ const DEFAULT_SUBMISSION_TEMPLATES = {
   custom: `🔔 *SPEAK & SHINE — DAILY UPDATE*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} left):*\n{pending_list}\n\n🚀 *Submit your video here:* {app_url}`,
 };
 
+function AdminSidebarIcon({ id, active }) {
+  const props = {
+    width: "15",
+    height: "15",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: active ? "2.2" : "1.8",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  };
+
+  switch (id) {
+    case "overview":
+      return (
+        <svg {...props}>
+          <rect width="7" height="9" x="3" y="3" rx="1" />
+          <rect width="7" height="5" x="14" y="3" rx="1" />
+          <rect width="7" height="9" x="14" y="12" rx="1" />
+          <rect width="7" height="5" x="3" y="16" rx="1" />
+        </svg>
+      );
+    case "today":
+      return (
+        <svg {...props}>
+          <path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" />
+        </svg>
+      );
+    case "reports":
+      return (
+        <svg {...props}>
+          <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
+        </svg>
+      );
+    case "points":
+      return (
+        <svg {...props}>
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" />
+          <path d="M10 14.66V17c0 .55-.45 1-1 1H7v2h10v-2h-2c-.55 0-1-.45-1-1v-2.34" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+        </svg>
+      );
+    case "monitoring":
+      return (
+        <svg {...props}>
+          <rect width="20" height="14" x="2" y="3" rx="2" /><line x1="8" x2="16" y1="21" y2="21" /><line x1="12" x2="12" y1="17" y2="21" /><path d="m7 10 2.5-3 3 5 2.5-2" />
+        </svg>
+      );
+    case "users":
+      return (
+        <svg {...props}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      );
+    case "registrations":
+      return (
+        <svg {...props}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" x2="19" y1="8" y2="14" /><line x1="22" x2="16" y1="11" y2="11" />
+        </svg>
+      );
+    case "submissions":
+      return (
+        <svg {...props}>
+          <path d="m22 8-6 4 6 4V8Z" /><rect width="14" height="12" x="2" y="6" rx="2" />
+        </svg>
+      );
+    case "live":
+      return (
+        <svg {...props}>
+          <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" /><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" /><circle cx="12" cy="12" r="2" /><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" /><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+        </svg>
+      );
+    case "payments":
+      return (
+        <svg {...props}>
+          <rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" />
+        </svg>
+      );
+    case "questions":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
+        </svg>
+      );
+    case "manual-questions":
+      return (
+        <svg {...props}>
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /><line x1="10" x2="8" y1="9" y2="9" />
+        </svg>
+      );
+    case "whatsapp":
+      return (
+        <svg {...props}>
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg {...props}>
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="10" />
+        </svg>
+      );
+  }
+}
+
 export default function AdminDashboard() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, logout } = useAuth();
+  const navigate = useNavigate();
   const isAdminsTier = currentUser?.role === "admins"; // limited admin role
   const [tab, setTab] = useState("overview");
   const [dash, setDash] = useState(null);
@@ -104,6 +215,8 @@ export default function AdminDashboard() {
   const [pendingRegsLoading, setPendingRegsLoading] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [userFilter, setUserFilter] = useState("all"); // filter chip for users tab
+  const [refreshing, setRefreshing] = useState(false); // command bar sync spinner
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -608,7 +721,19 @@ export default function AdminDashboard() {
     });
   };
 
-  const filteredUsers = useMemo(()=>users.filter(u=>{const s=search.toLowerCase();return(u.registeredName||u.name||"").toLowerCase().includes(s)||(u.phone||"").includes(s)}),[users,search]);
+  const filteredUsers = useMemo(()=>{
+    const s = search.toLowerCase();
+    const bySearch = users.filter(u => (u.registeredName||u.name||"").toLowerCase().includes(s)||(u.phone||"").includes(s));
+    const today = new Date().toDateString();
+    switch(userFilter) {
+      case "paid":      return bySearch.filter(u => u.paid);
+      case "submitted": return bySearch.filter(u => u.completed);
+      case "pending":   return bySearch.filter(u => u.paid && !u.completed);
+      case "streak":    return bySearch.filter(u => (u.streak||0) >= 7);
+      case "trainers":  return bySearch.filter(u => u.role === "trainer" || u.role === "admins" || u.role === "admin");
+      default:          return bySearch;
+    }
+  }, [users, search, userFilter]);
   const filteredQ = useMemo(()=>questions.filter(q=>(qCat?q.category===qCat:true)&&(q.question.toLowerCase().includes(qSearch.toLowerCase())||q.topic.toLowerCase().includes(qSearch.toLowerCase()))),[questions,qSearch,qCat]);
 
   const pieSub = [{name:"Submitted",value:dash?.stats?.completed||0,color:"#4ade80"},{name:"Pending",value:dash?.stats?.pending||0,color:"#f87171"}];
@@ -655,126 +780,251 @@ export default function AdminDashboard() {
       <div className="admin-dashboard-container">
         {/* Modern Left Sidebar */}
         <aside className="admin-sidebar">
+          {/* Brand Header */}
           <div className="admin-sidebar-header">
             <div className="admin-sidebar-brand">
-              <span style={{ fontSize: "1.1rem" }}>⚡</span>
-              <span>Admin Portal</span>
+              <div className="admin-brand-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </div>
+              <div>
+                <div className="admin-brand-title">Speak &amp; Shine</div>
+                <div className="admin-brand-tag">Control Center</div>
+              </div>
             </div>
             {waStatus?.isConnected ? (
-              <span title="WhatsApp Connected" style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: 6, background: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)", display: "flex", alignItems: "center", gap: 3, fontWeight: 700 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80" }} /> WA Live
+              <span title="WhatsApp Connected" style={{ fontSize: "0.66rem", padding: "3px 7px", borderRadius: 12, background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.25)", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+                <span className="live-dot" /> Live
               </span>
             ) : (
-              <span title="WhatsApp Offline" style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: 6, background: "rgba(248,113,113,0.15)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)", fontWeight: 700 }}>
-                WA Off
+              <span title="WhatsApp Offline" style={{ fontSize: "0.66rem", padding: "3px 7px", borderRadius: 12, background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+                <span className="live-dot red" /> Off
               </span>
             )}
           </div>
 
-          {/* Group 1: Analytics & Performance */}
-          <div className="admin-sidebar-section">
-            <div className="admin-sidebar-title">Analytics & Activity</div>
-            {[
-              { id: "overview", icon: "📊", label: "Overview" },
-              { id: "today", icon: "📅", label: "Today's Challenge" },
-              { id: "reports", icon: "📈", label: "Reports" },
-              { id: "points", icon: "⭐", label: "Points & Streaks" },
-              { id: "monitoring", icon: "🖥️", label: "Live Monitor" },
-            ].map(t => (
-              <button
-                key={t.id}
-                type="button"
-                className={`admin-sidebar-item${tab === t.id ? " active" : ""}`}
-                onClick={() => setTab(t.id)}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <span>{t.icon}</span>
-                  <span>{t.label}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+          {/* Middle Nav - Scrollable */}
+          <div className="admin-sidebar-nav">
+            {/* Group 1: Analytics & Performance */}
+            <div className="admin-sidebar-section">
+              <div className="admin-sidebar-title">Analytics &amp; Activity</div>
+              {[
+                { id: "overview", label: "Overview" },
+                { id: "today", label: "Today's Challenge" },
+                { id: "reports", label: "Reports" },
+                { id: "points", label: "Points & Streaks" },
+                { id: "monitoring", label: "Live Monitor" },
+              ].map(t => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`admin-sidebar-item${active ? " active" : ""}`}
+                    onClick={() => setTab(t.id)}
+                  >
+                    <div className="admin-sidebar-icon-box">
+                      <AdminSidebarIcon id={t.id} active={active} />
+                    </div>
+                    <span className="admin-sidebar-label">{t.label}</span>
+                    {active && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Group 2: Students & Community */}
-          <div className="admin-sidebar-section">
-            <div className="admin-sidebar-title">Students & Community</div>
-            {[
-              { id: "users", icon: "👥", label: "Users & Members", badge: users.length || null },
-              { id: "registrations", icon: "📋", label: "Registrations", badge: pendingRegs.length > 0 ? `${pendingRegs.length} new` : null, badgeColor: "#fbbf24" },
-              { id: "submissions", icon: "📝", label: "Submissions" },
-              { id: "live", icon: "🎥", label: "Live Sessions" },
-              { id: "payments", icon: "💳", label: "Payments" },
-            ].map(t => (
-              <button
-                key={t.id}
-                type="button"
-                className={`admin-sidebar-item${tab === t.id ? " active" : ""}`}
-                onClick={() => setTab(t.id)}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <span>{t.icon}</span>
-                  <span>{t.label}</span>
-                </div>
-                {t.badge && (
-                  <span className="admin-sidebar-badge" style={t.badgeColor ? { background: `${t.badgeColor}22`, color: t.badgeColor } : {}}>
-                    {t.badge}
+            {/* Group 2: Students & Community */}
+            <div className="admin-sidebar-section">
+              <div className="admin-sidebar-title">Students &amp; Community</div>
+              {[
+                { id: "users", label: "Users & Members", badge: users.length || null },
+                { id: "registrations", label: "Registrations", badge: pendingRegs.length > 0 ? `${pendingRegs.length} new` : null, badgeColor: "#fbbf24" },
+                { id: "submissions", label: "Submissions" },
+                { id: "live", label: "Live Sessions" },
+                { id: "payments", label: "Payments" },
+              ].map(t => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`admin-sidebar-item${active ? " active" : ""}`}
+                    onClick={() => setTab(t.id)}
+                  >
+                    <div className="admin-sidebar-icon-box">
+                      <AdminSidebarIcon id={t.id} active={active} />
+                    </div>
+                    <span className="admin-sidebar-label">{t.label}</span>
+                    {t.badge && (
+                      <span className="admin-sidebar-badge" style={t.badgeColor ? { background: `${t.badgeColor}22`, color: t.badgeColor, borderColor: `${t.badgeColor}44` } : {}}>
+                        {t.badge}
+                      </span>
+                    )}
+                    {active && !t.badge && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Group 3: Automation & Content */}
+            <div className="admin-sidebar-section">
+              <div className="admin-sidebar-title">Automation &amp; Content</div>
+              {[
+                { id: "questions", label: "Question Bank" },
+                { id: "manual-questions", label: "Manual Questions" },
+                { id: "whatsapp", label: "WhatsApp Bot" },
+                { id: "settings", label: "Settings" },
+              ].map(t => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`admin-sidebar-item${active ? " active" : ""}`}
+                    onClick={() => setTab(t.id)}
+                  >
+                    <div className="admin-sidebar-icon-box">
+                      <AdminSidebarIcon id={t.id} active={active} />
+                    </div>
+                    <span className="admin-sidebar-label">{t.label}</span>
+                    {active && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Student Profile (if active) */}
+            {selectedStudent && (
+              <div className="admin-sidebar-section" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "0.5rem" }}>
+                <div className="admin-sidebar-title">Active Profile</div>
+                <button
+                  type="button"
+                  className={`admin-sidebar-item${tab === "student-detail" ? " active" : ""}`}
+                  onClick={() => setTab("student-detail")}
+                >
+                  <div className="admin-sidebar-icon-box">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </div>
+                  <span className="admin-sidebar-label">
+                    {selectedStudent.registeredName || selectedStudent.name || "Student"}
                   </span>
-                )}
-              </button>
-            ))}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Group 3: Automation & Content */}
-          <div className="admin-sidebar-section">
-            <div className="admin-sidebar-title">Automation & Content</div>
-            {[
-              { id: "questions", icon: "❓", label: "Question Bank" },
-              { id: "manual-questions", icon: "📑", label: "Manual Questions" },
-              { id: "whatsapp", icon: "📱", label: "WhatsApp Bot" },
-              { id: "settings", icon: "⚙️", label: "Settings" },
-            ].map(t => (
+          {/* Sidebar Footer — Admin Identity Card */}
+          <div className="admin-sidebar-footer">
+            <div className="admin-user-card">
+              <div className="admin-avatar-ring">
+                {(currentUser?.name || currentUser?.phone || "A").charAt(0).toUpperCase()}
+                <div className="admin-avatar-online" />
+              </div>
+              <div className="admin-sidebar-footer-info">
+                <div className="admin-sidebar-footer-name">{currentUser?.name || currentUser?.phone || "Admin User"}</div>
+                <div className="admin-sidebar-footer-role">{currentUser?.role || "ADMIN"}</div>
+              </div>
               <button
-                key={t.id}
-                type="button"
-                className={`admin-sidebar-item${tab === t.id ? " active" : ""}`}
-                onClick={() => setTab(t.id)}
+                className="admin-sidebar-footer-logout"
+                onClick={() => logout && logout()}
+                title="Sign Out"
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <span>{t.icon}</span>
-                  <span>{t.label}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Student Profile (if active) */}
-          {selectedStudent && (
-            <div className="admin-sidebar-section" style={{ borderTop: "1px solid var(--border)", paddingTop: "0.65rem" }}>
-              <div className="admin-sidebar-title">Active Student Profile</div>
-              <button
-                type="button"
-                className={`admin-sidebar-item${tab === "student-detail" ? " active" : ""}`}
-                onClick={() => setTab("student-detail")}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <span>👤</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {(selectedStudent.registeredName || selectedStudent.name || "").slice(0, 14)}
-                  </span>
-                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" x2="9" y1="12" y2="12" />
+                </svg>
               </button>
             </div>
-          )}
+          </div>
         </aside>
 
         {/* Main Content Area */}
         <div className="admin-main-content">
-          <div className="stat-grid">
-            <StatCard icon="👥" label="Total Users"     value={dash?.stats?.total||0}     color="#7c6fff"/>
-            <StatCard icon="✅" label="Submitted Today" value={dash?.stats?.completed||0} color="#4ade80"/>
-            <StatCard icon="❌" label="Pending Today"   value={dash?.stats?.pending||0}   color="#f87171"/>
-            <StatCard icon="🧊" label="Streak Freezes"  value={users.reduce((s,u)=>s+(u.streakFreeze||0),0)} color="#38bdf8"/>
+          {/* ── Top Command Bar ── */}
+          {(() => {
+            const tabLabels = {
+              overview: "Overview", today: "Today's Challenge", reports: "Reports",
+              points: "Points & Streaks", monitoring: "Live Monitor",
+              users: "Users & Members", registrations: "Registrations",
+              submissions: "Submissions", live: "Live Sessions", payments: "Payments",
+              questions: "Question Bank", "manual-questions": "Manual Questions",
+              whatsapp: "WhatsApp Bot", settings: "Settings",
+              "student-detail": "Student Profile",
+            };
+            return (
+              <div className="admin-command-bar fade-in-up">
+                <div className="admin-breadcrumb">
+                  <span>⚡ Admin</span>
+                  <span className="admin-breadcrumb-sep">/</span>
+                  <span className="admin-breadcrumb-active">{tabLabels[tab] || tab}</span>
+                </div>
+                <div className="admin-cmd-right">
+                  <span className={`status-pill${waStatus?.isConnected ? "" : " offline"}`}>
+                    <span className={`live-dot${waStatus?.isConnected ? "" : " red"}`} />
+                    {waStatus?.isConnected ? "WA Live" : "WA Offline"}
+                  </span>
+                  <span className="status-pill">
+                    <span className="live-dot" />
+                    API Synced
+                  </span>
+                  <button
+                    className={`cmd-refresh-btn${refreshing ? " spinning" : ""}`}
+                    onClick={async () => {
+                      setRefreshing(true);
+                      await reload(['dashboard', 'users']);
+                      setTimeout(() => setRefreshing(false), 600);
+                    }}
+                    title="Sync data"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                    Sync
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Premium KPI Cards ── */}
+          <div className="admin-kpi-row">
+            {[
+              { icon: "👥", label: "Total Students", value: dash?.stats?.total||0, accent: "#7c6fff", trend: "neu", sub: `${users.filter(u=>u.paid).length} paid members` },
+              { icon: "✅", label: "Submitted Today", value: dash?.stats?.completed||0, accent: "#4ade80", trend: "up", sub: `${dash?.stats?.total ? Math.round((dash.stats.completed/dash.stats.total)*100) : 0}% completion rate` },
+              { icon: "⏳", label: "Pending Today", value: dash?.stats?.pending||0, accent: "#f87171", trend: (dash?.stats?.pending||0) > 0 ? "down" : "up", sub: "Need to submit today" },
+              { icon: "🧊", label: "Streak Freezes", value: users.reduce((s,u)=>s+(u.streakFreeze||0),0), accent: "#38bdf8", trend: "neu", sub: `Across ${users.length} users` },
+            ].map(({ icon, label, value, accent, trend, sub }) => (
+              <div key={label} className="admin-kpi-card" style={{ "--kpi-accent": accent }}>
+                <div className="admin-kpi-top">
+                  <div className="admin-kpi-icon" style={{ background: `${accent}18` }}>{icon}</div>
+                  <span className={`admin-kpi-trend ${trend}`}>
+                    {trend === "up" ? "▲" : trend === "down" ? "▼" : "—"}
+                  </span>
+                </div>
+                <div className="admin-kpi-value">{value}</div>
+                <div className="admin-kpi-label">{label}</div>
+                <div className="admin-kpi-sub">{sub}</div>
+              </div>
+            ))}
           </div>
+
 
       {/* OVERVIEW */}
       {tab==="overview" && (
@@ -1259,72 +1509,139 @@ export default function AdminDashboard() {
           </div>
 
           <div className="card">
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem",flexWrap:"wrap",gap:"0.5rem"}}>
-              <div className="section-title" style={{margin:0}}>All Users ({filteredUsers.length})</div>
-              <input className="form-input" style={{width:220}} placeholder="Search name or phone…" value={search} onChange={e=>setSearch(e.target.value)}/>
+            {/* Filter Chip Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div className="admin-section-title">
+                👥 All Users
+                <span style={{ fontSize: "0.72rem", background: "rgba(124,111,255,0.15)", color: "#c4b5fd", padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>
+                  {filteredUsers.length}
+                </span>
+              </div>
+              <input
+                className="form-input" style={{ width: 200, fontSize: "0.82rem" }}
+                placeholder="🔍 Search name or phone…"
+                value={search} onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="admin-filter-bar" style={{ marginBottom: "0.9rem" }}>
+              {[
+                { key: "all",       label: "All",             count: users.length },
+                { key: "paid",      label: "💳 Paid",          count: users.filter(u=>u.paid).length },
+                { key: "submitted", label: "✅ Submitted",     count: users.filter(u=>u.completed).length },
+                { key: "pending",   label: "⏳ Pending",       count: users.filter(u=>u.paid&&!u.completed).length },
+                { key: "streak",    label: "🔥 High Streak",   count: users.filter(u=>(u.streak||0)>=7).length },
+                { key: "trainers",  label: "🎓 Staff",         count: users.filter(u=>["trainer","admins","admin"].includes(u.role)).length },
+              ].map(chip => (
+                <button
+                  key={chip.key}
+                  className={`admin-chip${userFilter === chip.key ? " active" : ""}`}
+                  onClick={() => setUserFilter(chip.key)}
+                >
+                  {chip.label}
+                  <span className="admin-chip-count">{chip.count}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Premium Table */}
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>🔥 Streak</th>
+                    <th>🧊 Freeze</th>
+                    <th>Weekly</th>
+                    <th>Monthly</th>
+                    <th>⭐ Score</th>
+                    <th>💳 Paid</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map(u => {
+                    const initials = (u.registeredName||u.name||"?").slice(0,2).toUpperCase();
+                    const streak = u.streak || 0;
+                    return (
+                      <tr key={u.userId}>
+                        <td>
+                          <div className="admin-user-cell">
+                            <div className="admin-user-avatar">{initials}</div>
+                            <div>
+                              <div className="admin-user-name">{u.registeredName||u.name||"—"}</div>
+                              <div style={{ fontSize: "0.68rem", color: u.isActive ? "#4ade80" : "#f87171", fontWeight: 600 }}>
+                                {u.isActive ? "● Active" : "● Disabled"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <span className="admin-user-phone">{u.phone}</span>
+                            <button className="copy-btn" onClick={() => { navigator.clipboard?.writeText(u.phone); msg("Copied!"); }}>⎘</button>
+                          </div>
+                        </td>
+                        <td>
+                          <RoleSelector
+                            phone={u.phone}
+                            currentRole={u.role || "user"}
+                            onRoleChange={() => reload(['users'])}
+                          />
+                        </td>
+                        <td>
+                          <span className={`streak-flame${streak === 0 ? " dead" : ""}`}>
+                            {streak > 0 ? "🔥" : "❄️"} {streak}
+                          </span>
+                        </td>
+                        <td style={{ color: "#38bdf8", fontWeight: 600 }}>🧊 {u.streakFreeze||0}</td>
+                        <td>
+                          <span style={{ color: (u.weeklySubmissions||0)>=5 ? "#4ade80" : (u.weeklySubmissions||0)>=3 ? "#fbbf24" : "var(--muted)", fontWeight: 600 }}>
+                            {u.weeklySubmissions||0}/7
+                          </span>
+                        </td>
+                        <td>{u.monthlySubmissions||0}</td>
+                        <td style={{ color: "#a78bfa", fontWeight: 700 }}>⭐ {u.monthlyScore||0}</td>
+                        <td>
+                          <button
+                            className={`act-btn ${u.paid ? "success" : "danger"}`}
+                            onClick={async () => {
+                              try {
+                                const { data } = await api.patch(`/payments/admin/toggle-paid/${encodeURIComponent(u.phone)}`);
+                                setUsers(prev => prev.map(x => x.phone===u.phone ? {...x, paid: data.paid, paidAt: data.paidAt} : x));
+                                msg(`${u.registeredName||u.name||u.phone} marked as ${data.paid?"✅ Paid":"❌ Unpaid"}`);
+                              } catch(e) { msg(e?.response?.data?.error||"Failed","danger"); }
+                            }}
+                          >
+                            {u.paid ? "✅ Paid" : "❌ Unpaid"}
+                          </button>
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+                            <button className="act-btn primary" onClick={() => viewStudentDetail(u)}>View</button>
+                            <button className="act-btn amber" onClick={() => toggleUser(u.phone)}>
+                              {u.isActive ? "Disable" : "Enable"}
+                            </button>
+                            <button className="act-btn primary" onClick={async () => {
+                              try {
+                                await api.post(`/video/admin/reset-limit/${u._id || u.userId}`);
+                                msg(`Upload limit reset for ${u.registeredName||u.name||u.phone}`);
+                              } catch(e) { msg(e?.response?.data?.error||"Reset failed","danger"); }
+                            }}>🔄</button>
+                            <button className="act-btn danger" onClick={() => deleteUser(u.phone)}>Remove</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>Streak</th><th>🧊 Freeze</th><th>Weekly</th><th>Monthly</th><th>⭐ Score</th><th>Status</th><th>💳 Paid</th><th>Actions</th></tr></thead>
-              <tbody>{filteredUsers.map(u=>(
-                <tr key={u.userId}>
-                  <td style={{fontWeight:500,whiteSpace:"nowrap"}}>{u.registeredName||u.name||"—"}</td>
-                  <td style={{color:"var(--muted)"}}>{u.phone}</td>
-                  <td>
-                    <RoleSelector 
-                      phone={u.phone} 
-                      currentRole={u.role || "user"}
-                      onRoleChange={() => reload(['users'])} // Only reload users
-                    />
-                  </td>
-                  <td>🔥 {u.streak||0}</td>
-                  <td style={{color:"#38bdf8",fontWeight:600}}>🧊 {u.streakFreeze||0}</td>
-                  <td>{u.weeklySubmissions||0}/7</td>
-                  <td>{u.monthlySubmissions||0}</td>
-                  <td style={{color:"#a78bfa",fontWeight:600}}>⭐ {u.monthlyScore||0}</td>
-                  <td><span style={{color:u.isActive?"var(--success)":"var(--danger)",fontSize:"0.8rem"}}>{u.isActive?"Active":"Disabled"}</span></td>
-                  <td>
-                    <button
-                      onClick={async()=>{
-                        try {
-                          const {data} = await api.patch(`/payments/admin/toggle-paid/${encodeURIComponent(u.phone)}`);
-                          setUsers(prev => prev.map(x => x.phone===u.phone ? {...x, paid: data.paid, paidAt: data.paidAt} : x));
-                          msg(`${u.registeredName||u.name||u.phone} marked as ${data.paid?"✅ Paid":"❌ Unpaid"}`);
-                        } catch(e) { msg(e?.response?.data?.error||"Failed","danger"); }
-                      }}
-                      style={{
-                        background: u.paid ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.12)",
-                        color: u.paid ? "#4ade80" : "#f87171",
-                        border: `1px solid ${u.paid ? "rgba(74,222,128,0.35)" : "rgba(248,113,113,0.3)"}`,
-                        borderRadius: 8,
-                        padding: "0.25rem 0.6rem",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {u.paid ? "✅ Paid" : "❌ Unpaid"}
-                    </button>
-                  </td>
-                  <td style={{whiteSpace:"nowrap"}}>
-                    <button className="btn-ghost" style={{marginRight:3}} onClick={()=>viewStudentDetail(u)}>View</button>
-                    <button className="btn-ghost" style={{marginRight:3}} onClick={()=>toggleUser(u.phone)}>{u.isActive?"Disable":"Enable"}</button>
-                    <button className="btn-ghost" style={{marginRight:3}} onClick={async()=>{
-                      try {
-                        await api.post(`/video/admin/reset-limit/${u._id || u.userId}`);
-                        msg(`Upload limit reset for ${u.registeredName||u.name||u.phone}`);
-                      } catch(e) { msg(e?.response?.data?.error||"Reset failed","danger"); }
-                    }}>🔄 Limit</button>
-                    <button className="btn-ghost danger" onClick={()=>deleteUser(u.phone)}>Remove</button>
-                  </td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-        </>
-      )}
+          </>
+        )}
+
 
       {/* REPORTS */}
       {tab==="reports" && (
@@ -2475,171 +2792,137 @@ export default function AdminDashboard() {
                         borderRadius: 24,
                         padding: "0.4rem 0.95rem",
                         transition: "all 0.2s ease",
+                        width: "fit-content",
                       }}
                     >
                       <div style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: "50%",
+                        width: 10, height: 10, borderRadius: "50%",
                         background: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
                         boxShadow: `0 0 8px ${settings.submissionReportEnabled ? "#4ade80" : "#f87171"}`,
                       }} />
-                      <span style={{
-                        fontSize: "0.84rem",
-                        fontWeight: 700,
-                        color: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
-                      }}>
+                      <span style={{ fontSize: "0.84rem", fontWeight: 700, color: settings.submissionReportEnabled ? "#4ade80" : "#f87171" }}>
                         {settings.submissionReportEnabled ? "🟢 Active (Auto-Send ON)" : "🔴 Paused (Auto-Send OFF)"}
                       </span>
                     </div>
                   </div>
 
                   {/* Dynamic Multi-Times List with Template Type Selection */}
-                  <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
-                    gap: "0.85rem",
-                    marginBottom: "1rem"
-                  }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", marginBottom: "1rem" }}>
                     {(settings.submissionReportSlots || [
                       { time: "18:00", templateType: "comprehensive", customTemplate: "" },
                       { time: "21:00", templateType: "urgent", customTemplate: "" }
                     ]).map((slot, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "0.65rem",
-                          padding: "0.75rem 0.9rem",
-                          background: "var(--bg-secondary)",
-                          borderRadius: 12,
-                          border: "1px solid var(--border)",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                          <span style={{
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            padding: "3px 7px",
-                            borderRadius: 6,
-                            background: "rgba(124, 111, 255, 0.15)",
-                            color: "#c084fc",
-                            whiteSpace: "nowrap"
-                          }}>
-                            ⏰ Slot #{idx + 1}
-                          </span>
-                        </div>
+                      <div key={idx} style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        padding: "0.75rem",
+                        borderRadius: 10,
+                        background: "rgba(0,0,0,0.2)",
+                        border: "1px solid rgba(255,255,255,0.05)"
+                      }}>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--muted)" }}>#{idx + 1}</div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                          {/* Time Picker */}
-                          <input
-                            className="form-input"
-                            type="time"
-                            value={slot.time || "18:00"}
-                            onChange={e => {
-                              const newTime = e.target.value;
+                        {/* Time Picker */}
+                        <input
+                          type="time"
+                          value={slot.time || "18:00"}
+                          onChange={e => {
+                            const newTime = e.target.value;
+                            setSettings(s => {
+                              const list = [...(s.submissionReportSlots || [])];
+                              list[idx] = { ...list[idx], time: newTime };
+                              return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
+                            });
+                          }}
+                          style={{
+                            background: "transparent",
+                            color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            padding: "0.4rem",
+                            borderRadius: 6,
+                            fontSize: "0.9rem"
+                          }}
+                        />
+
+                        {/* Template Type Selector */}
+                        <select
+                          value={slot.templateType || "comprehensive"}
+                          onChange={e => {
+                            const newType = e.target.value;
+                            setSettings(s => {
+                              const list = [...(s.submissionReportSlots || [])];
+                              list[idx] = { ...list[idx], templateType: newType };
+                              return { ...s, submissionReportSlots: list };
+                            });
+                          }}
+                          style={{
+                            flex: 1,
+                            background: "rgba(0,0,0,0.3)",
+                            color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            padding: "0.4rem",
+                            borderRadius: 6,
+                            fontSize: "0.85rem"
+                          }}
+                        >
+                          <option value="comprehensive">📊 Comprehensive</option>
+                          <option value="urgent">⚡ Urgent Final Call</option>
+                          <option value="motivation">🌟 Motivation &amp; Streaks</option>
+                          <option value="custom">✏️ Custom Template</option>
+                        </select>
+
+                        {/* Edit shortcut */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTemplateType(slot.templateType || "comprehensive");
+                            document.getElementById("submissionReportTemplateTextarea")?.focus();
+                          }}
+                          style={{
+                            background: "rgba(124, 111, 255, 0.15)",
+                            border: "1px solid rgba(124, 111, 255, 0.3)",
+                            color: "#c084fc",
+                            borderRadius: 8,
+                            padding: "0.35rem 0.55rem",
+                            cursor: "pointer",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+
+                        {(settings.submissionReportSlots || []).length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
                               setSettings(s => {
-                                const list = [...(s.submissionReportSlots || [])];
-                                list[idx] = { ...list[idx], time: newTime };
+                                const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
+                                const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
                                 return {
                                   ...s,
-                                  submissionReportSlots: list,
-                                  submissionReportTimes: list.map(x => x.time)
+                                  submissionReportSlots: finalList,
+                                  submissionReportTimes: finalList.map(x => x.time),
                                 };
                               });
                             }}
-                            required
-                            style={{ width: 110, fontSize: "0.92rem", padding: "0.35rem 0.5rem" }}
-                          />
-
-                          {/* Template Type Selector Dropdown */}
-                          <select
-                            className="form-input"
-                            value={slot.templateType || "comprehensive"}
-                            onChange={e => {
-                              const newType = e.target.value;
-                              setSettings(s => {
-                                const list = [...(s.submissionReportSlots || [])];
-                                list[idx] = { ...list[idx], templateType: newType };
-                                return { ...s, submissionReportSlots: list };
-                              });
-                            }}
                             style={{
-                              padding: "0.35rem 0.5rem",
-                              fontSize: "0.78rem",
-                              fontWeight: 600,
+                              background: "rgba(248,113,113,0.12)",
+                              border: "1px solid rgba(248,113,113,0.3)",
+                              color: "#f87171",
                               borderRadius: 8,
-                              background: "#16162a",
-                              color: "#fff",
-                              border: "1px solid rgba(124, 111, 255, 0.35)",
-                              cursor: "pointer",
-                              minWidth: 140,
-                            }}
-                          >
-                            <option value="comprehensive">📊 Comprehensive</option>
-                            <option value="urgent">⚡ Urgent Final Call</option>
-                            <option value="motivation">🌟 Motivation &amp; Streaks</option>
-                            <option value="custom">✏️ Custom Template</option>
-                          </select>
-
-                          {/* Quick Edit shortcut */}
-                          <button
-                            type="button"
-                            title="Edit this template text below"
-                            onClick={() => {
-                              setEditingTemplateType(slot.templateType || "comprehensive");
-                              document.getElementById("submissionReportTemplateTextarea")?.focus();
-                            }}
-                            style={{
                               padding: "0.35rem 0.55rem",
-                              borderRadius: 8,
-                              fontSize: "0.74rem",
-                              fontWeight: 700,
-                              background: "rgba(124, 111, 255, 0.12)",
-                              border: "1px solid rgba(124, 111, 255, 0.25)",
-                              color: "#c084fc",
                               cursor: "pointer",
-                              whiteSpace: "nowrap",
+                              fontSize: "0.8rem",
                             }}
                           >
-                            ✏️ Edit
+                            🗑️
                           </button>
-
-                          {(settings.submissionReportSlots || []).length > 1 && (
-                            <button
-                              type="button"
-                              title="Delete this time slot"
-                              onClick={() => {
-                                setSettings(s => {
-                                  const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
-                                  const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
-                                  return {
-                                    ...s,
-                                    submissionReportSlots: finalList,
-                                    submissionReportTimes: finalList.map(x => x.time),
-                                  };
-                                });
-                              }}
-                              style={{
-                                background: "rgba(248,113,113,0.12)",
-                                border: "1px solid rgba(248,113,113,0.3)",
-                                color: "#f87171",
-                                borderRadius: 8,
-                                padding: "0.35rem 0.55rem",
-                                cursor: "pointer",
-                                fontSize: "0.8rem",
-                              }}
-                            >
-                              🗑️
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
+
 
                   <button
                     type="button"
@@ -2885,65 +3168,51 @@ export default function AdminDashboard() {
 
                     {/* Live WhatsApp Simulation Bubble */}
                     <div style={{ display: "flex", flexDirection: "column" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
-                        <label className="form-label" style={{ fontSize: "0.76rem", margin: 0, color: "#4ade80" }}>
-                          💬 Live WhatsApp Preview ({editingTemplateType}):
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                        <label className="form-label" style={{ fontSize: "0.76rem", margin: 0, color: "#4ade80", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pulse-live 2s infinite" }} />
+                          Live Preview · {editingTemplateType}
                         </label>
-                        <span style={{ fontSize: "0.7rem", color: "#4ade80" }}>
-                          ● Real Data Simulation
-                        </span>
+                        <span style={{ fontSize: "0.68rem", color: "var(--muted)" }}>📊 Simulated data</span>
                       </div>
-                      <div style={{
-                        flex: 1,
-                        padding: "0.9rem",
-                        borderRadius: 10,
-                        background: "#0b141a",
-                        border: "1px solid #1f2c34",
-                        color: "#e9edef",
-                        fontSize: "0.8rem",
-                        lineHeight: 1.45,
-                        fontFamily: "system-ui, -apple-system, sans-serif",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        overflowY: "auto",
-                        maxHeight: 270,
-                        boxShadow: "inset 0 2px 6px rgba(0,0,0,0.4)",
-                      }}>
-                        {(() => {
-                          const tpl = settings.submissionReportTemplates?.[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES.comprehensive;
-                          
-                          const summary = waStatus?.submissionSummary || {};
-                          const submittedNames = summary.submittedNames || ["John Doe", "Alex Smith"];
-                          const pendingNames = summary.pendingNames || ["Priya Sharma", "Rahul Kumar", "Sarah Lee"];
-                          const total = summary.totalPaid || 12;
-                          const subCount = summary.submittedCount || 1;
-                          const pendCount = summary.pendingCount || 11;
-                          const pct = total > 0 ? Math.round((subCount / total) * 100) : 8;
-                          const filled = Math.min(10, Math.max(0, Math.round(pct / 10)));
-                          const bar = "[" + "█".repeat(filled) + "░".repeat(10 - filled) + "]";
-
-                          const subList = submittedNames.length > 0 ? submittedNames.map((n, i) => `${i + 1}. ${n} 🔥 5d streak`).join("\n") : "_No submissions yet today._";
-                          const pendList = pendingNames.length > 0 ? pendingNames.map((n, i) => `${i + 1}. ${n}`).join("\n") : "🎉 _All paid students have completed!_ 🌟";
-
-                          const now = new Date();
-                          const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
-                          const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
-
-                          return tpl
-                            .replace(/\{date\}/gi, dateStr)
-                            .replace(/\{time\}/gi, timeStr)
-                            .replace(/\{submitted_list\}/gi, subList)
-                            .replace(/\{pending_list\}/gi, pendList)
-                            .replace(/\{submitted_count\}/gi, String(subCount))
-                            .replace(/\{pending_count\}/gi, String(pendCount))
-                            .replace(/\{total_paid\}/gi, String(total))
-                            .replace(/\{percent\}/gi, `${pct}%`)
-                            .replace(/\{progress_bar\}/gi, bar)
-                            .replace(/\{topic\}/gi, dash?.today?.topic || "Speaking Practice")
-                            .replace(/\{app_url\}/gi, window.location.origin || "https://speak-shine.sidhartht.online")
-                            .replace(/\{top_points_user\}/gi, "John Doe (95 pts 🌟)")
-                            .replace(/\{top_streak_user\}/gi, "John Doe (95 pts 🌟)");
-                        })()}
+                      <div className="wa-bubble-wrap">
+                        <div className="wa-bubble">
+                          {(() => {
+                            const tpl = settings.submissionReportTemplates?.[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES.comprehensive;
+                            const summary = waStatus?.submissionSummary || {};
+                            const submittedNames = summary.submittedNames || ["John Doe", "Alex Smith"];
+                            const pendingNames = summary.pendingNames || ["Priya Sharma", "Rahul Kumar", "Sarah Lee"];
+                            const total = summary.totalPaid || 12;
+                            const subCount = summary.submittedCount || 1;
+                            const pendCount = summary.pendingCount || 11;
+                            const pct = total > 0 ? Math.round((subCount / total) * 100) : 8;
+                            const filled = Math.min(10, Math.max(0, Math.round(pct / 10)));
+                            const bar = "[" + "█".repeat(filled) + "░".repeat(10 - filled) + "]";
+                            const subList = submittedNames.length > 0 ? submittedNames.map((n, i) => `${i + 1}. ${n} 🔥 5d streak`).join("\n") : "_No submissions yet today._";
+                            const pendList = pendingNames.length > 0 ? pendingNames.map((n, i) => `${i + 1}. ${n}`).join("\n") : "🎉 _All paid students have completed!_ 🌟";
+                            const now = new Date();
+                            const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+                            const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+                            return tpl
+                              .replace(/\{date\}/gi, dateStr)
+                              .replace(/\{time\}/gi, timeStr)
+                              .replace(/\{submitted_list\}/gi, subList)
+                              .replace(/\{pending_list\}/gi, pendList)
+                              .replace(/\{submitted_count\}/gi, String(subCount))
+                              .replace(/\{pending_count\}/gi, String(pendCount))
+                              .replace(/\{total_paid\}/gi, String(total))
+                              .replace(/\{percent\}/gi, `${pct}%`)
+                              .replace(/\{progress_bar\}/gi, bar)
+                              .replace(/\{topic\}/gi, dash?.today?.topic || "Speaking Practice")
+                              .replace(/\{app_url\}/gi, window.location.origin || "https://speak-shine.sidhartht.online")
+                              .replace(/\{top_points_user\}/gi, "John Doe (95 pts 🌟)")
+                              .replace(/\{top_streak_user\}/gi, "John Doe (95 pts 🌟)");
+                          })()}
+                          <div className="wa-bubble-time">
+                            {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                            <svg width="14" height="10" viewBox="0 0 14 10" fill="#53bdeb"><path d="M1 5l3 3L10 1"/><path d="M5 5l3 3 5-7" opacity="0.6"/></svg>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
