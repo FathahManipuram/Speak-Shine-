@@ -1407,18 +1407,61 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
     : "Try to use these words naturally in your speaking video today!";
 
   const [speakingIndex, setSpeakingIndex] = useState(null);
+  const [ttsWarning, setTtsWarning] = useState(null);
+
+  const parseVocabItem = (item) => {
+    if (!item) return { word: "", meaning: "", example: "" };
+    if (typeof item === "string") {
+      const parts = item.split(/\s*[-—:]\s*/);
+      if (parts.length >= 2) {
+        return {
+          word: parts[0].trim(),
+          meaning: parts.slice(1).join(" — ").trim(),
+          example: "",
+        };
+      }
+      return { word: item.trim(), meaning: "", example: "" };
+    }
+    const word = item.word || item.Word || item.term || item.name || "";
+    const meaning = item.meaning || item.Meaning || item.definition || item.desc || "";
+    const example = item.example || item.Example || item.sentence || "";
+    return { word, meaning, example };
+  };
 
   const handleSpeak = (word, example, idx) => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    setSpeakingIndex(idx);
-    const textToSpeak = `${word}. For example: ${example || ''}`;
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 0.88;
-    utterance.pitch = 1;
-    utterance.onend = () => setSpeakingIndex(null);
-    utterance.onerror = () => setSpeakingIndex(null);
-    window.speechSynthesis.speak(utterance);
+    if (!('speechSynthesis' in window)) {
+      setTtsWarning("Audio pronunciation is not supported on this browser.");
+      setTimeout(() => setTtsWarning(null), 3000);
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      setSpeakingIndex(idx);
+      const textToSpeak = `${word}. ${example ? 'For example: ' + example : ''}`;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = 0.88;
+      utterance.pitch = 1;
+      utterance.lang = 'en-US';
+
+      const voices = window.speechSynthesis.getVoices?.() || [];
+      const enVoice = voices.find(v => v.lang?.startsWith("en") && !v.localService) || voices.find(v => v.lang?.startsWith("en"));
+      if (enVoice) utterance.voice = enVoice;
+
+      utterance.onend = () => setSpeakingIndex(null);
+      utterance.onerror = (e) => {
+        setSpeakingIndex(null);
+        if (e.error === "not-allowed") {
+          setTtsWarning("Audio blocked by browser sound permissions.");
+          setTimeout(() => setTtsWarning(null), 3500);
+        }
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setSpeakingIndex(null);
+    }
   };
 
   if (compact) {
@@ -1438,20 +1481,23 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
           📚 TODAY'S VOCABULARY CHALLENGE
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-          {words.map((w, i) => (
-            <span key={i} style={{
-              background: "rgba(124,111,255,0.18)",
-              border: "1px solid rgba(124,111,255,0.35)",
-              borderRadius: 20,
-              padding: "0.3rem 0.85rem",
-              fontSize: "0.88rem",
-              fontWeight: 700,
-              color: "#c4b5fd",
-              letterSpacing: "0.02em",
-            }}>
-              {w.word}
-            </span>
-          ))}
+          {words.map((rawItem, i) => {
+            const w = parseVocabItem(rawItem);
+            return (
+              <span key={i} style={{
+                background: "rgba(124,111,255,0.18)",
+                border: "1px solid rgba(124,111,255,0.35)",
+                borderRadius: 20,
+                padding: "0.3rem 0.85rem",
+                fontSize: "0.88rem",
+                fontWeight: 700,
+                color: "#c4b5fd",
+                letterSpacing: "0.02em",
+              }}>
+                {w.word}
+              </span>
+            );
+          })}
         </div>
         <div style={{ marginTop: "0.6rem", fontSize: "0.72rem", color: "rgba(255,255,255,0.35)" }}>
           ✨ {hint}
@@ -1484,36 +1530,55 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
         </div>
       </div>
 
+      {ttsWarning && (
+        <div style={{
+          marginBottom: "0.65rem", padding: "0.4rem 0.75rem", borderRadius: 8,
+          background: "rgba(251, 191, 36, 0.12)", border: "1px solid rgba(251, 191, 36, 0.35)",
+          color: "#fbbf24", fontSize: "0.74rem", fontWeight: 600,
+        }}>
+          ℹ️ {ttsWarning}
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-        {words.map((w, i) => {
+        {words.map((rawItem, i) => {
+          const w = parseVocabItem(rawItem);
           const isSpeaking = speakingIndex === i;
           return (
             <div key={i} className="vocab-card-pro">
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <div className="vocab-num-badge">0{i + 1}</div>
-                  <span className="vocab-word-title">{w.word}</span>
-                  <span style={{ fontSize: "0.76rem", color: "rgba(255, 255, 255, 0.8)", fontWeight: 500 }}>
-                    — {w.meaning}
-                  </span>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem" }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.2rem" }}>
+                    <div className="vocab-num-badge">0{i + 1}</div>
+                    <span className="vocab-word-title" style={{ color: "#ffffff", fontWeight: 800, fontSize: "0.98rem" }}>
+                      {w.word}
+                    </span>
+                    {w.meaning && (
+                      <span style={{ fontSize: "0.8rem", color: "#cbd5e1", fontWeight: 500, lineHeight: 1.4 }}>
+                        — {w.meaning}
+                      </span>
+                    )}
+                  </div>
+
+                  {w.example && (
+                    <div className="vocab-example-bubble">
+                      💬 <span style={{ fontStyle: "italic" }}>"{w.example}"</span>
+                    </div>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleSpeak(w.word, w.example, i)}
-                  className="vocab-listen-btn"
-                  title="Listen to pronunciation"
-                  style={isSpeaking ? { background: "#7c6fff", color: "#fff", transform: "scale(1.15)" } : {}}
-                >
-                  {isSpeaking ? "🔊" : "🔈"}
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexShrink: 0, marginTop: "2px" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSpeak(w.word, w.example, i)}
+                    className="vocab-listen-btn"
+                    title="Listen to pronunciation"
+                    style={isSpeaking ? { background: "#7c6fff", color: "#fff", transform: "scale(1.15)" } : {}}
+                  >
+                    {isSpeaking ? "🔊" : "🔈"}
+                  </button>
+                </div>
               </div>
-
-              {w.example && (
-                <div className="vocab-example-bubble">
-                  💬 <span style={{ fontStyle: "italic" }}>"{w.example}"</span>
-                </div>
-              )}
             </div>
           );
         })}
