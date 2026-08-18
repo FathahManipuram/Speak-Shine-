@@ -85,6 +85,8 @@ const statusSchema = new mongoose.Schema({
   submissionReportTimes: { type: [String], default: ["18:00", "21:00"] },
   submissionReportTime1: { type: String, default: "18:00" },
   submissionReportTime2: { type: String, default: "21:00" },
+  submissionReportTemplate: { type: String, default: null },
+  submissionReportSlotTemplates: { type: Map, of: String, default: {} },
   lastSubmissionReportDate: { type: String, default: null },
   lastSubmissionReportTime: { type: String, default: null },
   // Track last successful daily reset (YYYY-MM-DD in IST) to detect missed resets

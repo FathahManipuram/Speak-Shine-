@@ -417,6 +417,8 @@ export async function getSettings() {
       : [status.submissionReportTime1 || "18:00", status.submissionReportTime2 || "21:00"].filter(Boolean),
     submissionReportTime1: status.submissionReportTime1 || "18:00",
     submissionReportTime2: status.submissionReportTime2 || "21:00",
+    submissionReportTemplate: status.submissionReportTemplate || null,
+    submissionReportSlotTemplates: status.submissionReportSlotTemplates || {},
     vocabWordCount: status.vocabWordCount ?? 5,
     vocabRequiredCount: status.vocabRequiredCount ?? 3,
     vocabNormalWordCount: status.vocabNormalWordCount ?? status.vocabWordCount ?? 5,
@@ -467,10 +469,20 @@ export async function updateSettings(
   submissionReportEnabled,
   submissionReportTime1,
   submissionReportTime2,
-  submissionReportTimes
+  submissionReportTimes,
+  submissionReportTemplate,
+  submissionReportSlotTemplates
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
+  
+  if (submissionReportTemplate !== undefined) {
+    updates.submissionReportTemplate = typeof submissionReportTemplate === "string" ? submissionReportTemplate.trim() : null;
+  }
+
+  if (submissionReportSlotTemplates !== undefined) {
+    updates.submissionReportSlotTemplates = typeof submissionReportSlotTemplates === "object" && submissionReportSlotTemplates !== null ? submissionReportSlotTemplates : {};
+  }
   
   if (posterSendTime !== undefined) {
     if (!timeRegex.test(posterSendTime)) {

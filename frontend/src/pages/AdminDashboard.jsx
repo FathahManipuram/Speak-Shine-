@@ -47,6 +47,8 @@ export default function AdminDashboard() {
     questionGenerateTime: "07:00",
     submissionReportEnabled: true,
     submissionReportTimes: ["18:00", "21:00"],
+    submissionReportTemplate: "",
+    submissionReportSlotTemplates: {},
     vocabWordCount: 5,
     vocabRequiredCount: 3,
     vocabNormalWordCount: 5,
@@ -227,6 +229,8 @@ export default function AdminDashboard() {
         submissionReportTimes: Array.isArray(s.data.submissionReportTimes) && s.data.submissionReportTimes.length > 0
           ? s.data.submissionReportTimes
           : [s.data.submissionReportTime1 || "18:00", s.data.submissionReportTime2 || "21:00"].filter(Boolean),
+        submissionReportTemplate: s.data.submissionReportTemplate || "",
+        submissionReportSlotTemplates: s.data.submissionReportSlotTemplates || {},
         vocabWordCount: s.data.vocabWordCount ?? 5,
         vocabRequiredCount: s.data.vocabRequiredCount ?? 3,
         vocabNormalWordCount: s.data.vocabNormalWordCount ?? 5,
@@ -503,6 +507,8 @@ export default function AdminDashboard() {
         submissionReportTimes: Array.isArray(fresh.data.submissionReportTimes) && fresh.data.submissionReportTimes.length > 0
           ? fresh.data.submissionReportTimes
           : [fresh.data.submissionReportTime1 || "18:00", fresh.data.submissionReportTime2 || "21:00"].filter(Boolean),
+        submissionReportTemplate: fresh.data.submissionReportTemplate || "",
+        submissionReportSlotTemplates: fresh.data.submissionReportSlotTemplates || {},
         vocabWordCount: fresh.data.vocabWordCount ?? 5,
         vocabRequiredCount: fresh.data.vocabRequiredCount ?? 3,
         vocabNormalWordCount: fresh.data.vocabNormalWordCount ?? 5,
@@ -2481,9 +2487,236 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* ══════════════════════════════════════════════════════════════ */}
+                {/* ADVANCED DYNAMIC MESSAGE TEMPLATE EDITOR */}
+                {/* ══════════════════════════════════════════════════════════════ */}
+                <div style={{
+                  padding: "1.25rem",
+                  borderRadius: 14,
+                  background: "rgba(124, 111, 255, 0.04)",
+                  border: "1px solid rgba(124, 111, 255, 0.2)",
+                  marginBottom: "1.5rem"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        📝 Dynamic WhatsApp Message Template
+                      </div>
+                      <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0.2rem 0 0" }}>
+                        Customize your broadcast message format. Click any Smart Tag below to insert it at your cursor.
+                      </p>
+                    </div>
+
+                    {/* Preset Template Switcher */}
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      {[
+                        {
+                          name: "📊 Comprehensive",
+                          tpl: `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`
+                        },
+                        {
+                          name: "⚡ Urgent Final Call",
+                          tpl: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🔥 *Streak Leader:* {top_streak_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to avoid fine!\n🚀 *Submit here:* {app_url}`
+                        },
+                        {
+                          name: "🌟 Motivation & Streaks",
+                          tpl: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Performer:* {top_streak_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`
+                        },
+                      ].map(preset => (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, submissionReportTemplate: preset.tpl }))}
+                          style={{
+                            padding: "0.3rem 0.65rem",
+                            borderRadius: 8,
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            background: "rgba(124, 111, 255, 0.12)",
+                            border: "1px solid rgba(124, 111, 255, 0.25)",
+                            color: "#c084fc",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setSettings(s => ({ ...s, submissionReportTemplate: "" }))}
+                        style={{
+                          padding: "0.3rem 0.65rem",
+                          borderRadius: 8,
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          background: "rgba(255, 255, 255, 0.05)",
+                          border: "1px solid rgba(255, 255, 255, 0.15)",
+                          color: "var(--muted)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        🔄 Default
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Clickable Smart Variable Tags */}
+                  <div style={{ marginBottom: "0.75rem" }}>
+                    <div style={{ fontSize: "0.73rem", fontWeight: 700, color: "var(--muted)", marginBottom: "0.35rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      💡 Click to Insert Smart Variable:
+                    </div>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                      {[
+                        { tag: "{date}", label: "{date} (Today's Date)" },
+                        { tag: "{time}", label: "{time} (Time Slot)" },
+                        { tag: "{submitted_list}", label: "{submitted_list} (Completed List)" },
+                        { tag: "{pending_list}", label: "{pending_list} (Pending List)" },
+                        { tag: "{submitted_count}", label: "{submitted_count}" },
+                        { tag: "{pending_count}", label: "{pending_count}" },
+                        { tag: "{total_paid}", label: "{total_paid}" },
+                        { tag: "{percent}", label: "{percent} (%)" },
+                        { tag: "{progress_bar}", label: "{progress_bar} (Bar)" },
+                        { tag: "{top_streak_user}", label: "{top_streak_user} (Leader)" },
+                        { tag: "{topic}", label: "{topic} (Topic)" },
+                        { tag: "{app_url}", label: "{app_url} (Link)" },
+                      ].map(({ tag, label }) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById("submissionReportTemplateTextarea");
+                            const cur = settings.submissionReportTemplate ?? "";
+                            if (el) {
+                              const start = el.selectionStart || 0;
+                              const end = el.selectionEnd || 0;
+                              const next = cur.slice(0, start) + tag + cur.slice(end);
+                              setSettings(s => ({ ...s, submissionReportTemplate: next }));
+                              setTimeout(() => {
+                                el.focus();
+                                el.setSelectionRange(start + tag.length, start + tag.length);
+                              }, 50);
+                            } else {
+                              setSettings(s => ({ ...s, submissionReportTemplate: cur + tag }));
+                            }
+                          }}
+                          style={{
+                            padding: "0.25rem 0.55rem",
+                            borderRadius: 6,
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            background: "rgba(56, 189, 248, 0.1)",
+                            border: "1px solid rgba(56, 189, 248, 0.3)",
+                            color: "#38bdf8",
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          + {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Grid: Editor + Live WhatsApp Simulation Preview */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
+                    {/* Textarea Editor */}
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                        <label className="form-label" style={{ fontSize: "0.76rem", margin: 0 }}>
+                          ✏️ Template Text Editor:
+                        </label>
+                        <span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
+                          {settings.submissionReportTemplate ? "Custom Template Active" : "Using System Default"}
+                        </span>
+                      </div>
+                      <textarea
+                        id="submissionReportTemplateTextarea"
+                        className="form-input"
+                        rows={12}
+                        value={settings.submissionReportTemplate || ""}
+                        placeholder={`📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n🚀 *Submit your video here:* {app_url}`}
+                        onChange={e => setSettings(s => ({ ...s, submissionReportTemplate: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          fontFamily: "Consolas, Monaco, monospace",
+                          fontSize: "0.82rem",
+                          lineHeight: 1.5,
+                          padding: "0.75rem",
+                          resize: "vertical",
+                          borderRadius: 10,
+                          background: "#0d0a1a",
+                        }}
+                      />
+                    </div>
+
+                    {/* Live WhatsApp Simulation Bubble */}
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                        <label className="form-label" style={{ fontSize: "0.76rem", margin: 0, color: "#4ade80" }}>
+                          💬 Live WhatsApp Preview:
+                        </label>
+                        <span style={{ fontSize: "0.7rem", color: "#4ade80" }}>
+                          ● Real Data Simulation
+                        </span>
+                      </div>
+                      <div style={{
+                        flex: 1,
+                        padding: "0.9rem",
+                        borderRadius: 10,
+                        background: "#0b141a",
+                        border: "1px solid #1f2c34",
+                        color: "#e9edef",
+                        fontSize: "0.8rem",
+                        lineHeight: 1.45,
+                        fontFamily: "system-ui, -apple-system, sans-serif",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        overflowY: "auto",
+                        maxHeight: 270,
+                        boxShadow: "inset 0 2px 6px rgba(0,0,0,0.4)",
+                      }}>
+                        {(() => {
+                          const tpl = settings.submissionReportTemplate || `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`;
+                          
+                          const summary = waStatus?.submissionSummary || {};
+                          const submittedNames = summary.submittedNames || ["John Doe", "Alex Smith"];
+                          const pendingNames = summary.pendingNames || ["Priya Sharma", "Rahul Kumar", "Sarah Lee"];
+                          const total = summary.totalPaid || 12;
+                          const subCount = summary.submittedCount || 1;
+                          const pendCount = summary.pendingCount || 11;
+                          const pct = total > 0 ? Math.round((subCount / total) * 100) : 8;
+                          const filled = Math.min(10, Math.max(0, Math.round(pct / 10)));
+                          const bar = "[" + "█".repeat(filled) + "░".repeat(10 - filled) + "]";
+
+                          const subList = submittedNames.length > 0 ? submittedNames.map((n, i) => `${i + 1}. ${n} 🔥 5d streak`).join("\n") : "_No submissions yet today._";
+                          const pendList = pendingNames.length > 0 ? pendingNames.map((n, i) => `${i + 1}. ${n}`).join("\n") : "🎉 _All paid students have completed!_ 🌟";
+
+                          const now = new Date();
+                          const dateStr = now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+                          const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+                          return tpl
+                            .replace(/\{date\}/gi, dateStr)
+                            .replace(/\{time\}/gi, timeStr)
+                            .replace(/\{submitted_list\}/gi, subList)
+                            .replace(/\{pending_list\}/gi, pendList)
+                            .replace(/\{submitted_count\}/gi, String(subCount))
+                            .replace(/\{pending_count\}/gi, String(pendCount))
+                            .replace(/\{total_paid\}/gi, String(total))
+                            .replace(/\{percent\}/gi, `${pct}%`)
+                            .replace(/\{progress_bar\}/gi, bar)
+                            .replace(/\{topic\}/gi, dash?.today?.topic || "Speaking Practice")
+                            .replace(/\{app_url\}/gi, window.location.origin || "https://speak-shine.sidhartht.online")
+                            .replace(/\{top_streak_user\}/gi, "John Doe (15d streak 🔥)");
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
                   <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
-                    {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Automation"}
+                    {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Template"}
                   </button>
 
                   <button

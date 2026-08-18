@@ -574,23 +574,141 @@ export async function sendDailyPosterToGroup(options = {}) {
 }
 
 /**
+ * Render dynamic submission report template with live data tokens.
+ */
+export function buildSubmissionReportMessage({
+  paidUsers = [],
+  submittedUsers = [],
+  pendingUsers = [],
+  status = {},
+  customTemplate = null,
+  timeSlot = null,
+}) {
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dateStr = nowIST.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  
+  // Format current IST time e.g. "04:00 PM"
+  const timeStr = timeSlot || nowIST.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const totalPaid = paidUsers.length;
+  const submittedCount = submittedUsers.length;
+  const pendingCount = pendingUsers.length;
+  const percent = totalPaid > 0 ? Math.round((submittedCount / totalPaid) * 100) : 0;
+  const frontendUrl = process.env.FRONTEND_URL || "https://speak-shine.sidhartht.online";
+  const topicName = status?.todayTopic || "Speaking Practice";
+
+  // Build submitted list string
+  let submittedListStr = "";
+  if (submittedUsers.length > 0) {
+    submittedListStr = submittedUsers.map((u, i) => {
+      const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
+      const streakText = (u.streak && u.streak > 0) ? ` 🔥 ${u.streak}d streak` : "";
+      return `${i + 1}. ${displayName}${streakText}`;
+    }).join("\n");
+  } else {
+    submittedListStr = "_No submissions yet today._";
+  }
+
+  // Build pending list string
+  let pendingListStr = "";
+  if (pendingUsers.length > 0) {
+    pendingListStr = pendingUsers.map((u, i) => {
+      const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
+      return `${i + 1}. ${displayName}`;
+    }).join("\n");
+  } else {
+    pendingListStr = "🎉 _All paid students have completed today's challenge! Amazing work!_ 🌟";
+  }
+
+  // Top streak student
+  const topStreakUserObj = [...paidUsers].sort((a, b) => (b.streak || 0) - (a.streak || 0))[0];
+  const topStreakUser = topStreakUserObj && (topStreakUserObj.streak || 0) > 0
+    ? `${topStreakUserObj.name || "Student"} (${topStreakUserObj.streak}d streak 🔥)`
+    : "None yet";
+
+  // Visual emoji progress bar: 10 blocks (e.g. 70% => [███████░░░])
+  const filledBlocks = Math.min(10, Math.max(0, Math.round(percent / 10)));
+  const progressBar = "█".repeat(filledBlocks) + "░".repeat(10 - filledBlocks);
+
+  // If a custom template is provided, replace tokens
+  if (customTemplate && typeof customTemplate === "string" && customTemplate.trim().length > 0) {
+    return customTemplate
+      .replace(/\{date\}/gi, dateStr)
+      .replace(/\{time\}/gi, timeStr)
+      .replace(/\{submitted_list\}/gi, submittedListStr)
+      .replace(/\{pending_list\}/gi, pendingListStr)
+      .replace(/\{submitted_count\}/gi, String(submittedCount))
+      .replace(/\{pending_count\}/gi, String(pendingCount))
+      .replace(/\{total_paid\}/gi, String(totalPaid))
+      .replace(/\{percent\}/gi, `${percent}%`)
+      .replace(/\{progress_bar\}/gi, `[${progressBar}]`)
+      .replace(/\{topic\}/gi, topicName)
+      .replace(/\{app_url\}/gi, frontendUrl)
+      .replace(/\{top_streak_user\}/gi, topStreakUser);
+  }
+
+  // Default Standard Template
+  let message = `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n`;
+  message += `📅 *Date:* ${dateStr}\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  message += `✅ *SUBMITTED TODAY (${submittedCount}/${totalPaid})*\n`;
+  message += `${submittedListStr}\n\n`;
+
+  message += `⏳ *PENDING SUBMISSIONS (${pendingCount}/${totalPaid})*\n`;
+  message += `${pendingListStr}\n\n`;
+
+  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  message += `📈 *Completion Rate:* ${percent}% [${progressBar}]\n`;
+  if (pendingCount > 0) {
+    message += `💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n`;
+  } else {
+    message += `🏆 *Congratulations everyone on 100% daily submissions!*\n`;
+  }
+  message += `🚀 *Submit your video here:* ${frontendUrl}\n`;
+
+  return message;
+}
+
+/**
  * Gets a count summary of paid students who have submitted vs pending today.
  */
 export async function getSubmissionReportSummary() {
   try {
     const User = (await import("../../../models/userSchema.js")).default;
+    const Status = (await import("../../../models/statusSchema.js")).default;
     const paidUsers = await User.find({ paid: true }).sort({ name: 1 }).lean();
+    const status = await Status.findOne().lean();
     const submittedUsers = paidUsers.filter(u => u.completed);
     const pendingUsers = paidUsers.filter(u => !u.completed);
+    
+    const previewMessage = buildSubmissionReportMessage({
+      paidUsers,
+      submittedUsers,
+      pendingUsers,
+      status,
+      customTemplate: status?.submissionReportTemplate,
+    });
+
     return {
       totalPaid: paidUsers.length,
       submittedCount: submittedUsers.length,
       pendingCount: pendingUsers.length,
       submittedNames: submittedUsers.map(u => u.name || `User ${u.phone ? u.phone.slice(-4) : ""}`).filter(Boolean),
       pendingNames: pendingUsers.map(u => u.name || `User ${u.phone ? u.phone.slice(-4) : ""}`).filter(Boolean),
+      previewMessage,
     };
   } catch (err) {
-    return { totalPaid: 0, submittedCount: 0, pendingCount: 0, submittedNames: [], pendingNames: [] };
+    return { totalPaid: 0, submittedCount: 0, pendingCount: 0, submittedNames: [], pendingNames: [], previewMessage: "" };
   }
 }
 
@@ -609,7 +727,11 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
 
   // 1. Fetch all PAID users only
   const User = (await import("../../../models/userSchema.js")).default;
-  const paidUsers = await User.find({ paid: true }).sort({ name: 1 }).lean();
+  const Status = (await import("../../../models/statusSchema.js")).default;
+  const [paidUsers, status] = await Promise.all([
+    User.find({ paid: true }).sort({ name: 1 }).lean(),
+    Status.findOne().lean(),
+  ]);
 
   if (!paidUsers || paidUsers.length === 0) {
     console.log("[WhatsApp] No paid users found for submission report.");
@@ -619,59 +741,34 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
   const submittedUsers = paidUsers.filter(u => u.completed);
   const pendingUsers = paidUsers.filter(u => !u.completed);
 
-  // Format today's date in IST
-  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const dateStr = nowIST.toLocaleDateString("en-IN", {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+  // Determine template: check slot-specific template or global template or custom override in options
+  const timeSlot = options.timeSlot || null;
+  let customTemplate = options.template || null;
+  if (!customTemplate) {
+    if (timeSlot && status?.submissionReportSlotTemplates && status.submissionReportSlotTemplates[timeSlot]) {
+      customTemplate = status.submissionReportSlotTemplates[timeSlot];
+    } else if (status?.submissionReportTemplate) {
+      customTemplate = status.submissionReportTemplate;
+    }
+  }
+
+  const message = buildSubmissionReportMessage({
+    paidUsers,
+    submittedUsers,
+    pendingUsers,
+    status,
+    customTemplate,
+    timeSlot,
   });
+
+  console.log(`[WhatsApp] 📤 Dispatching submission report to ${targetGroup}...`);
+  await sock.sendMessage(targetGroup, { text: message });
+  console.log(`[WhatsApp] ✅ Submission report sent successfully to ${targetGroup}!`);
 
   const totalPaid = paidUsers.length;
   const submittedCount = submittedUsers.length;
   const pendingCount = pendingUsers.length;
   const percent = totalPaid > 0 ? Math.round((submittedCount / totalPaid) * 100) : 0;
-  const frontendUrl = process.env.FRONTEND_URL || "https://speak-shine.sidhartht.online";
-
-  // Build the WhatsApp message
-  let message = `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n`;
-  message += `📅 *Date:* ${dateStr}\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  message += `✅ *SUBMITTED TODAY (${submittedCount}/${totalPaid})*\n`;
-  if (submittedUsers.length > 0) {
-    submittedUsers.forEach((u, i) => {
-      const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
-      const streakText = (u.streak && u.streak > 0) ? ` 🔥 ${u.streak}d streak` : "";
-      message += `${i + 1}. ${displayName}${streakText}\n`;
-    });
-  } else {
-    message += `_No submissions yet today._\n`;
-  }
-
-  message += `\n⏳ *PENDING SUBMISSIONS (${pendingCount}/${totalPaid})*\n`;
-  if (pendingUsers.length > 0) {
-    pendingUsers.forEach((u, i) => {
-      const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
-      message += `${i + 1}. ${displayName}\n`;
-    });
-  } else {
-    message += `🎉 _All paid students have completed today's challenge! Amazing work!_ 🌟\n`;
-  }
-
-  message += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  message += `📈 *Completion Rate:* ${percent}%\n`;
-  if (pendingCount > 0) {
-    message += `💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n`;
-  } else {
-    message += `🏆 *Congratulations everyone on 100% daily submissions!*\n`;
-  }
-  message += `🚀 *Submit your video here:* ${frontendUrl}\n`;
-
-  console.log(`[WhatsApp] 📤 Dispatching submission report to ${targetGroup}...`);
-  await sock.sendMessage(targetGroup, { text: message });
-  console.log(`[WhatsApp] ✅ Submission report sent successfully to ${targetGroup}!`);
 
   return {
     success: true,
@@ -680,6 +777,7 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
     submittedCount,
     pendingCount,
     percent,
+    message,
     sentAt: new Date(),
   };
 }
