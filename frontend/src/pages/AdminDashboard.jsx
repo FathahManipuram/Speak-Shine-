@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout.jsx";
 import StatCard from "../components/StatCard.jsx";
@@ -130,6 +130,214 @@ function AdminSidebarIcon({ id, active }) {
         </svg>
       );
   }
+}
+
+function TemplateDropdown({ value, onChange, onEdit }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const options = [
+    {
+      id: "comprehensive",
+      icon: "📊",
+      label: "Comprehensive Report",
+      desc: "Full attendance list, streaks & progress bar",
+      accent: "#818cf8",
+      bg: "rgba(129, 140, 248, 0.15)",
+    },
+    {
+      id: "urgent",
+      icon: "⚡",
+      label: "Urgent Final Call",
+      desc: "Countdown & deadline alert for pending students",
+      accent: "#f59e0b",
+      bg: "rgba(245, 158, 11, 0.15)",
+    },
+    {
+      id: "motivation",
+      icon: "🌟",
+      label: "Motivation & Streaks",
+      desc: "Celebrates top scorers & daily encouragement",
+      accent: "#10b981",
+      bg: "rgba(16, 185, 129, 0.15)",
+    },
+    {
+      id: "custom",
+      icon: "✏️",
+      label: "Custom Template",
+      desc: "Your personalized dynamic message text",
+      accent: "#06b6d4",
+      bg: "rgba(6, 182, 212, 0.15)",
+    },
+  ];
+
+  const current = options.find(o => o.id === value) || options[0];
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div ref={dropdownRef} style={{ position: "relative", flex: 1, minWidth: 210 }}>
+      {/* Trigger Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.6rem",
+          padding: "0.45rem 0.75rem",
+          borderRadius: 10,
+          background: "rgba(255, 255, 255, 0.04)",
+          border: isOpen ? "1px solid rgba(99, 102, 241, 0.6)" : "1px solid rgba(255, 255, 255, 0.1)",
+          boxShadow: isOpen ? "0 0 14px rgba(99, 102, 241, 0.25)" : "none",
+          color: "#f8fafc",
+          cursor: "pointer",
+          transition: "all 0.16s ease",
+          textAlign: "left",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", minWidth: 0 }}>
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            borderRadius: 7,
+            background: current.bg,
+            fontSize: "0.85rem",
+            flexShrink: 0,
+          }}>
+            {current.icon}
+          </span>
+          <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {current.label}
+          </span>
+        </div>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#94a3b8"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s ease",
+            flexShrink: 0,
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Popover Menu */}
+      {isOpen && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 6px)",
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: "linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 13, 24, 0.99) 100%)",
+          border: "1px solid rgba(255, 255, 255, 0.12)",
+          borderRadius: 14,
+          padding: "0.4rem",
+          boxShadow: "0 20px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+          backdropFilter: "blur(24px)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.25rem",
+          animation: "fadeInUp 0.15s ease",
+        }}>
+          {options.map((opt) => {
+            const isSelected = opt.id === value;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  onChange(opt.id);
+                  setIsOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.75rem",
+                  padding: "0.55rem 0.7rem",
+                  borderRadius: 10,
+                  background: isSelected ? "rgba(99, 102, 241, 0.18)" : "transparent",
+                  border: isSelected ? "1px solid rgba(99, 102, 241, 0.35)" : "1px solid transparent",
+                  color: isSelected ? "#ffffff" : "#cbd5e1",
+                  cursor: "pointer",
+                  transition: "all 0.14s ease",
+                  textAlign: "left",
+                  width: "100%",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+                    e.currentTarget.style.color = "#ffffff";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#cbd5e1";
+                  }
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", minWidth: 0 }}>
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: opt.bg,
+                    fontSize: "0.95rem",
+                    flexShrink: 0,
+                  }}>
+                    {opt.icon}
+                  </span>
+                  <div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: isSelected ? "#a5b4fc" : "#f8fafc" }}>
+                      {opt.label}
+                    </div>
+                    <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "1px" }}>
+                      {opt.desc}
+                    </div>
+                  </div>
+                </div>
+
+                {isSelected && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminDashboard() {
@@ -2935,123 +3143,146 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Dynamic Multi-Times List with Template Type Selection */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", marginBottom: "1rem" }}>
+                  {/* Dynamic Multi-Times List with Custom Popover Template Selection */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem" }}>
                     {(settings.submissionReportSlots || [
                       { time: "18:00", templateType: "comprehensive", customTemplate: "" },
                       { time: "21:00", templateType: "urgent", customTemplate: "" }
                     ]).map((slot, idx) => (
-                      <div key={idx} style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.75rem",
-                        padding: "0.75rem",
-                        borderRadius: 10,
-                        background: "rgba(0,0,0,0.2)",
-                        border: "1px solid rgba(255,255,255,0.05)"
-                      }}>
-                        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--muted)" }}>#{idx + 1}</div>
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.75rem",
+                          padding: "0.75rem 0.9rem",
+                          borderRadius: 12,
+                          background: "rgba(255, 255, 255, 0.02)",
+                          border: "1px solid rgba(255, 255, 255, 0.07)",
+                          flexWrap: "wrap",
+                          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                        }}
+                      >
+                        {/* Slot Badge */}
+                        <div style={{
+                          fontSize: "0.72rem",
+                          fontWeight: 800,
+                          color: "#a5b4fc",
+                          background: "rgba(99, 102, 241, 0.14)",
+                          border: "1px solid rgba(99, 102, 241, 0.25)",
+                          padding: "3px 8px",
+                          borderRadius: 8,
+                          flexShrink: 0,
+                        }}>
+                          #{idx + 1}
+                        </div>
 
                         {/* Time Picker */}
-                        <input
-                          type="time"
-                          value={slot.time || "18:00"}
-                          onChange={e => {
-                            const newTime = e.target.value;
-                            setSettings(s => {
-                              const list = [...(s.submissionReportSlots || [])];
-                              list[idx] = { ...list[idx], time: newTime };
-                              return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
-                            });
-                          }}
-                          style={{
-                            background: "transparent",
-                            color: "#fff",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                            padding: "0.4rem",
-                            borderRadius: 6,
-                            fontSize: "0.9rem"
-                          }}
-                        />
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
+                          <input
+                            type="time"
+                            value={slot.time || "18:00"}
+                            onChange={e => {
+                              const newTime = e.target.value;
+                              setSettings(s => {
+                                const list = [...(s.submissionReportSlots || [])];
+                                list[idx] = { ...list[idx], time: newTime };
+                                return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
+                              });
+                            }}
+                            style={{
+                              background: "rgba(255, 255, 255, 0.04)",
+                              color: "#f8fafc",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              padding: "0.45rem 0.65rem",
+                              borderRadius: 8,
+                              fontSize: "0.88rem",
+                              fontWeight: 700,
+                              outline: "none",
+                            }}
+                          />
+                        </div>
 
-                        {/* Template Type Selector */}
-                        <select
+                        {/* Custom Template Dropdown Popover */}
+                        <TemplateDropdown
                           value={slot.templateType || "comprehensive"}
-                          onChange={e => {
-                            const newType = e.target.value;
+                          onChange={(newType) => {
                             setSettings(s => {
                               const list = [...(s.submissionReportSlots || [])];
                               list[idx] = { ...list[idx], templateType: newType };
                               return { ...s, submissionReportSlots: list };
                             });
                           }}
-                          style={{
-                            flex: 1,
-                            background: "rgba(0,0,0,0.3)",
-                            color: "#fff",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                            padding: "0.4rem",
-                            borderRadius: 6,
-                            fontSize: "0.85rem"
-                          }}
-                        >
-                          <option value="comprehensive">📊 Comprehensive</option>
-                          <option value="urgent">⚡ Urgent Final Call</option>
-                          <option value="motivation">🌟 Motivation &amp; Streaks</option>
-                          <option value="custom">✏️ Custom Template</option>
-                        </select>
+                        />
 
-                        {/* Edit shortcut */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingTemplateType(slot.templateType || "comprehensive");
-                            document.getElementById("submissionReportTemplateTextarea")?.focus();
-                          }}
-                          style={{
-                            background: "rgba(124, 111, 255, 0.15)",
-                            border: "1px solid rgba(124, 111, 255, 0.3)",
-                            color: "#c084fc",
-                            borderRadius: 8,
-                            padding: "0.35rem 0.55rem",
-                            cursor: "pointer",
-                            fontSize: "0.8rem",
-                          }}
-                        >
-                          ✏️ Edit
-                        </button>
-
-                        {(settings.submissionReportSlots || []).length > 1 && (
+                        {/* Edit & Delete Action Buttons */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
                           <button
                             type="button"
                             onClick={() => {
-                              setSettings(s => {
-                                const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
-                                const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
-                                return {
-                                  ...s,
-                                  submissionReportSlots: finalList,
-                                  submissionReportTimes: finalList.map(x => x.time),
-                                };
-                              });
+                              setEditingTemplateType(slot.templateType || "comprehensive");
+                              document.getElementById("submissionReportTemplateTextarea")?.focus();
                             }}
                             style={{
-                              background: "rgba(248,113,113,0.12)",
-                              border: "1px solid rgba(248,113,113,0.3)",
-                              color: "#f87171",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.35rem",
+                              background: "rgba(99, 102, 241, 0.14)",
+                              border: "1px solid rgba(99, 102, 241, 0.28)",
+                              color: "#c4b5fd",
                               borderRadius: 8,
-                              padding: "0.35rem 0.55rem",
+                              padding: "0.45rem 0.75rem",
                               cursor: "pointer",
-                              fontSize: "0.8rem",
+                              fontSize: "0.78rem",
+                              fontWeight: 700,
+                              transition: "all 0.15s ease",
                             }}
+                            title="Edit template text below"
                           >
-                            🗑️
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                            </svg>
+                            Edit
                           </button>
-                        )}
+
+                          {(settings.submissionReportSlots || []).length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSettings(s => {
+                                  const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
+                                  const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
+                                  return {
+                                    ...s,
+                                    submissionReportSlots: finalList,
+                                    submissionReportTimes: finalList.map(x => x.time),
+                                  };
+                                });
+                              }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 30,
+                                height: 30,
+                                background: "rgba(239, 68, 68, 0.12)",
+                                border: "1px solid rgba(239, 68, 68, 0.25)",
+                                color: "#f87171",
+                                borderRadius: 8,
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                              }}
+                              title="Delete this time slot"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
-
 
                   <button
                     type="button"
@@ -3073,21 +3304,25 @@ export default function AdminDashboard() {
                     }}
                     style={{
                       width: "100%",
-                      padding: "0.6rem",
+                      padding: "0.65rem",
                       borderRadius: 10,
-                      border: "1px dashed rgba(124, 111, 255, 0.4)",
-                      background: "rgba(124, 111, 255, 0.08)",
-                      color: "#c084fc",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
+                      border: "1px dashed rgba(99, 102, 241, 0.35)",
+                      background: "rgba(99, 102, 241, 0.06)",
+                      color: "#c4b5fd",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "0.4rem",
+                      gap: "0.45rem",
+                      transition: "all 0.16s ease",
                     }}
                   >
-                    ➕ Add Another Auto-Send Time Slot
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Another Auto-Send Time Slot
                   </button>
 
                   <div style={{
