@@ -128,46 +128,57 @@ async function generateChallengeMetadata() {
 async function fetchPexelsImage(query) {
   const apiKey = process.env.PEXELS_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "PEXELS_API_KEY is not set. " +
-      "Sign up free at https://www.pexels.com/api/ and add it to Infisical / .env"
-    );
+    console.warn("[PictureGen] ⚠️ PEXELS_API_KEY not configured — using curated fallback image");
+    return {
+      imageUrl: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1280&q=80",
+      imageSource: "Unsplash (Fallback)",
+      imagePageUrl: "https://unsplash.com",
+      imagePhotographer: "Headway",
+      imagePhotographerUrl: "https://unsplash.com/@headwayio",
+      imageSearchQuery: query,
+    };
   }
 
-  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape`;
+  try {
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape`;
+    const res = await fetch(url, {
+      headers: { Authorization: apiKey },
+    });
 
-  const res = await fetch(url, {
-    headers: { Authorization: apiKey },
-  });
+    if (!res.ok) {
+      throw new Error(`Pexels API error ${res.status}`);
+    }
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`Pexels API error ${res.status}: ${errText.slice(0, 200)}`);
+    const data = await res.json();
+    if (!data.photos || data.photos.length === 0) {
+      throw new Error(`No Pexels results for "${query}"`);
+    }
+
+    const photo = data.photos[0];
+    const baseUrl = photo.src?.large2x || photo.src?.large || photo.src?.original || "";
+    const imageUrl = baseUrl.includes("?")
+      ? baseUrl.replace(/w=\d+/, "w=1280").replace(/h=\d+/, "h=853")
+      : baseUrl + "?auto=compress&cs=tinysrgb&w=1280&h=853&fit=crop";
+
+    return {
+      imageUrl,
+      imageSource: "Pexels",
+      imagePageUrl: photo.url,
+      imagePhotographer: photo.photographer,
+      imagePhotographerUrl: photo.photographer_url,
+      imageSearchQuery: query,
+    };
+  } catch (err) {
+    console.warn("[PictureGen] Pexels lookup failed, using fallback:", err.message);
+    return {
+      imageUrl: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1280&q=80",
+      imageSource: "Unsplash (Fallback)",
+      imagePageUrl: "https://unsplash.com",
+      imagePhotographer: "Brooke Cagle",
+      imagePhotographerUrl: "https://unsplash.com/@brookecagle",
+      imageSearchQuery: query,
+    };
   }
-
-  const data = await res.json();
-
-  if (!data.photos || data.photos.length === 0) {
-    throw new Error(`No Pexels results found for query: "${query}"`);
-  }
-
-  // Pick the best photo — prefer one with a large/original size
-  const photo = data.photos[0];
-
-  // Use large2x for best resolution, appending w=1280 for crisp display
-  const baseUrl = photo.src?.large2x || photo.src?.large || photo.src?.original || "";
-  const imageUrl = baseUrl.includes("?")
-    ? baseUrl.replace(/w=\d+/, "w=1280").replace(/h=\d+/, "h=853")
-    : baseUrl + "?auto=compress&cs=tinysrgb&w=1280&h=853&fit=crop";
-
-  return {
-    imageUrl,
-    imageSource: "Pexels",
-    imagePageUrl: photo.url,
-    imagePhotographer: photo.photographer,
-    imagePhotographerUrl: photo.photographer_url,
-    imageSearchQuery: query,
-  };
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────

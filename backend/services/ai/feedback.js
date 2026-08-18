@@ -269,7 +269,7 @@ Rules:
           model: getTextModel(),
           messages: [{ role: "user", content: prompt }],
           temperature: 0.4,
-          max_tokens: 200,
+          max_tokens: 1000,
         }),
       });
 

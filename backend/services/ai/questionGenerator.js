@@ -229,7 +229,7 @@ Return ONLY the rewritten question text, nothing else.`;
         model: getTextModel(),
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
-        max_tokens: 150,
+        max_tokens: 1500,
       }),
     });
 

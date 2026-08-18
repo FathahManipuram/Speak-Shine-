@@ -37,7 +37,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-RUN npm ci --omit=dev --omit=optional --no-audit --no-fund --prefer-offline && \
+RUN npm ci --omit=dev --include=optional --no-audit --no-fund --prefer-offline && \
     npm cache clean --force
 
 COPY api ./api
