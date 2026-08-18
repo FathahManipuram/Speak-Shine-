@@ -838,6 +838,7 @@ export default function VideoAnalysis() {
             )}
             {report.status === "completed" && report.analysis && (
               <ReportView 
+                reportId={reportId || report._id || report.reportId}
                 analysis={{
                   ...report.analysis,
                   challengeType: report.analysis?.challengeType
@@ -845,7 +846,13 @@ export default function VideoAnalysis() {
                 }}
                 expiresAt={report.expiresAt} 
                 formatTimeRemaining={formatTimeRemaining} 
-                videoUrl={report.videoUrl} 
+                videoUrl={report.videoUrl}
+                onReEvaluated={(newAnalysis) => {
+                  setReport((prev) => ({
+                    ...prev,
+                    analysis: newAnalysis,
+                  }));
+                }}
               />
             )}
           </div>
@@ -3424,7 +3431,28 @@ function Section({ title, children }) {
   );
 }
 
-function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
+function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl, reportId, onReEvaluated }) {
+  const [reEvaluating, setReEvaluating] = useState(false);
+  const [reEvalMsg, setReEvalMsg] = useState(null);
+
+  const handleReEvaluate = async () => {
+    if (!reportId) return;
+    try {
+      setReEvaluating(true);
+      setReEvalMsg(null);
+      const res = await api.post(`/video/report/${reportId}/re-evaluate`);
+      if (res.data?.analysis) {
+        if (onReEvaluated) onReEvaluated(res.data.analysis);
+        setReEvalMsg(`✓ ${res.data.message || "Score re-evaluated successfully!"}`);
+      }
+    } catch (err) {
+      setReEvalMsg(`⚠️ ${err.response?.data?.error || "Re-evaluation failed"}`);
+    } finally {
+      setReEvaluating(false);
+      setTimeout(() => setReEvalMsg(null), 8000);
+    }
+  };
+
   const s = a.stats || {};
   const tierColor = {
     excellent: "#4ade80",
@@ -3588,7 +3616,7 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
           overflow: "hidden",
         }}>
           {/* Header row */}
-          <div style={{ padding: "1rem 1.25rem 0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+          <div style={{ padding: "1rem 1.25rem 0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
             <div>
               <div style={{ fontSize: "0.68rem", color: "rgba(167,139,250,0.8)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.2rem" }}>
                 🏆 Today's Score
@@ -3598,23 +3626,75 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
                 <span style={{ fontSize: "1rem", color: "var(--muted)", fontWeight: 600 }}>/100 pts</span>
               </div>
             </div>
-            <div style={{
-              background: cs >= 80 ? "rgba(74,222,128,0.15)" : cs >= 60 ? "rgba(124,111,255,0.15)" : cs >= 40 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)",
-              border: `1px solid ${cs >= 80 ? "rgba(74,222,128,0.4)" : cs >= 60 ? "rgba(124,111,255,0.4)" : cs >= 40 ? "rgba(251,191,36,0.4)" : "rgba(248,113,113,0.4)"}`,
-              borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center",
-            }}>
-              <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text)" }}>
-                {cs >= 90 ? "🏆 Elite" : cs >= 80 ? "⭐ Excellent" : cs >= 65 ? "✅ Good" : cs >= 50 ? "📈 Developing" : "💪 Keep going"}
-              </div>
-              <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "0.15rem" }}>
-                {a.scoreOutcome === "improved"
-                  ? `📈 Improved! (was ${(a.previousScore ?? 0).toFixed(1)} pts)`
-                  : a.scoreOutcome === "dropped"
-                  ? `ℹ️ Previous best kept (${(a.previousScore ?? 0).toFixed(1)} pts)`
-                  : "Added to monthly total"}
+
+            <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+              {reportId && (
+                <button
+                  type="button"
+                  onClick={handleReEvaluate}
+                  disabled={reEvaluating}
+                  style={{
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: 10,
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    border: "1px solid rgba(167, 139, 250, 0.4)",
+                    background: "rgba(124, 111, 255, 0.15)",
+                    color: "#c4b5fd",
+                    cursor: reEvaluating ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    transition: "all 0.15s ease",
+                  }}
+                  title="Re-run vocabulary detection and recalculate score"
+                >
+                  {reEvaluating ? (
+                    <>
+                      <span className="spinner-sm" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                      <span>Re-evaluating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔄 Re-evaluate Score</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <div style={{
+                background: cs >= 80 ? "rgba(74,222,128,0.15)" : cs >= 60 ? "rgba(124,111,255,0.15)" : cs >= 40 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)",
+                border: `1px solid ${cs >= 80 ? "rgba(74,222,128,0.4)" : cs >= 60 ? "rgba(124,111,255,0.4)" : cs >= 40 ? "rgba(251,191,36,0.4)" : "rgba(248,113,113,0.4)"}`,
+                borderRadius: 12, padding: "0.5rem 1rem", textAlign: "center",
+              }}>
+                <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text)" }}>
+                  {cs >= 90 ? "🏆 Elite" : cs >= 80 ? "⭐ Excellent" : cs >= 65 ? "✅ Good" : cs >= 50 ? "📈 Developing" : "💪 Keep going"}
+                </div>
+                <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "0.15rem" }}>
+                  {a.scoreOutcome === "improved"
+                    ? `📈 Improved! (was ${(a.previousScore ?? 0).toFixed(1)} pts)`
+                    : a.scoreOutcome === "dropped"
+                    ? `ℹ️ Previous best kept (${(a.previousScore ?? 0).toFixed(1)} pts)`
+                    : "Added to monthly total"}
+                </div>
               </div>
             </div>
           </div>
+
+          {reEvalMsg && (
+            <div style={{
+              margin: "0 1.25rem 0.75rem",
+              padding: "0.45rem 0.85rem",
+              borderRadius: 8,
+              background: reEvalMsg.startsWith("✓") ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
+              border: `1px solid ${reEvalMsg.startsWith("✓") ? "rgba(74, 222, 128, 0.3)" : "rgba(248, 113, 113, 0.3)"}`,
+              fontSize: "0.76rem",
+              fontWeight: 600,
+              color: reEvalMsg.startsWith("✓") ? "#4ade80" : "#f87171",
+            }}>
+              {reEvalMsg}
+            </div>
+          )}
 
           {/* Breakdown bars */}
           {bd && (

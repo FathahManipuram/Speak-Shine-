@@ -108,6 +108,7 @@ router.get("/progress/:reportId", authMiddleware, videoController.getProgress);
 
 // ── Report Management ────────────────────────────────────────────────────────
 router.get("/report/:reportId", authMiddleware, videoController.getReport);
+router.post("/report/:reportId/re-evaluate", authMiddleware, videoController.reEvaluateReport);
 router.get("/my-reports", authMiddleware, videoController.getMyReports);
 router.delete("/report/:reportId", authMiddleware, videoController.deleteReport);
 router.post("/retry/:reportId", authMiddleware, videoController.retryAnalysis);

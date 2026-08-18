@@ -1542,3 +1542,119 @@ export async function retryVideoAnalysis(reportId, authId) {
     status: "processing"
   };
 }
+
+/**
+ * Re-evaluate a report's vocabulary matching and composite score using the latest intelligent rules.
+ */
+export async function reEvaluateReport(reportId, userId, userRole = "user") {
+  const report = await VideoReport.findById(reportId);
+  if (!report) {
+    const error = new Error("Report not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Allow report owner or privileged admin/trainer
+  const isOwner = String(report.userId) === String(userId) || (report.phone && report.phone === userId);
+  const isPrivileged = userRole === "admin" || userRole === "trainer" || userRole === "superadmin";
+  if (!isOwner && !isPrivileged) {
+    const error = new Error("Not authorized to re-evaluate this report");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (report.status !== "completed" || !report.analysis) {
+    const error = new Error("Report is not completed yet");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const status = await Status.findOne().lean();
+  const todayVocab = status?.todayVocabulary || [];
+  const transcript = report.analysis?.transcription || "";
+
+  // 1. Re-match vocabulary with intelligent matcher
+  const matchedWords = matchVocabularyInTranscript(transcript, todayVocab, report.analysis);
+
+  // 2. Re-calculate composite score and score breakdown
+  const challengeType = report.challengeType || report.analysis?.challengeType || (
+    status?.isPictureDescriptionDay ? "picture_description"
+    : status?.isStorySummaryDay ? "story_summary"
+    : status?.isWeeklyReflectionDay ? "weekly_reflection"
+    : status?.isMonthlyReflectionDay ? "monthly_reflection"
+    : status?.isMonthlyGoalsDay ? "monthly_goals"
+    : "topic"
+  );
+
+  const isPic = challengeType === "picture_description" || status?.isPictureDescriptionDay;
+  const isStory = challengeType === "story_summary" || status?.isStorySummaryDay;
+  const configuredWordCount = isPic
+    ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+    : isStory
+    ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+    : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5);
+  const configuredRequiredCount = isPic
+    ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+    : isStory
+    ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+    : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
+  const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
+  const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
+
+  const { score, breakdown } = calculateCompositeScore({
+    durationSeconds: report.videoDuration || 0,
+    maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : (status?.durationDefaultFull ?? 300),
+    vocabularyUsed: matchedWords,
+    totalVocabWords: effectiveTotalWords,
+    requiredVocabWords: effectiveRequiredWords,
+    topicRelevance: report.analysis.topicRelevance ?? null,
+    analysis: report.analysis,
+    isPictureDescription: isPic || false,
+  });
+
+  const updatedBreakdown = isPic ? {
+    ...breakdown,
+    maxCommunication: 30,
+    maxContent: 40,
+    maxVocabulary: 10,
+    maxDuration: 20,
+  } : {
+    ...breakdown,
+    maxLength: 33.33,
+    maxVocab: 33.33,
+    maxTopic: breakdown.isSpecialDay ? 0 : 16.67,
+    maxComm: breakdown.isSpecialDay ? 33.34 : 16.67,
+  };
+
+  const requiredCount = Math.min(configuredRequiredCount, todayVocab.length || 1);
+  const vocabularyScore = todayVocab.length > 0
+    ? Math.round((Math.min(matchedWords.length, requiredCount) / requiredCount) * 10 * 10) / 10
+    : report.analysis.vocabularyScore ?? null;
+
+  report.analysis.vocabularyUsed = matchedWords;
+  report.analysis.vocabularyScore = vocabularyScore;
+  report.analysis.compositeScore = score;
+  report.analysis.scoreBreakdown = updatedBreakdown;
+  report.markModified("analysis");
+  await report.save();
+
+  // Also update user's feedbackScores latest entry points if phone exists
+  if (report.phone) {
+    try {
+      await User.findOneAndUpdate(
+        { phone: report.phone, "feedbackScores.date": { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+        { $set: { "feedbackScores.$.points": score } }
+      );
+    } catch {}
+  }
+
+  const { analysis: reportAnalysis } = await prepareReportAnalysis(report);
+
+  return {
+    success: true,
+    message: `Score re-evaluated! Recognized ${matchedWords.length} vocabulary word${matchedWords.length === 1 ? '' : 's'}.`,
+    matchedWords,
+    score,
+    analysis: reportAnalysis,
+  };
+}

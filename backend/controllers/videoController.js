@@ -543,6 +543,24 @@ export async function getReport(req, res) {
 }
 
 /**
+ * POST /api/video/report/:reportId/re-evaluate
+ * Re-evaluate video report score & vocabulary
+ */
+export async function reEvaluateReport(req, res) {
+  try {
+    const { reportId } = req.params;
+    const result = await videoService.reEvaluateReport(reportId, req.user.id, req.user.role);
+    res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("[ReEvaluateReport] Error:", error.message);
+    res.status(500).json({ error: error.message || "Failed to re-evaluate report" });
+  }
+}
+
+/**
  * GET /api/video/community-feed
  * Get community feed (public videos from last 24h)
  */
