@@ -411,6 +411,9 @@ export async function getSettings() {
   return {
     posterSendTime: status.posterSendTime || "08:00",
     questionGenerateTime: status.questionGenerateTime || "07:00",
+    submissionReportEnabled: status.submissionReportEnabled ?? true,
+    submissionReportTime1: status.submissionReportTime1 || "18:00",
+    submissionReportTime2: status.submissionReportTime2 || "21:00",
     vocabWordCount: status.vocabWordCount ?? 5,
     vocabRequiredCount: status.vocabRequiredCount ?? 3,
     vocabNormalWordCount: status.vocabNormalWordCount ?? status.vocabWordCount ?? 5,
@@ -457,7 +460,10 @@ export async function updateSettings(
   durationPictureMax, durationPictureFull,
   vocabNormalWordCount, vocabNormalRequiredCount,
   vocabStoryWordCount, vocabStoryRequiredCount,
-  vocabPictureWordCount, vocabPictureRequiredCount
+  vocabPictureWordCount, vocabPictureRequiredCount,
+  submissionReportEnabled,
+  submissionReportTime1,
+  submissionReportTime2
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -479,6 +485,30 @@ export async function updateSettings(
       throw error;
     }
     updates.questionGenerateTime = questionGenerateTime;
+  }
+
+  if (submissionReportEnabled !== undefined) {
+    updates.submissionReportEnabled = submissionReportEnabled === true || submissionReportEnabled === "true";
+  }
+
+  if (submissionReportTime1 !== undefined) {
+    if (!timeRegex.test(submissionReportTime1)) {
+      const error = new Error("Invalid submissionReportTime1 format (HH:MM)");
+      error.statusCode = 400;
+      throw error;
+    }
+    updates.submissionReportTime1 = submissionReportTime1;
+    updates.lastSubmissionReportTime = null;
+  }
+
+  if (submissionReportTime2 !== undefined) {
+    if (!timeRegex.test(submissionReportTime2)) {
+      const error = new Error("Invalid submissionReportTime2 format (HH:MM)");
+      error.statusCode = 400;
+      throw error;
+    }
+    updates.submissionReportTime2 = submissionReportTime2;
+    updates.lastSubmissionReportTime = null;
   }
 
   if (vocabWordCount !== undefined) {

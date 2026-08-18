@@ -141,6 +141,9 @@ export async function updateSettings(req, res) {
       vocabStoryRequiredCount,
       vocabPictureWordCount,
       vocabPictureRequiredCount,
+      submissionReportEnabled,
+      submissionReportTime1,
+      submissionReportTime2,
     } = req.body;
     const result = await dashboardService.updateSettings(
       posterSendTime,
@@ -171,7 +174,10 @@ export async function updateSettings(req, res) {
       vocabStoryWordCount,
       vocabStoryRequiredCount,
       vocabPictureWordCount,
-      vocabPictureRequiredCount
+      vocabPictureRequiredCount,
+      submissionReportEnabled,
+      submissionReportTime1,
+      submissionReportTime2
     );
     res.json(result);
   } catch (error) {

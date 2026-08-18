@@ -572,3 +572,114 @@ export async function sendDailyPosterToGroup(options = {}) {
     sentAt: new Date(),
   };
 }
+
+/**
+ * Gets a count summary of paid students who have submitted vs pending today.
+ */
+export async function getSubmissionReportSummary() {
+  try {
+    const User = (await import("../../../models/userSchema.js")).default;
+    const paidUsers = await User.find({ paid: true }).sort({ name: 1 }).lean();
+    const submittedUsers = paidUsers.filter(u => u.completed);
+    const pendingUsers = paidUsers.filter(u => !u.completed);
+    return {
+      totalPaid: paidUsers.length,
+      submittedCount: submittedUsers.length,
+      pendingCount: pendingUsers.length,
+      submittedNames: submittedUsers.map(u => u.name || `User ${u.phone ? u.phone.slice(-4) : ""}`).filter(Boolean),
+      pendingNames: pendingUsers.map(u => u.name || `User ${u.phone ? u.phone.slice(-4) : ""}`).filter(Boolean),
+    };
+  } catch (err) {
+    return { totalPaid: 0, submittedCount: 0, pendingCount: 0, submittedNames: [], pendingNames: [] };
+  }
+}
+
+/**
+ * Sends a daily submission status report listing submitted vs pending (paid) users to TARGET_GROUP.
+ */
+export async function sendDailySubmissionReportToGroup(options = {}) {
+  const targetGroup = options.targetGroup || process.env.TARGET_GROUP;
+  if (!targetGroup) {
+    throw new Error("TARGET_GROUP is not configured in .env");
+  }
+
+  if (!sock || !isConnected) {
+    throw new Error("WhatsApp bot is not connected. Please connect WhatsApp from the Admin Dashboard first.");
+  }
+
+  // 1. Fetch all PAID users only
+  const User = (await import("../../../models/userSchema.js")).default;
+  const paidUsers = await User.find({ paid: true }).sort({ name: 1 }).lean();
+
+  if (!paidUsers || paidUsers.length === 0) {
+    console.log("[WhatsApp] No paid users found for submission report.");
+    return { success: false, message: "No paid users found in the system." };
+  }
+
+  const submittedUsers = paidUsers.filter(u => u.completed);
+  const pendingUsers = paidUsers.filter(u => !u.completed);
+
+  // Format today's date in IST
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const dateStr = nowIST.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  const totalPaid = paidUsers.length;
+  const submittedCount = submittedUsers.length;
+  const pendingCount = pendingUsers.length;
+  const percent = totalPaid > 0 ? Math.round((submittedCount / totalPaid) * 100) : 0;
+  const frontendUrl = process.env.FRONTEND_URL || "https://speak-shine.sidhartht.online";
+
+  // Build the WhatsApp message
+  let message = `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n`;
+  message += `📅 *Date:* ${dateStr}\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  message += `✅ *SUBMITTED TODAY (${submittedCount}/${totalPaid})*\n`;
+  if (submittedUsers.length > 0) {
+    submittedUsers.forEach((u, i) => {
+      const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
+      const streakText = (u.streak && u.streak > 0) ? ` 🔥 ${u.streak}d streak` : "";
+      message += `${i + 1}. ${displayName}${streakText}\n`;
+    });
+  } else {
+    message += `_No submissions yet today._\n`;
+  }
+
+  message += `\n⏳ *PENDING SUBMISSIONS (${pendingCount}/${totalPaid})*\n`;
+  if (pendingUsers.length > 0) {
+    pendingUsers.forEach((u, i) => {
+      const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
+      message += `${i + 1}. ${displayName}\n`;
+    });
+  } else {
+    message += `🎉 _All paid students have completed today's challenge! Amazing work!_ 🌟\n`;
+  }
+
+  message += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  message += `📈 *Completion Rate:* ${percent}%\n`;
+  if (pendingCount > 0) {
+    message += `💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n`;
+  } else {
+    message += `🏆 *Congratulations everyone on 100% daily submissions!*\n`;
+  }
+  message += `🚀 *Submit your video here:* ${frontendUrl}\n`;
+
+  console.log(`[WhatsApp] 📤 Dispatching submission report to ${targetGroup}...`);
+  await sock.sendMessage(targetGroup, { text: message });
+  console.log(`[WhatsApp] ✅ Submission report sent successfully to ${targetGroup}!`);
+
+  return {
+    success: true,
+    targetGroup,
+    totalPaid,
+    submittedCount,
+    pendingCount,
+    percent,
+    sentAt: new Date(),
+  };
+}

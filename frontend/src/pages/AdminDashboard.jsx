@@ -40,9 +40,13 @@ export default function AdminDashboard() {
   const [waStatus, setWaStatus] = useState(null);
   const [waLoading, setWaLoading] = useState(false);
   const [waSendingPoster, setWaSendingPoster] = useState(false);
+  const [waSendingReport, setWaSendingReport] = useState(false);
   const [settings, setSettings] = useState({
     posterSendTime: "08:00",
     questionGenerateTime: "07:00",
+    submissionReportEnabled: true,
+    submissionReportTime1: "18:00",
+    submissionReportTime2: "21:00",
     vocabWordCount: 5,
     vocabRequiredCount: 3,
     vocabNormalWordCount: 5,
@@ -219,6 +223,9 @@ export default function AdminDashboard() {
       setSettings({
         posterSendTime: s.data.posterSendTime || "08:00",
         questionGenerateTime: s.data.questionGenerateTime || "07:00",
+        submissionReportEnabled: s.data.submissionReportEnabled ?? true,
+        submissionReportTime1: s.data.submissionReportTime1 || "18:00",
+        submissionReportTime2: s.data.submissionReportTime2 || "21:00",
         vocabWordCount: s.data.vocabWordCount ?? 5,
         vocabRequiredCount: s.data.vocabRequiredCount ?? 3,
         vocabNormalWordCount: s.data.vocabNormalWordCount ?? 5,
@@ -279,6 +286,21 @@ export default function AdminDashboard() {
       msg(err.response?.data?.error || "Failed to send poster to WhatsApp group", "danger");
     } finally {
       setWaSendingPoster(false);
+    }
+  };
+
+  const handleSendSubmissionReportToGroup = async () => {
+    try {
+      setWaSendingReport(true);
+      const res = await api.post("/whatsapp/send-submission-report");
+      if (res.data?.success) {
+        msg(`✅ Submission report sent to group! (${res.data.submittedCount}/${res.data.totalPaid} paid students submitted)`, "success");
+        loadWhatsAppStatus();
+      }
+    } catch (err) {
+      msg(err.response?.data?.error || "Failed to send submission report to WhatsApp group", "danger");
+    } finally {
+      setWaSendingReport(false);
     }
   };
 
@@ -476,6 +498,9 @@ export default function AdminDashboard() {
         ...s,
         posterSendTime: fresh.data.posterSendTime || "08:00",
         questionGenerateTime: fresh.data.questionGenerateTime || "07:00",
+        submissionReportEnabled: fresh.data.submissionReportEnabled ?? true,
+        submissionReportTime1: fresh.data.submissionReportTime1 || "18:00",
+        submissionReportTime2: fresh.data.submissionReportTime2 || "21:00",
         vocabWordCount: fresh.data.vocabWordCount ?? 5,
         vocabRequiredCount: fresh.data.vocabRequiredCount ?? 3,
         vocabNormalWordCount: fresh.data.vocabNormalWordCount ?? 5,
@@ -2066,6 +2091,55 @@ export default function AdminDashboard() {
                 : "🚀 Send Today's Poster to Group Now"}
             </button>
 
+            {/* Submission Status Report to Group */}
+            <div style={{
+              marginTop: "1.5rem",
+              paddingTop: "1.25rem",
+              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  📊 Daily Submission Status Report
+                </div>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 6, background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", fontWeight: 700 }}>
+                    ✅ {waStatus?.submissionSummary?.submittedCount ?? 0} Submitted
+                  </span>
+                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 6, background: "rgba(248, 113, 113, 0.15)", color: "#f87171", fontWeight: 700 }}>
+                    ⏳ {waStatus?.submissionSummary?.pendingCount ?? 0} Pending
+                  </span>
+                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 6, background: "rgba(124, 111, 255, 0.15)", color: "#a78bfa", fontWeight: 700 }}>
+                    👥 {waStatus?.submissionSummary?.totalPaid ?? 0} Paid Students
+                  </span>
+                </div>
+              </div>
+
+              <p style={{ color: "var(--muted)", fontSize: "0.82rem", margin: "0 0 1rem", lineHeight: 1.45 }}>
+                Send a formatted WhatsApp message to your group listing all <strong>Submitted Paid Students</strong> (with streaks) and <strong>Pending Paid Students</strong> who still need to submit today.
+              </p>
+
+              <button
+                className="btn-secondary"
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  fontSize: "0.92rem",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  border: "1px solid rgba(124, 111, 255, 0.4)",
+                  background: "rgba(124, 111, 255, 0.12)",
+                  color: "#c084fc",
+                }}
+                disabled={!waStatus?.isConnected || waSendingReport}
+                onClick={handleSendSubmissionReportToGroup}
+              >
+                {waSendingReport ? "⏳ Sending Submission Report..." : "📊 Send Submission Report to WhatsApp Group Now"}
+              </button>
+            </div>
+
             {!waStatus?.isConnected && (
               <div style={{ color: "#fbbf24", fontSize: "0.8rem", marginTop: "0.6rem", textAlign: "center" }}>
                 ⚠️ Connect your WhatsApp number above to enable sending.
@@ -2122,6 +2196,67 @@ export default function AdminDashboard() {
                     Currently: <strong style={{color:"var(--accent)"}}>{settings.questionGenerateTime} IST</strong>
                   </div>
                 </div>
+
+                {/* Daily Submission Report Schedule */}
+                <div style={{
+                  marginTop: "1.25rem",
+                  padding: "1rem",
+                  borderRadius: 12,
+                  background: "rgba(124, 111, 255, 0.06)",
+                  border: "1px solid rgba(124, 111, 255, 0.2)",
+                  marginBottom: "1.5rem"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+                    <label className="form-label" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      📊 Auto-Send Submission Report
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSettings(s => ({ ...s, submissionReportEnabled: !s.submissionReportEnabled }))}
+                      style={{
+                        padding: "0.25rem 0.65rem",
+                        borderRadius: 20,
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        border: settings.submissionReportEnabled ? "1px solid #4ade80" : "1px solid #f87171",
+                        background: settings.submissionReportEnabled ? "rgba(74, 222, 128, 0.15)" : "rgba(248, 113, 113, 0.15)",
+                        color: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {settings.submissionReportEnabled ? "Enabled" : "Disabled"}
+                    </button>
+                  </div>
+                  <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 1rem" }}>
+                    Automatically sends the daily submission status report (submitted vs pending paid students) to your WhatsApp group at configured times.
+                  </p>
+
+                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                    <div className="form-group" style={{ flex: "1 1 140px", marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>⏰ Reminder 1 (Evening)</label>
+                      <input
+                        className="form-input"
+                        type="time"
+                        value={settings.submissionReportTime1}
+                        onChange={e => setSettings(s => ({ ...s, submissionReportTime1: e.target.value }))}
+                        required
+                        style={{ width: "100%", fontSize: "0.95rem" }}
+                      />
+                    </div>
+                    <div className="form-group" style={{ flex: "1 1 140px", marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem" }}>⏰ Reminder 2 (Night Final)</label>
+                      <input
+                        className="form-input"
+                        type="time"
+                        value={settings.submissionReportTime2}
+                        onChange={e => setSettings(s => ({ ...s, submissionReportTime2: e.target.value }))}
+                        required
+                        style={{ width: "100%", fontSize: "0.95rem" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <button type="submit" className="btn-primary" disabled={savingSection !== null}>
                   {savingSection === "schedule" ? "Saving…" : "💾 Save Schedule"}
                 </button>

@@ -81,6 +81,11 @@ const statusSchema = new mongoose.Schema({
   // Configurable schedule times (HH:MM, 24h, IST)
   posterSendTime: { type: String, default: "08:00" },
   questionGenerateTime: { type: String, default: "07:00" },
+  submissionReportEnabled: { type: Boolean, default: true },
+  submissionReportTime1: { type: String, default: "18:00" },
+  submissionReportTime2: { type: String, default: "21:00" },
+  lastSubmissionReportDate: { type: String, default: null },
+  lastSubmissionReportTime: { type: String, default: null },
   // Track last successful daily reset (YYYY-MM-DD in IST) to detect missed resets
   lastResetDate: { type: String, default: null },
 }, { timestamps: true });

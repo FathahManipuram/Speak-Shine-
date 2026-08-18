@@ -5,6 +5,8 @@
 import {
   getStatus,
   sendDailyPosterToGroup,
+  sendDailySubmissionReportToGroup,
+  getSubmissionReportSummary,
   restartWhatsAppBot,
   logoutWhatsAppBot,
 } from "../services/whatsapp/whatsappService.js";
@@ -34,11 +36,14 @@ export async function getWhatsAppStatus(req, res) {
       .select("todayTopic todayQuestion todayCategory todayContentType todayImageUrl todayAudioUrl isPictureDescriptionDay isStorySummaryDay todayVocabulary todayImageInstructions")
       .lean();
 
+    const submissionSummary = await getSubmissionReportSummary();
+
     return res.json({
       success: true,
       ...status,
       userPhone: maskPhoneNumber(status.userPhone),
       targetGroup: maskTargetGroup(status.targetGroup),
+      submissionSummary,
       todayQuestion: dbStatus ? {
         topic: dbStatus.todayTopic,
         question: dbStatus.todayQuestion,
@@ -64,6 +69,17 @@ export async function sendPoster(req, res) {
     return res.json({ success: true, ...result });
   } catch (err) {
     console.error("[WhatsAppController] sendPoster error:", err.message);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+}
+
+export async function sendSubmissionReport(req, res) {
+  try {
+    const { targetGroup } = req.body || {};
+    const result = await sendDailySubmissionReportToGroup({ targetGroup });
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("[WhatsAppController] sendSubmissionReport error:", err.message);
     return res.status(400).json({ success: false, error: err.message });
   }
 }
