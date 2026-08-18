@@ -469,6 +469,7 @@ export async function updateSettings(
       throw error;
     }
     updates.posterSendTime = posterSendTime;
+    updates.lastPosterSentTime = null;
   }
   
   if (questionGenerateTime !== undefined) {

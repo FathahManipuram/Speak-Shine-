@@ -651,8 +651,9 @@ export async function shouldPublishQuestion() {
     const nowTime = `${String(nowIST.getHours()).padStart(2, "0")}:${String(nowIST.getMinutes()).padStart(2, "0")}`;
 
     const sendTime = status.posterSendTime || "08:00";
+    const todayIST = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, "0")}-${String(nowIST.getDate()).padStart(2, "0")}`;
     
-    return nowTime === sendTime && !status.questionSentToday;
+    return nowTime === sendTime && (!status.questionSentToday || status.lastPosterSentDate !== todayIST || status.lastPosterSentTime !== sendTime);
   } catch (err) {
     console.error("[QuestionScheduler] Check time error:", err.message);
     return false;

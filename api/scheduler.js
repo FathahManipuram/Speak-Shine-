@@ -238,13 +238,21 @@ export function startScheduler() {
         return;
       }
 
-      // ── 1. Publish daily question at posterSendTime ──────────────────────
+      // ── 1. Publish daily question / send poster at posterSendTime ───────
       const sendTime = s.posterSendTime || "08:00";
-      if (nowTime === sendTime && !s.questionSentToday) {
-        console.log(`[Scheduler] ⏰ Time matched: ${nowTime} — publishing question`);
-        // Delegate to questionSchedulerService which checks manual questions first
-        const { publishDailyQuestion: publishFromService } = await import("../backend/services/scheduler/questionSchedulerService.js");
-        await publishFromService();
+      const todayDate = getTodayIST();
+      if (nowTime === sendTime) {
+        if (!s.questionSentToday) {
+          console.log(`[Scheduler] ⏰ Time matched: ${nowTime} — publishing question & dispatching poster`);
+          const { publishDailyQuestion: publishFromService } = await import("../backend/services/scheduler/questionSchedulerService.js");
+          await publishFromService();
+          await Status.updateOne({}, { $set: { lastPosterSentDate: todayDate, lastPosterSentTime: sendTime } });
+        } else if (s.lastPosterSentDate !== todayDate || s.lastPosterSentTime !== sendTime) {
+          console.log(`[Scheduler] ⏰ Time matched: ${nowTime} — question already published, dispatching poster to WhatsApp group`);
+          const { sendDailyPosterToGroup } = await import("../backend/services/whatsapp/whatsappService.js");
+          await sendDailyPosterToGroup();
+          await Status.updateOne({}, { $set: { lastPosterSentDate: todayDate, lastPosterSentTime: sendTime } });
+        }
       }
 
       // ── 2. Auto-generate questions at questionGenerateTime ───────────────

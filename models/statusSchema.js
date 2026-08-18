@@ -22,6 +22,8 @@ const statusSchema = new mongoose.Schema({
   todayImageInstructions: { type: String, default: null }, // speaking instructions for the user
   todayPosterImage: { type: String, default: null },
   posterExpiresAt: { type: Date, default: null },
+  lastPosterSentDate: { type: String, default: null },
+  lastPosterSentTime: { type: String, default: null },
   recentCategories: { type: [String], default: [] },
   // Daily vocabulary words (configurable count, related to today's question)
   todayVocabulary: {
