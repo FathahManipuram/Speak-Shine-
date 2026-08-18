@@ -1429,10 +1429,20 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
     return { word, meaning, example };
   };
 
-  const handleSpeak = (rawWord, example, idx) => {
+  const handleSpeak = (rawWord, rawMeaning, rawExample, idx) => {
     if (!rawWord) return;
-    const wordClean = rawWord.replace(/[^a-zA-Z0-9\s-]/g, "").trim();
-    if (!wordClean) return;
+    const wordClean = (rawWord || "").trim();
+    const meaningClean = (rawMeaning || "").trim();
+    const exampleClean = (rawExample || "").trim();
+
+    // Construct full spoken narrative
+    let textToSpeak = wordClean;
+    if (meaningClean) {
+      textToSpeak += `. ${meaningClean}`;
+    }
+    if (exampleClean) {
+      textToSpeak += `. For example: ${exampleClean}`;
+    }
 
     setSpeakingIndex(idx);
 
@@ -1442,12 +1452,14 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
       audioFallbackRef.current = null;
     }
 
+    // Dynamic safety timer proportional to text length
+    const expectedDurationMs = Math.max(6000, Math.min(30000, textToSpeak.length * 90));
     const safetyTimer = setTimeout(() => {
       setSpeakingIndex(prev => prev === idx ? null : prev);
-    }, 4500);
+    }, expectedDurationMs);
 
     // 1. Primary: Server-side audio stream from /api/video/tts (100% reliable MP3 stream)
-    const audioUrl = `/api/video/tts?text=${encodeURIComponent(wordClean)}`;
+    const audioUrl = `/api/video/tts?text=${encodeURIComponent(textToSpeak)}`;
     const audio = new Audio(audioUrl);
     audioFallbackRef.current = audio;
 
@@ -1462,8 +1474,8 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
         try {
           window.speechSynthesis.cancel();
           window.speechSynthesis.resume();
-          const utterance = new SpeechSynthesisUtterance(wordClean);
-          utterance.rate = 0.85;
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.rate = 0.88;
           utterance.lang = 'en-US';
           window._activeSpeechUtterance = utterance;
           utterance.onend = () => {
@@ -1487,8 +1499,8 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
         try {
           window.speechSynthesis.cancel();
           window.speechSynthesis.resume();
-          const utterance = new SpeechSynthesisUtterance(wordClean);
-          utterance.rate = 0.85;
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.rate = 0.88;
           utterance.lang = 'en-US';
           utterance.onend = () => {
             clearTimeout(safetyTimer);
@@ -1627,9 +1639,9 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
                 <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexShrink: 0, marginTop: "2px" }}>
                   <button
                     type="button"
-                    onClick={() => handleSpeak(w.word, w.example, i)}
+                    onClick={() => handleSpeak(w.word, w.meaning, w.example, i)}
                     className="vocab-listen-btn"
-                    title="Listen to pronunciation"
+                    title="Listen to full pronunciation and example sentence"
                     style={isSpeaking ? { background: "#7c6fff", color: "#fff", transform: "scale(1.15)" } : {}}
                   >
                     {isSpeaking ? "🔊" : "🔈"}

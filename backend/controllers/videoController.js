@@ -669,7 +669,7 @@ export async function getTtsAudio(req, res) {
     if (!raw) {
       return res.status(400).send("Word/text is required");
     }
-    const clean = raw.slice(0, 100);
+    const clean = raw.slice(0, 500);
 
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(clean)}`;
     
