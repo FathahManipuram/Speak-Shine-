@@ -411,7 +411,10 @@ export async function getSettings() {
   return {
     posterSendTime: status.posterSendTime || "08:00",
     questionGenerateTime: status.questionGenerateTime || "07:00",
-    submissionReportEnabled: status.submissionReportEnabled ?? true,
+    submissionReportEnabled: status.submissionReportEnabled !== false,
+    submissionReportTimes: Array.isArray(status.submissionReportTimes) && status.submissionReportTimes.length > 0
+      ? status.submissionReportTimes
+      : [status.submissionReportTime1 || "18:00", status.submissionReportTime2 || "21:00"].filter(Boolean),
     submissionReportTime1: status.submissionReportTime1 || "18:00",
     submissionReportTime2: status.submissionReportTime2 || "21:00",
     vocabWordCount: status.vocabWordCount ?? 5,
@@ -463,7 +466,8 @@ export async function updateSettings(
   vocabPictureWordCount, vocabPictureRequiredCount,
   submissionReportEnabled,
   submissionReportTime1,
-  submissionReportTime2
+  submissionReportTime2,
+  submissionReportTimes
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
@@ -491,24 +495,40 @@ export async function updateSettings(
     updates.submissionReportEnabled = submissionReportEnabled === true || submissionReportEnabled === "true";
   }
 
-  if (submissionReportTime1 !== undefined) {
-    if (!timeRegex.test(submissionReportTime1)) {
-      const error = new Error("Invalid submissionReportTime1 format (HH:MM)");
-      error.statusCode = 400;
-      throw error;
+  if (submissionReportTimes !== undefined) {
+    const rawTimes = Array.isArray(submissionReportTimes)
+      ? submissionReportTimes
+      : typeof submissionReportTimes === "string"
+      ? submissionReportTimes.split(",").map(t => t.trim())
+      : [];
+    const validTimes = rawTimes.filter(t => timeRegex.test(t));
+    if (validTimes.length > 0) {
+      updates.submissionReportTimes = validTimes;
+      updates.submissionReportTime1 = validTimes[0] || "18:00";
+      updates.submissionReportTime2 = validTimes[1] || "21:00";
     }
-    updates.submissionReportTime1 = submissionReportTime1;
     updates.lastSubmissionReportTime = null;
-  }
+    updates.lastSubmissionReportDate = null;
+  } else {
+    if (submissionReportTime1 !== undefined) {
+      if (!timeRegex.test(submissionReportTime1)) {
+        const error = new Error("Invalid submissionReportTime1 format (HH:MM)");
+        error.statusCode = 400;
+        throw error;
+      }
+      updates.submissionReportTime1 = submissionReportTime1;
+      updates.lastSubmissionReportTime = null;
+    }
 
-  if (submissionReportTime2 !== undefined) {
-    if (!timeRegex.test(submissionReportTime2)) {
-      const error = new Error("Invalid submissionReportTime2 format (HH:MM)");
-      error.statusCode = 400;
-      throw error;
+    if (submissionReportTime2 !== undefined) {
+      if (!timeRegex.test(submissionReportTime2)) {
+        const error = new Error("Invalid submissionReportTime2 format (HH:MM)");
+        error.statusCode = 400;
+        throw error;
+      }
+      updates.submissionReportTime2 = submissionReportTime2;
+      updates.lastSubmissionReportTime = null;
     }
-    updates.submissionReportTime2 = submissionReportTime2;
-    updates.lastSubmissionReportTime = null;
   }
 
   if (vocabWordCount !== undefined) {

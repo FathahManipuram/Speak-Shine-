@@ -82,6 +82,7 @@ const statusSchema = new mongoose.Schema({
   posterSendTime: { type: String, default: "08:00" },
   questionGenerateTime: { type: String, default: "07:00" },
   submissionReportEnabled: { type: Boolean, default: true },
+  submissionReportTimes: { type: [String], default: ["18:00", "21:00"] },
   submissionReportTime1: { type: String, default: "18:00" },
   submissionReportTime2: { type: String, default: "21:00" },
   lastSubmissionReportDate: { type: String, default: null },

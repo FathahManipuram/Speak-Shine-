@@ -45,8 +45,7 @@ export default function AdminDashboard() {
     posterSendTime: "08:00",
     questionGenerateTime: "07:00",
     submissionReportEnabled: true,
-    submissionReportTime1: "18:00",
-    submissionReportTime2: "21:00",
+    submissionReportTimes: ["18:00", "21:00"],
     vocabWordCount: 5,
     vocabRequiredCount: 3,
     vocabNormalWordCount: 5,
@@ -223,9 +222,10 @@ export default function AdminDashboard() {
       setSettings({
         posterSendTime: s.data.posterSendTime || "08:00",
         questionGenerateTime: s.data.questionGenerateTime || "07:00",
-        submissionReportEnabled: s.data.submissionReportEnabled ?? true,
-        submissionReportTime1: s.data.submissionReportTime1 || "18:00",
-        submissionReportTime2: s.data.submissionReportTime2 || "21:00",
+        submissionReportEnabled: s.data.submissionReportEnabled !== false,
+        submissionReportTimes: Array.isArray(s.data.submissionReportTimes) && s.data.submissionReportTimes.length > 0
+          ? s.data.submissionReportTimes
+          : [s.data.submissionReportTime1 || "18:00", s.data.submissionReportTime2 || "21:00"].filter(Boolean),
         vocabWordCount: s.data.vocabWordCount ?? 5,
         vocabRequiredCount: s.data.vocabRequiredCount ?? 3,
         vocabNormalWordCount: s.data.vocabNormalWordCount ?? 5,
@@ -498,9 +498,10 @@ export default function AdminDashboard() {
         ...s,
         posterSendTime: fresh.data.posterSendTime || "08:00",
         questionGenerateTime: fresh.data.questionGenerateTime || "07:00",
-        submissionReportEnabled: fresh.data.submissionReportEnabled ?? true,
-        submissionReportTime1: fresh.data.submissionReportTime1 || "18:00",
-        submissionReportTime2: fresh.data.submissionReportTime2 || "21:00",
+        submissionReportEnabled: fresh.data.submissionReportEnabled !== false,
+        submissionReportTimes: Array.isArray(fresh.data.submissionReportTimes) && fresh.data.submissionReportTimes.length > 0
+          ? fresh.data.submissionReportTimes
+          : [fresh.data.submissionReportTime1 || "18:00", fresh.data.submissionReportTime2 || "21:00"].filter(Boolean),
         vocabWordCount: fresh.data.vocabWordCount ?? 5,
         vocabRequiredCount: fresh.data.vocabRequiredCount ?? 3,
         vocabNormalWordCount: fresh.data.vocabNormalWordCount ?? 5,
@@ -2200,61 +2201,146 @@ export default function AdminDashboard() {
                 {/* Daily Submission Report Schedule */}
                 <div style={{
                   marginTop: "1.25rem",
-                  padding: "1rem",
-                  borderRadius: 12,
+                  padding: "1.25rem",
+                  borderRadius: 14,
                   background: "rgba(124, 111, 255, 0.06)",
-                  border: "1px solid rgba(124, 111, 255, 0.2)",
+                  border: "1px solid rgba(124, 111, 255, 0.25)",
                   marginBottom: "1.5rem"
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-                    <label className="form-label" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      📊 Auto-Send Submission Report
-                    </label>
-                    <button
-                      type="button"
+                  {/* Header & Toggle */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.85rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        📊 Auto-Send Submission Report
+                      </div>
+                      <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.15rem" }}>
+                        Sends daily attendance &amp; pending paid students list to WhatsApp group
+                      </div>
+                    </div>
+
+                    <div
                       onClick={() => setSettings(s => ({ ...s, submissionReportEnabled: !s.submissionReportEnabled }))}
                       style={{
-                        padding: "0.25rem 0.65rem",
-                        borderRadius: 20,
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        border: settings.submissionReportEnabled ? "1px solid #4ade80" : "1px solid #f87171",
-                        background: settings.submissionReportEnabled ? "rgba(74, 222, 128, 0.15)" : "rgba(248, 113, 113, 0.15)",
-                        color: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.6rem",
                         cursor: "pointer",
+                        userSelect: "none",
+                        background: settings.submissionReportEnabled ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)",
+                        border: `1px solid ${settings.submissionReportEnabled ? "rgba(74,222,128,0.4)" : "rgba(248,113,113,0.4)"}`,
+                        borderRadius: 24,
+                        padding: "0.35rem 0.85rem",
+                        transition: "all 0.2s ease",
                       }}
                     >
-                      {settings.submissionReportEnabled ? "Enabled" : "Disabled"}
-                    </button>
+                      <div style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
+                        boxShadow: `0 0 8px ${settings.submissionReportEnabled ? "#4ade80" : "#f87171"}`,
+                      }} />
+                      <span style={{
+                        fontSize: "0.82rem",
+                        fontWeight: 700,
+                        color: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
+                      }}>
+                        {settings.submissionReportEnabled ? "Active (Auto-Send ON)" : "Paused (Auto-Send OFF)"}
+                      </span>
+                    </div>
                   </div>
-                  <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 1rem" }}>
-                    Automatically sends the daily submission status report (submitted vs pending paid students) to your WhatsApp group at configured times.
-                  </p>
 
-                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                    <div className="form-group" style={{ flex: "1 1 140px", marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>⏰ Reminder 1 (Evening)</label>
-                      <input
-                        className="form-input"
-                        type="time"
-                        value={settings.submissionReportTime1}
-                        onChange={e => setSettings(s => ({ ...s, submissionReportTime1: e.target.value }))}
-                        required
-                        style={{ width: "100%", fontSize: "0.95rem" }}
-                      />
-                    </div>
-                    <div className="form-group" style={{ flex: "1 1 140px", marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>⏰ Reminder 2 (Night Final)</label>
-                      <input
-                        className="form-input"
-                        type="time"
-                        value={settings.submissionReportTime2}
-                        onChange={e => setSettings(s => ({ ...s, submissionReportTime2: e.target.value }))}
-                        required
-                        style={{ width: "100%", fontSize: "0.95rem" }}
-                      />
-                    </div>
+                  {/* Configurable Times List */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
+                    {(settings.submissionReportTimes || ["18:00", "21:00"]).map((timeStr, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.75rem",
+                          padding: "0.65rem 0.85rem",
+                          background: "var(--bg-secondary)",
+                          borderRadius: 10,
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <span style={{ fontSize: "0.85rem", color: "var(--accent)", fontWeight: 700, minWidth: 80 }}>
+                          ⏰ Time #{idx + 1}
+                        </span>
+                        <input
+                          className="form-input"
+                          type="time"
+                          value={timeStr}
+                          onChange={e => {
+                            const newTime = e.target.value;
+                            setSettings(s => {
+                              const list = [...(s.submissionReportTimes || ["18:00"])];
+                              list[idx] = newTime;
+                              return { ...s, submissionReportTimes: list };
+                            });
+                          }}
+                          required
+                          style={{ flex: 1, fontSize: "0.95rem", padding: "0.4rem 0.6rem" }}
+                        />
+                        {(settings.submissionReportTimes || []).length > 1 && (
+                          <button
+                            type="button"
+                            title="Remove this schedule time"
+                            onClick={() => {
+                              setSettings(s => {
+                                const list = (s.submissionReportTimes || []).filter((_, i) => i !== idx);
+                                return { ...s, submissionReportTimes: list.length > 0 ? list : ["18:00"] };
+                              });
+                            }}
+                            style={{
+                              background: "rgba(248,113,113,0.15)",
+                              border: "1px solid rgba(248,113,113,0.3)",
+                              color: "#f87171",
+                              borderRadius: 8,
+                              padding: "0.4rem 0.65rem",
+                              cursor: "pointer",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
+
+                  {/* Add New Time Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettings(s => {
+                        const current = s.submissionReportTimes || [];
+                        const lastTime = current[current.length - 1] || "18:00";
+                        const [h, m] = lastTime.split(":").map(Number);
+                        const nextHour = String((h + 2) % 24).padStart(2, "0");
+                        const nextTime = `${nextHour}:${String(m || 0).padStart(2, "0")}`;
+                        return { ...s, submissionReportTimes: [...current, nextTime] };
+                      });
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem",
+                      borderRadius: 10,
+                      border: "1px dashed rgba(124, 111, 255, 0.4)",
+                      background: "rgba(124, 111, 255, 0.08)",
+                      color: "#c084fc",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.4rem",
+                    }}
+                  >
+                    ➕ Add Another Auto-Send Time
+                  </button>
                 </div>
 
                 <button type="submit" className="btn-primary" disabled={savingSection !== null}>

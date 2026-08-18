@@ -274,11 +274,13 @@ export function startScheduler() {
       }
 
       // ── 3. Auto-send daily submission report to WhatsApp group ──────────
-      const reportEnabled = s.submissionReportEnabled ?? true;
+      const reportEnabled = s.submissionReportEnabled !== false;
       if (reportEnabled) {
-        const time1 = s.submissionReportTime1 || "18:00";
-        const time2 = s.submissionReportTime2 || "21:00";
-        if (nowTime === time1 || nowTime === time2) {
+        const configuredTimes = Array.isArray(s.submissionReportTimes) && s.submissionReportTimes.length > 0
+          ? s.submissionReportTimes
+          : [s.submissionReportTime1 || "18:00", s.submissionReportTime2 || "21:00"].filter(Boolean);
+
+        if (configuredTimes.includes(nowTime)) {
           if (s.lastSubmissionReportDate !== todayDate || s.lastSubmissionReportTime !== nowTime) {
             console.log(`[Scheduler] ⏰ Submission report time matched (${nowTime}) — dispatching to WhatsApp group...`);
             const { sendDailySubmissionReportToGroup } = await import("../backend/services/whatsapp/whatsappService.js");
