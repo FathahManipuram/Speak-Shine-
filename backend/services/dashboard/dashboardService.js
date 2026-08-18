@@ -415,6 +415,14 @@ export async function getSettings() {
     submissionReportTimes: Array.isArray(status.submissionReportTimes) && status.submissionReportTimes.length > 0
       ? status.submissionReportTimes
       : [status.submissionReportTime1 || "18:00", status.submissionReportTime2 || "21:00"].filter(Boolean),
+    submissionReportSlots: Array.isArray(status.submissionReportSlots) && status.submissionReportSlots.length > 0
+      ? status.submissionReportSlots
+      : (Array.isArray(status.submissionReportTimes) ? status.submissionReportTimes : ["18:00", "21:00"]).map((t, idx) => ({
+          time: t,
+          templateType: idx === 1 ? "urgent" : "comprehensive",
+          customTemplate: "",
+        })),
+    submissionReportTemplates: status.submissionReportTemplates || {},
     submissionReportTime1: status.submissionReportTime1 || "18:00",
     submissionReportTime2: status.submissionReportTime2 || "21:00",
     submissionReportTemplate: status.submissionReportTemplate || null,
@@ -471,11 +479,35 @@ export async function updateSettings(
   submissionReportTime2,
   submissionReportTimes,
   submissionReportTemplate,
-  submissionReportSlotTemplates
+  submissionReportSlotTemplates,
+  submissionReportSlots,
+  submissionReportTemplates
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
   
+  if (submissionReportSlots !== undefined) {
+    if (Array.isArray(submissionReportSlots)) {
+      const validSlots = submissionReportSlots
+        .filter(s => s && s.time && timeRegex.test(s.time))
+        .map(s => ({
+          time: s.time,
+          templateType: ["comprehensive", "urgent", "motivation", "custom"].includes(s.templateType) ? s.templateType : "comprehensive",
+          customTemplate: typeof s.customTemplate === "string" ? s.customTemplate : "",
+        }));
+      if (validSlots.length > 0) {
+        updates.submissionReportSlots = validSlots;
+        updates.submissionReportTimes = validSlots.map(s => s.time);
+        updates.submissionReportTime1 = validSlots[0]?.time || "18:00";
+        updates.submissionReportTime2 = validSlots[1]?.time || "21:00";
+      }
+    }
+  }
+
+  if (submissionReportTemplates !== undefined) {
+    updates.submissionReportTemplates = typeof submissionReportTemplates === "object" && submissionReportTemplates !== null ? submissionReportTemplates : {};
+  }
+
   if (submissionReportTemplate !== undefined) {
     updates.submissionReportTemplate = typeof submissionReportTemplate === "string" ? submissionReportTemplate.trim() : null;
   }

@@ -284,7 +284,12 @@ export function startScheduler() {
           if (s.lastSubmissionReportDate !== todayDate || s.lastSubmissionReportTime !== nowTime) {
             console.log(`[Scheduler] ⏰ Submission report time matched (${nowTime}) — dispatching to WhatsApp group...`);
             const { sendDailySubmissionReportToGroup } = await import("../backend/services/whatsapp/whatsappService.js");
-            await sendDailySubmissionReportToGroup({ timeSlot: nowTime }).catch(err =>
+            const matchedSlot = Array.isArray(s.submissionReportSlots) ? s.submissionReportSlots.find(slot => slot.time === nowTime) : null;
+            await sendDailySubmissionReportToGroup({
+              timeSlot: nowTime,
+              templateType: matchedSlot?.templateType || "comprehensive",
+              customTemplate: matchedSlot?.customTemplate || null,
+            }).catch(err =>
               console.warn("[Scheduler] Auto submission report failed (non-fatal):", err.message)
             );
             await Status.updateOne({}, { $set: { lastSubmissionReportDate: todayDate, lastSubmissionReportTime: nowTime } });

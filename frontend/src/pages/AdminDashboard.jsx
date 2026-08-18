@@ -15,7 +15,12 @@ import StreakBadge from "../components/StreakBadge.jsx";
 const CATS = ["Daily Life","Opinion","Personal Experience","English Growth","Future Goals","Fun Topic","Free Talk"];
 const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c","#a78bfa"];
 const tt = { background:"#16162a", border:"1px solid #252545", borderRadius:10, fontSize:12 };
-const TABS = [{id:"overview",l:"📊 Overview"},{id:"today",l:"📅 Today"},{id:"users",l:"👥 Users"},{id:"registrations",l:"📋 Registrations"},{id:"reports",l:"📈 Reports"},{id:"points",l:"⭐ Points"},{id:"submissions",l:"📝 Submissions"},{id:"questions",l:"❓ Questions"},{id:"manual-questions",l:"📝 Manual Questions"},{id:"live",l:"🎥 Live Sessions"},{id:"payments",l:"💳 Payments"},{id:"whatsapp",l:"📱 WhatsApp"},{id:"monitoring",l:"🖥️ Monitor"},{id:"settings",l:"⚙️ Settings"}];
+const DEFAULT_SUBMISSION_TEMPLATES = {
+  comprehensive: `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`,
+  urgent: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🔥 *Streak Leader:* {top_streak_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to avoid fine & keep your streak!\n🚀 *Submit here:* {app_url}`,
+  motivation: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Performer:* {top_streak_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`,
+  custom: `🔔 *SPEAK & SHINE — DAILY UPDATE*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} left):*\n{pending_list}\n\n🚀 *Submit your video here:* {app_url}`,
+};
 
 export default function AdminDashboard() {
   const { user: currentUser } = useAuth();
@@ -42,11 +47,17 @@ export default function AdminDashboard() {
   const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [waSendingReport, setWaSendingReport] = useState(false);
   const [settingsSubTab, setSettingsSubTab] = useState("schedules");
+  const [editingTemplateType, setEditingTemplateType] = useState("comprehensive");
   const [settings, setSettings] = useState({
     posterSendTime: "08:00",
     questionGenerateTime: "07:00",
     submissionReportEnabled: true,
     submissionReportTimes: ["18:00", "21:00"],
+    submissionReportSlots: [
+      { time: "18:00", templateType: "comprehensive", customTemplate: "" },
+      { time: "21:00", templateType: "urgent", customTemplate: "" },
+    ],
+    submissionReportTemplates: {},
     submissionReportTemplate: "",
     submissionReportSlotTemplates: {},
     vocabWordCount: 5,
@@ -229,6 +240,14 @@ export default function AdminDashboard() {
         submissionReportTimes: Array.isArray(s.data.submissionReportTimes) && s.data.submissionReportTimes.length > 0
           ? s.data.submissionReportTimes
           : [s.data.submissionReportTime1 || "18:00", s.data.submissionReportTime2 || "21:00"].filter(Boolean),
+        submissionReportSlots: Array.isArray(s.data.submissionReportSlots) && s.data.submissionReportSlots.length > 0
+          ? s.data.submissionReportSlots
+          : (Array.isArray(s.data.submissionReportTimes) ? s.data.submissionReportTimes : ["18:00", "21:00"]).map((t, idx) => ({
+              time: t,
+              templateType: idx === 1 ? "urgent" : "comprehensive",
+              customTemplate: "",
+            })),
+        submissionReportTemplates: s.data.submissionReportTemplates || {},
         submissionReportTemplate: s.data.submissionReportTemplate || "",
         submissionReportSlotTemplates: s.data.submissionReportSlotTemplates || {},
         vocabWordCount: s.data.vocabWordCount ?? 5,
@@ -507,6 +526,14 @@ export default function AdminDashboard() {
         submissionReportTimes: Array.isArray(fresh.data.submissionReportTimes) && fresh.data.submissionReportTimes.length > 0
           ? fresh.data.submissionReportTimes
           : [fresh.data.submissionReportTime1 || "18:00", fresh.data.submissionReportTime2 || "21:00"].filter(Boolean),
+        submissionReportSlots: Array.isArray(fresh.data.submissionReportSlots) && fresh.data.submissionReportSlots.length > 0
+          ? fresh.data.submissionReportSlots
+          : (Array.isArray(fresh.data.submissionReportTimes) ? fresh.data.submissionReportTimes : ["18:00", "21:00"]).map((t, idx) => ({
+              time: t,
+              templateType: idx === 1 ? "urgent" : "comprehensive",
+              customTemplate: "",
+            })),
+        submissionReportTemplates: fresh.data.submissionReportTemplates || {},
         submissionReportTemplate: fresh.data.submissionReportTemplate || "",
         submissionReportSlotTemplates: fresh.data.submissionReportSlotTemplates || {},
         vocabWordCount: fresh.data.vocabWordCount ?? 5,
@@ -2467,65 +2494,133 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Dynamic Multi-Times List */}
+                  {/* Dynamic Multi-Times List with Template Type Selection */}
                   <div style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
                     gap: "0.85rem",
                     marginBottom: "1rem"
                   }}>
-                    {(settings.submissionReportTimes || ["18:00", "21:00"]).map((timeStr, idx) => (
+                    {(settings.submissionReportSlots || [
+                      { time: "18:00", templateType: "comprehensive", customTemplate: "" },
+                      { time: "21:00", templateType: "urgent", customTemplate: "" }
+                    ]).map((slot, idx) => (
                       <div
                         key={idx}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          gap: "0.85rem",
-                          padding: "0.75rem 1rem",
+                          gap: "0.65rem",
+                          padding: "0.75rem 0.9rem",
                           background: "var(--bg-secondary)",
                           borderRadius: 12,
                           border: "1px solid var(--border)",
+                          flexWrap: "wrap",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                           <span style={{
-                            fontSize: "0.82rem",
+                            fontSize: "0.8rem",
                             fontWeight: 700,
-                            padding: "3px 8px",
+                            padding: "3px 7px",
                             borderRadius: 6,
                             background: "rgba(124, 111, 255, 0.15)",
                             color: "#c084fc",
                             whiteSpace: "nowrap"
                           }}>
-                            ⏰ Time #{idx + 1}
+                            ⏰ Slot #{idx + 1}
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                          {/* Time Picker */}
                           <input
                             className="form-input"
                             type="time"
-                            value={timeStr}
+                            value={slot.time || "18:00"}
                             onChange={e => {
                               const newTime = e.target.value;
                               setSettings(s => {
-                                const list = [...(s.submissionReportTimes || ["18:00"])];
-                                list[idx] = newTime;
-                                return { ...s, submissionReportTimes: list };
+                                const list = [...(s.submissionReportSlots || [])];
+                                list[idx] = { ...list[idx], time: newTime };
+                                return {
+                                  ...s,
+                                  submissionReportSlots: list,
+                                  submissionReportTimes: list.map(x => x.time)
+                                };
                               });
                             }}
                             required
-                            style={{ width: 140, fontSize: "1rem", padding: "0.4rem 0.6rem" }}
+                            style={{ width: 110, fontSize: "0.92rem", padding: "0.35rem 0.5rem" }}
                           />
-                          {(settings.submissionReportTimes || []).length > 1 && (
+
+                          {/* Template Type Selector Dropdown */}
+                          <select
+                            className="form-input"
+                            value={slot.templateType || "comprehensive"}
+                            onChange={e => {
+                              const newType = e.target.value;
+                              setSettings(s => {
+                                const list = [...(s.submissionReportSlots || [])];
+                                list[idx] = { ...list[idx], templateType: newType };
+                                return { ...s, submissionReportSlots: list };
+                              });
+                            }}
+                            style={{
+                              padding: "0.35rem 0.5rem",
+                              fontSize: "0.78rem",
+                              fontWeight: 600,
+                              borderRadius: 8,
+                              background: "#16162a",
+                              color: "#fff",
+                              border: "1px solid rgba(124, 111, 255, 0.35)",
+                              cursor: "pointer",
+                              minWidth: 140,
+                            }}
+                          >
+                            <option value="comprehensive">📊 Comprehensive</option>
+                            <option value="urgent">⚡ Urgent Final Call</option>
+                            <option value="motivation">🌟 Motivation &amp; Streaks</option>
+                            <option value="custom">✏️ Custom Template</option>
+                          </select>
+
+                          {/* Quick Edit shortcut */}
+                          <button
+                            type="button"
+                            title="Edit this template text below"
+                            onClick={() => {
+                              setEditingTemplateType(slot.templateType || "comprehensive");
+                              document.getElementById("submissionReportTemplateTextarea")?.focus();
+                            }}
+                            style={{
+                              padding: "0.35rem 0.55rem",
+                              borderRadius: 8,
+                              fontSize: "0.74rem",
+                              fontWeight: 700,
+                              background: "rgba(124, 111, 255, 0.12)",
+                              border: "1px solid rgba(124, 111, 255, 0.25)",
+                              color: "#c084fc",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+
+                          {(settings.submissionReportSlots || []).length > 1 && (
                             <button
                               type="button"
                               title="Delete this time slot"
                               onClick={() => {
                                 setSettings(s => {
-                                  const list = (s.submissionReportTimes || []).filter((_, i) => i !== idx);
-                                  return { ...s, submissionReportTimes: list.length > 0 ? list : ["18:00"] };
+                                  const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
+                                  const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
+                                  return {
+                                    ...s,
+                                    submissionReportSlots: finalList,
+                                    submissionReportTimes: finalList.map(x => x.time),
+                                  };
                                 });
                               }}
                               style={{
@@ -2533,9 +2628,9 @@ export default function AdminDashboard() {
                                 border: "1px solid rgba(248,113,113,0.3)",
                                 color: "#f87171",
                                 borderRadius: 8,
-                                padding: "0.4rem 0.65rem",
+                                padding: "0.35rem 0.55rem",
                                 cursor: "pointer",
-                                fontSize: "0.85rem",
+                                fontSize: "0.8rem",
                               }}
                             >
                               🗑️
@@ -2550,12 +2645,18 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => {
                       setSettings(s => {
-                        const current = s.submissionReportTimes || [];
-                        const lastTime = current[current.length - 1] || "18:00";
-                        const [h, m] = lastTime.split(":").map(Number);
+                        const current = s.submissionReportSlots || [];
+                        const last = current[current.length - 1] || { time: "18:00", templateType: "comprehensive" };
+                        const [h, m] = (last.time || "18:00").split(":").map(Number);
                         const nextHour = String((h + 2) % 24).padStart(2, "0");
                         const nextTime = `${nextHour}:${String(m || 0).padStart(2, "0")}`;
-                        return { ...s, submissionReportTimes: [...current, nextTime] };
+                        const newSlot = { time: nextTime, templateType: "urgent", customTemplate: "" };
+                        const updated = [...current, newSlot];
+                        return {
+                          ...s,
+                          submissionReportSlots: updated,
+                          submissionReportTimes: updated.map(x => x.time),
+                        };
                       });
                     }}
                     style={{
@@ -2593,14 +2694,14 @@ export default function AdminDashboard() {
                   }}>
                     <span>
                       {settings.submissionReportEnabled
-                        ? "✅ Auto-sending is ACTIVE — reports will automatically broadcast at the times above."
-                        : "⚠️ Auto-sending is PAUSED — click the switch above to turn it ON, then click 'Save Schedule & Automation'."}
+                        ? "✅ Auto-sending is ACTIVE — each timer will send its assigned dynamic message format."
+                        : "⚠️ Auto-sending is PAUSED — click the switch above to turn it ON, then click 'Save Schedule & Templates'."}
                     </span>
                   </div>
                 </div>
 
                 {/* ══════════════════════════════════════════════════════════════ */}
-                {/* ADVANCED DYNAMIC MESSAGE TEMPLATE EDITOR */}
+                {/* ADVANCED DYNAMIC MESSAGE TEMPLATE EDITOR & SELECTOR */}
                 {/* ══════════════════════════════════════════════════════════════ */}
                 <div style={{
                   padding: "1.25rem",
@@ -2612,52 +2713,53 @@ export default function AdminDashboard() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        📝 Dynamic WhatsApp Message Template
+                        📝 Customize Dynamic Message Templates
                       </div>
                       <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0.2rem 0 0" }}>
-                        Customize your broadcast message format. Click any Smart Tag below to insert it at your cursor.
+                        Select which message type you want to edit below. Each timer will broadcast its assigned template.
                       </p>
                     </div>
 
-                    {/* Preset Template Switcher */}
+                    {/* Template Type Switcher Tabs */}
                     <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                       {[
-                        {
-                          name: "📊 Comprehensive",
-                          tpl: `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`
-                        },
-                        {
-                          name: "⚡ Urgent Final Call",
-                          tpl: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🔥 *Streak Leader:* {top_streak_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to avoid fine!\n🚀 *Submit here:* {app_url}`
-                        },
-                        {
-                          name: "🌟 Motivation & Streaks",
-                          tpl: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Performer:* {top_streak_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`
-                        },
-                      ].map(preset => (
+                        { id: "comprehensive", label: "📊 Comprehensive" },
+                        { id: "urgent", label: "⚡ Urgent Final Call" },
+                        { id: "motivation", label: "🌟 Motivation & Streaks" },
+                        { id: "custom", label: "✏️ Custom" },
+                      ].map(t => (
                         <button
-                          key={preset.name}
+                          key={t.id}
                           type="button"
-                          onClick={() => setSettings(s => ({ ...s, submissionReportTemplate: preset.tpl }))}
+                          onClick={() => setEditingTemplateType(t.id)}
                           style={{
-                            padding: "0.3rem 0.65rem",
+                            padding: "0.35rem 0.75rem",
                             borderRadius: 8,
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            background: "rgba(124, 111, 255, 0.12)",
-                            border: "1px solid rgba(124, 111, 255, 0.25)",
-                            color: "#c084fc",
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
+                            border: editingTemplateType === t.id ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.12)",
+                            background: editingTemplateType === t.id ? "rgba(124, 111, 255, 0.25)" : "rgba(255, 255, 255, 0.04)",
+                            color: editingTemplateType === t.id ? "#fff" : "var(--muted)",
+                            boxShadow: editingTemplateType === t.id ? "0 0 10px rgba(124, 111, 255, 0.35)" : "none",
                             cursor: "pointer",
+                            transition: "all 0.15s ease",
                           }}
                         >
-                          {preset.name}
+                          {t.label}
                         </button>
                       ))}
                       <button
                         type="button"
-                        onClick={() => setSettings(s => ({ ...s, submissionReportTemplate: "" }))}
+                        title="Reset currently active template to system default"
+                        onClick={() => {
+                          setSettings(s => {
+                            const tpls = { ...(s.submissionReportTemplates || {}) };
+                            delete tpls[editingTemplateType];
+                            return { ...s, submissionReportTemplates: tpls };
+                          });
+                        }}
                         style={{
-                          padding: "0.3rem 0.65rem",
+                          padding: "0.35rem 0.65rem",
                           borderRadius: 8,
                           fontSize: "0.75rem",
                           fontWeight: 600,
@@ -2667,7 +2769,7 @@ export default function AdminDashboard() {
                           cursor: "pointer",
                         }}
                       >
-                        🔄 Default
+                        🔄 Reset to Default
                       </button>
                     </div>
                   </div>
@@ -2675,7 +2777,7 @@ export default function AdminDashboard() {
                   {/* Clickable Smart Variable Tags */}
                   <div style={{ marginBottom: "0.75rem" }}>
                     <div style={{ fontSize: "0.73rem", fontWeight: 700, color: "var(--muted)", marginBottom: "0.35rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      💡 Click to Insert Smart Variable:
+                      💡 Click to Insert Smart Variable into "{editingTemplateType}":
                     </div>
                     <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
                       {[
@@ -2697,18 +2799,30 @@ export default function AdminDashboard() {
                           type="button"
                           onClick={() => {
                             const el = document.getElementById("submissionReportTemplateTextarea");
-                            const cur = settings.submissionReportTemplate ?? "";
+                            const currentTpl = settings.submissionReportTemplates?.[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES[editingTemplateType] ?? "";
                             if (el) {
                               const start = el.selectionStart || 0;
                               const end = el.selectionEnd || 0;
-                              const next = cur.slice(0, start) + tag + cur.slice(end);
-                              setSettings(s => ({ ...s, submissionReportTemplate: next }));
+                              const next = currentTpl.slice(0, start) + tag + currentTpl.slice(end);
+                              setSettings(s => ({
+                                ...s,
+                                submissionReportTemplates: {
+                                  ...(s.submissionReportTemplates || {}),
+                                  [editingTemplateType]: next,
+                                }
+                              }));
                               setTimeout(() => {
                                 el.focus();
                                 el.setSelectionRange(start + tag.length, start + tag.length);
                               }, 50);
                             } else {
-                              setSettings(s => ({ ...s, submissionReportTemplate: cur + tag }));
+                              setSettings(s => ({
+                                ...s,
+                                submissionReportTemplates: {
+                                  ...(s.submissionReportTemplates || {}),
+                                  [editingTemplateType]: currentTpl + tag,
+                                }
+                              }));
                             }
                           }}
                           style={{
@@ -2734,20 +2848,28 @@ export default function AdminDashboard() {
                     {/* Textarea Editor */}
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
-                        <label className="form-label" style={{ fontSize: "0.76rem", margin: 0 }}>
-                          ✏️ Template Text Editor:
+                        <label className="form-label" style={{ fontSize: "0.76rem", margin: 0, textTransform: "capitalize" }}>
+                          ✏️ Editing "{editingTemplateType}" Template:
                         </label>
-                        <span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-                          {settings.submissionReportTemplate ? "Custom Template Active" : "Using System Default"}
+                        <span style={{ fontSize: "0.7rem", color: settings.submissionReportTemplates?.[editingTemplateType] ? "#c084fc" : "var(--muted)" }}>
+                          {settings.submissionReportTemplates?.[editingTemplateType] ? "Customized for this type" : "Using Default"}
                         </span>
                       </div>
                       <textarea
                         id="submissionReportTemplateTextarea"
                         className="form-input"
                         rows={12}
-                        value={settings.submissionReportTemplate || ""}
-                        placeholder={`📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n🚀 *Submit your video here:* {app_url}`}
-                        onChange={e => setSettings(s => ({ ...s, submissionReportTemplate: e.target.value }))}
+                        value={settings.submissionReportTemplates?.[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES[editingTemplateType] ?? ""}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setSettings(s => ({
+                            ...s,
+                            submissionReportTemplates: {
+                              ...(s.submissionReportTemplates || {}),
+                              [editingTemplateType]: val,
+                            }
+                          }));
+                        }}
                         style={{
                           width: "100%",
                           fontFamily: "Consolas, Monaco, monospace",
@@ -2765,7 +2887,7 @@ export default function AdminDashboard() {
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
                         <label className="form-label" style={{ fontSize: "0.76rem", margin: 0, color: "#4ade80" }}>
-                          💬 Live WhatsApp Preview:
+                          💬 Live WhatsApp Preview ({editingTemplateType}):
                         </label>
                         <span style={{ fontSize: "0.7rem", color: "#4ade80" }}>
                           ● Real Data Simulation
@@ -2788,7 +2910,7 @@ export default function AdminDashboard() {
                         boxShadow: "inset 0 2px 6px rgba(0,0,0,0.4)",
                       }}>
                         {(() => {
-                          const tpl = settings.submissionReportTemplate || `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`;
+                          const tpl = settings.submissionReportTemplates?.[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES[editingTemplateType] ?? DEFAULT_SUBMISSION_TEMPLATES.comprehensive;
                           
                           const summary = waStatus?.submissionSummary || {};
                           const submittedNames = summary.submittedNames || ["John Doe", "Alex Smith"];
@@ -2828,7 +2950,7 @@ export default function AdminDashboard() {
 
                 <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
                   <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
-                    {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Template"}
+                    {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Templates"}
                   </button>
 
                   <button

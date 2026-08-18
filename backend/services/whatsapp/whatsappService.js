@@ -573,6 +573,13 @@ export async function sendDailyPosterToGroup(options = {}) {
   };
 }
 
+export const DEFAULT_SUBMISSION_TEMPLATES = {
+  comprehensive: `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`,
+  urgent: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🔥 *Streak Leader:* {top_streak_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to avoid fine & keep your streak!\n🚀 *Submit here:* {app_url}`,
+  motivation: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Performer:* {top_streak_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`,
+  custom: `🔔 *SPEAK & SHINE — DAILY UPDATE*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} left):*\n{pending_list}\n\n🚀 *Submit your video here:* {app_url}`,
+};
+
 /**
  * Render dynamic submission report template with live data tokens.
  */
@@ -582,6 +589,7 @@ export function buildSubmissionReportMessage({
   pendingUsers = [],
   status = {},
   customTemplate = null,
+  templateType = "comprehensive",
   timeSlot = null,
 }) {
   const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
@@ -639,44 +647,26 @@ export function buildSubmissionReportMessage({
   const filledBlocks = Math.min(10, Math.max(0, Math.round(percent / 10)));
   const progressBar = "█".repeat(filledBlocks) + "░".repeat(10 - filledBlocks);
 
-  // If a custom template is provided, replace tokens
-  if (customTemplate && typeof customTemplate === "string" && customTemplate.trim().length > 0) {
-    return customTemplate
-      .replace(/\{date\}/gi, dateStr)
-      .replace(/\{time\}/gi, timeStr)
-      .replace(/\{submitted_list\}/gi, submittedListStr)
-      .replace(/\{pending_list\}/gi, pendingListStr)
-      .replace(/\{submitted_count\}/gi, String(submittedCount))
-      .replace(/\{pending_count\}/gi, String(pendingCount))
-      .replace(/\{total_paid\}/gi, String(totalPaid))
-      .replace(/\{percent\}/gi, `${percent}%`)
-      .replace(/\{progress_bar\}/gi, `[${progressBar}]`)
-      .replace(/\{topic\}/gi, topicName)
-      .replace(/\{app_url\}/gi, frontendUrl)
-      .replace(/\{top_streak_user\}/gi, topStreakUser);
+  // Determine which template string to use:
+  let templateToUse = customTemplate;
+  if (!templateToUse || typeof templateToUse !== "string" || !templateToUse.trim()) {
+    const savedTemplates = status?.submissionReportTemplates || {};
+    templateToUse = savedTemplates[templateType] || status?.submissionReportTemplate || DEFAULT_SUBMISSION_TEMPLATES[templateType] || DEFAULT_SUBMISSION_TEMPLATES.comprehensive;
   }
 
-  // Default Standard Template
-  let message = `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n`;
-  message += `📅 *Date:* ${dateStr}\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  message += `✅ *SUBMITTED TODAY (${submittedCount}/${totalPaid})*\n`;
-  message += `${submittedListStr}\n\n`;
-
-  message += `⏳ *PENDING SUBMISSIONS (${pendingCount}/${totalPaid})*\n`;
-  message += `${pendingListStr}\n\n`;
-
-  message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  message += `📈 *Completion Rate:* ${percent}% [${progressBar}]\n`;
-  if (pendingCount > 0) {
-    message += `💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n`;
-  } else {
-    message += `🏆 *Congratulations everyone on 100% daily submissions!*\n`;
-  }
-  message += `🚀 *Submit your video here:* ${frontendUrl}\n`;
-
-  return message;
+  return templateToUse
+    .replace(/\{date\}/gi, dateStr)
+    .replace(/\{time\}/gi, timeStr)
+    .replace(/\{submitted_list\}/gi, submittedListStr)
+    .replace(/\{pending_list\}/gi, pendingListStr)
+    .replace(/\{submitted_count\}/gi, String(submittedCount))
+    .replace(/\{pending_count\}/gi, String(pendingCount))
+    .replace(/\{total_paid\}/gi, String(totalPaid))
+    .replace(/\{percent\}/gi, `${percent}%`)
+    .replace(/\{progress_bar\}/gi, `[${progressBar}]`)
+    .replace(/\{topic\}/gi, topicName)
+    .replace(/\{app_url\}/gi, frontendUrl)
+    .replace(/\{top_streak_user\}/gi, topStreakUser);
 }
 
 /**
@@ -696,7 +686,7 @@ export async function getSubmissionReportSummary() {
       submittedUsers,
       pendingUsers,
       status,
-      customTemplate: status?.submissionReportTemplate,
+      templateType: "comprehensive",
     });
 
     return {
@@ -741,14 +731,18 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
   const submittedUsers = paidUsers.filter(u => u.completed);
   const pendingUsers = paidUsers.filter(u => !u.completed);
 
-  // Determine template: check slot-specific template or global template or custom override in options
+  // Match slot options
   const timeSlot = options.timeSlot || null;
+  let templateType = options.templateType || "comprehensive";
   let customTemplate = options.template || null;
-  if (!customTemplate) {
-    if (timeSlot && status?.submissionReportSlotTemplates && status.submissionReportSlotTemplates[timeSlot]) {
-      customTemplate = status.submissionReportSlotTemplates[timeSlot];
-    } else if (status?.submissionReportTemplate) {
-      customTemplate = status.submissionReportTemplate;
+
+  if (timeSlot && status?.submissionReportSlots) {
+    const matchedSlot = status.submissionReportSlots.find(s => s.time === timeSlot);
+    if (matchedSlot) {
+      templateType = matchedSlot.templateType || templateType;
+      if (matchedSlot.customTemplate && matchedSlot.customTemplate.trim()) {
+        customTemplate = matchedSlot.customTemplate;
+      }
     }
   }
 
@@ -757,11 +751,12 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
     submittedUsers,
     pendingUsers,
     status,
+    templateType,
     customTemplate,
     timeSlot,
   });
 
-  console.log(`[WhatsApp] 📤 Dispatching submission report to ${targetGroup}...`);
+  console.log(`[WhatsApp] 📤 Dispatching submission report (${templateType}) to ${targetGroup}...`);
   await sock.sendMessage(targetGroup, { text: message });
   console.log(`[WhatsApp] ✅ Submission report sent successfully to ${targetGroup}!`);
 
@@ -777,6 +772,7 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
     submittedCount,
     pendingCount,
     percent,
+    templateType,
     message,
     sentAt: new Date(),
   };

@@ -85,6 +85,21 @@ const statusSchema = new mongoose.Schema({
   submissionReportTimes: { type: [String], default: ["18:00", "21:00"] },
   submissionReportTime1: { type: String, default: "18:00" },
   submissionReportTime2: { type: String, default: "21:00" },
+  submissionReportSlots: {
+    type: [{
+      time: { type: String, required: true },
+      templateType: { type: String, enum: ["comprehensive", "urgent", "motivation", "custom"], default: "comprehensive" },
+      customTemplate: { type: String, default: "" },
+    }],
+    default: [
+      { time: "18:00", templateType: "comprehensive", customTemplate: "" },
+      { time: "21:00", templateType: "urgent", customTemplate: "" },
+    ],
+  },
+  submissionReportTemplates: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
   submissionReportTemplate: { type: String, default: null },
   submissionReportSlotTemplates: { type: Map, of: String, default: {} },
   lastSubmissionReportDate: { type: String, default: null },
