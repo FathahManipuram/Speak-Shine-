@@ -2350,61 +2350,80 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Dynamic Multi-Times List */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                    gap: "0.85rem",
+                    marginBottom: "1rem"
+                  }}>
                     {(settings.submissionReportTimes || ["18:00", "21:00"]).map((timeStr, idx) => (
                       <div
                         key={idx}
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "0.6rem",
-                          padding: "0.6rem 0.85rem",
+                          justifyContent: "space-between",
+                          gap: "0.85rem",
+                          padding: "0.75rem 1rem",
                           background: "var(--bg-secondary)",
-                          borderRadius: 10,
+                          borderRadius: 12,
                           border: "1px solid var(--border)",
                         }}
                       >
-                        <span style={{ fontSize: "0.82rem", color: "var(--accent)", fontWeight: 700, whiteSpace: "nowrap" }}>
-                          ⏰ Time #{idx + 1}
-                        </span>
-                        <input
-                          className="form-input"
-                          type="time"
-                          value={timeStr}
-                          onChange={e => {
-                            const newTime = e.target.value;
-                            setSettings(s => {
-                              const list = [...(s.submissionReportTimes || ["18:00"])];
-                              list[idx] = newTime;
-                              return { ...s, submissionReportTimes: list };
-                            });
-                          }}
-                          required
-                          style={{ flex: 1, fontSize: "0.95rem", padding: "0.35rem 0.5rem" }}
-                        />
-                        {(settings.submissionReportTimes || []).length > 1 && (
-                          <button
-                            type="button"
-                            title="Remove time"
-                            onClick={() => {
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <span style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            background: "rgba(124, 111, 255, 0.15)",
+                            color: "#c084fc",
+                            whiteSpace: "nowrap"
+                          }}>
+                            ⏰ Time #{idx + 1}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                          <input
+                            className="form-input"
+                            type="time"
+                            value={timeStr}
+                            onChange={e => {
+                              const newTime = e.target.value;
                               setSettings(s => {
-                                const list = (s.submissionReportTimes || []).filter((_, i) => i !== idx);
-                                return { ...s, submissionReportTimes: list.length > 0 ? list : ["18:00"] };
+                                const list = [...(s.submissionReportTimes || ["18:00"])];
+                                list[idx] = newTime;
+                                return { ...s, submissionReportTimes: list };
                               });
                             }}
-                            style={{
-                              background: "rgba(248,113,113,0.15)",
-                              border: "1px solid rgba(248,113,113,0.3)",
-                              color: "#f87171",
-                              borderRadius: 8,
-                              padding: "0.35rem 0.55rem",
-                              cursor: "pointer",
-                              fontSize: "0.8rem",
-                            }}
-                          >
-                            🗑️
-                          </button>
-                        )}
+                            required
+                            style={{ width: 140, fontSize: "1rem", padding: "0.4rem 0.6rem" }}
+                          />
+                          {(settings.submissionReportTimes || []).length > 1 && (
+                            <button
+                              type="button"
+                              title="Delete this time slot"
+                              onClick={() => {
+                                setSettings(s => {
+                                  const list = (s.submissionReportTimes || []).filter((_, i) => i !== idx);
+                                  return { ...s, submissionReportTimes: list.length > 0 ? list : ["18:00"] };
+                                });
+                              }}
+                              style={{
+                                background: "rgba(248,113,113,0.12)",
+                                border: "1px solid rgba(248,113,113,0.3)",
+                                color: "#f87171",
+                                borderRadius: 8,
+                                padding: "0.4rem 0.65rem",
+                                cursor: "pointer",
+                                fontSize: "0.85rem",
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
