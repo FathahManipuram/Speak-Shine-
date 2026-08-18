@@ -625,17 +625,129 @@ export default function AdminDashboard() {
       )}
       {flash && <div className={`flash ${flash.type}`}>{flash.text}</div>}
 
-      <div className="stat-grid">
-        <StatCard icon="👥" label="Total Users"     value={dash?.stats?.total||0}     color="#7c6fff"/>
-        <StatCard icon="✅" label="Submitted Today" value={dash?.stats?.completed||0} color="#4ade80"/>
-        <StatCard icon="❌" label="Pending Today"   value={dash?.stats?.pending||0}   color="#f87171"/>
-        <StatCard icon="🧊" label="Streak Freezes"  value={users.reduce((s,u)=>s+(u.streakFreeze||0),0)} color="#38bdf8"/>
-      </div>
+      <div className="admin-dashboard-container">
+        {/* Modern Left Sidebar */}
+        <aside className="admin-sidebar">
+          <div className="admin-sidebar-header">
+            <div className="admin-sidebar-brand">
+              <span style={{ fontSize: "1.1rem" }}>⚡</span>
+              <span>Admin Portal</span>
+            </div>
+            {waStatus?.isConnected ? (
+              <span title="WhatsApp Connected" style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: 6, background: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)", display: "flex", alignItems: "center", gap: 3, fontWeight: 700 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80" }} /> WA Live
+              </span>
+            ) : (
+              <span title="WhatsApp Offline" style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: 6, background: "rgba(248,113,113,0.15)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)", fontWeight: 700 }}>
+                WA Off
+              </span>
+            )}
+          </div>
 
-      <div className="tab-bar">
-        {TABS.map(t=><button key={t.id} className={`tab-btn${tab===t.id?" active":""}`} onClick={()=>setTab(t.id)}>{t.l}</button>)}
-        {selectedStudent&&<button className={`tab-btn${tab==="student-detail"?" active":""}`} onClick={()=>setTab("student-detail")}>👤 {(selectedStudent.registeredName||selectedStudent.name||"").slice(0,12)}</button>}
-      </div>
+          {/* Group 1: Analytics & Performance */}
+          <div className="admin-sidebar-section">
+            <div className="admin-sidebar-title">Analytics & Activity</div>
+            {[
+              { id: "overview", icon: "📊", label: "Overview" },
+              { id: "today", icon: "📅", label: "Today's Challenge" },
+              { id: "reports", icon: "📈", label: "Reports" },
+              { id: "points", icon: "⭐", label: "Points & Streaks" },
+              { id: "monitoring", icon: "🖥️", label: "Live Monitor" },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`admin-sidebar-item${tab === t.id ? " active" : ""}`}
+                onClick={() => setTab(t.id)}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Group 2: Students & Community */}
+          <div className="admin-sidebar-section">
+            <div className="admin-sidebar-title">Students & Community</div>
+            {[
+              { id: "users", icon: "👥", label: "Users & Members", badge: users.length || null },
+              { id: "registrations", icon: "📋", label: "Registrations", badge: pendingRegs.length > 0 ? `${pendingRegs.length} new` : null, badgeColor: "#fbbf24" },
+              { id: "submissions", icon: "📝", label: "Submissions" },
+              { id: "live", icon: "🎥", label: "Live Sessions" },
+              { id: "payments", icon: "💳", label: "Payments" },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`admin-sidebar-item${tab === t.id ? " active" : ""}`}
+                onClick={() => setTab(t.id)}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                </div>
+                {t.badge && (
+                  <span className="admin-sidebar-badge" style={t.badgeColor ? { background: `${t.badgeColor}22`, color: t.badgeColor } : {}}>
+                    {t.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Group 3: Automation & Content */}
+          <div className="admin-sidebar-section">
+            <div className="admin-sidebar-title">Automation & Content</div>
+            {[
+              { id: "questions", icon: "❓", label: "Question Bank" },
+              { id: "manual-questions", icon: "📑", label: "Manual Questions" },
+              { id: "whatsapp", icon: "📱", label: "WhatsApp Bot" },
+              { id: "settings", icon: "⚙️", label: "Settings" },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`admin-sidebar-item${tab === t.id ? " active" : ""}`}
+                onClick={() => setTab(t.id)}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Student Profile (if active) */}
+          {selectedStudent && (
+            <div className="admin-sidebar-section" style={{ borderTop: "1px solid var(--border)", paddingTop: "0.65rem" }}>
+              <div className="admin-sidebar-title">Active Student Profile</div>
+              <button
+                type="button"
+                className={`admin-sidebar-item${tab === "student-detail" ? " active" : ""}`}
+                onClick={() => setTab("student-detail")}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span>👤</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {(selectedStudent.registeredName || selectedStudent.name || "").slice(0, 14)}
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="admin-main-content">
+          <div className="stat-grid">
+            <StatCard icon="👥" label="Total Users"     value={dash?.stats?.total||0}     color="#7c6fff"/>
+            <StatCard icon="✅" label="Submitted Today" value={dash?.stats?.completed||0} color="#4ade80"/>
+            <StatCard icon="❌" label="Pending Today"   value={dash?.stats?.pending||0}   color="#f87171"/>
+            <StatCard icon="🧊" label="Streak Freezes"  value={users.reduce((s,u)=>s+(u.streakFreeze||0),0)} color="#38bdf8"/>
+          </div>
 
       {/* OVERVIEW */}
       {tab==="overview" && (
@@ -3243,6 +3355,8 @@ export default function AdminDashboard() {
           </div>
         </>
       )}
+        </div>
+      </div>
     </Layout>
   );
 }
