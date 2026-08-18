@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [waLoading, setWaLoading] = useState(false);
   const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [waSendingReport, setWaSendingReport] = useState(false);
+  const [settingsSubTab, setSettingsSubTab] = useState("all");
   const [settings, setSettings] = useState({
     posterSendTime: "08:00",
     questionGenerateTime: "07:00",
@@ -2152,72 +2153,170 @@ export default function AdminDashboard() {
 
       {/* SETTINGS */}
       {tab==="settings" && (
-        <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-          {/* Column 1 */}
-          <div style={{ flex: "1 1 480px", maxWidth: 480, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            
-            {/* Bot Schedule Settings */}
-            <div className="card" style={{ margin: 0 }}>
-              <div className="section-title">⚙️ Bot Schedule Settings</div>
-              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-                Configure when the WhatsApp bot sends the daily poster and pre-generates questions. Times are in IST (24-hour format). Changes apply within 1 minute.
-              </p>
-              <form onSubmit={e => saveSettings(e, "schedule")}>
-                <div className="form-group" style={{marginBottom:"1.25rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🖼️ Poster Send Time
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(daily question sent to WhatsApp group)</span>
-                  </label>
-                  <input
-                    className="form-input"
-                    type="time"
-                    value={settings.posterSendTime}
-                    onChange={e=>setSettings(s=>({...s,posterSendTime:e.target.value}))}
-                    required
-                    style={{width:160,fontSize:"1.1rem"}}
-                  />
-                  <div style={{color:"var(--muted)",fontSize:"0.78rem",marginTop:"0.35rem"}}>
-                    Currently: <strong style={{color:"var(--accent)"}}>{settings.posterSendTime} IST</strong>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: 1100, margin: "0 auto" }}>
+          
+          {/* Settings Header & Category Nav */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            padding: "1.25rem 1.5rem",
+            background: "var(--card-bg, rgba(22, 18, 45, 0.7))",
+            borderRadius: 16,
+            border: "1px solid var(--border, rgba(124, 111, 255, 0.2))",
+            backdropFilter: "blur(12px)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 800, color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  ⚙️ Admin System Settings
+                </h2>
+                <p style={{ margin: "0.25rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
+                  Manage WhatsApp automation, speaking duration limits, vocabulary rules, pricing, and system resets.
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.78rem", color: "var(--muted)" }}>
+                <span>🕒 Server Timezone: <strong style={{ color: "var(--accent)" }}>IST (UTC+5:30)</strong></span>
+              </div>
+            </div>
+
+            {/* Segmented Filter Pills */}
+            <div style={{
+              display: "flex",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+              paddingTop: "0.75rem",
+              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            }}>
+              {[
+                { id: "all", label: "🌐 All Settings" },
+                { id: "schedules", label: "⏰ Bot & Schedules" },
+                { id: "duration", label: "⏱️ Video Duration" },
+                { id: "vocab", label: "📚 Vocabulary & Tasks" },
+                { id: "pricing", label: "💳 Pricing & Privacy" },
+                { id: "resets", label: "⚠️ System Resets" },
+              ].map(sub => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setSettingsSubTab(sub.id)}
+                  style={{
+                    padding: "0.45rem 0.9rem",
+                    borderRadius: 20,
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    border: settingsSubTab === sub.id ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.1)",
+                    background: settingsSubTab === sub.id ? "rgba(124, 111, 255, 0.22)" : "rgba(255, 255, 255, 0.04)",
+                    color: settingsSubTab === sub.id ? "#c084fc" : "var(--muted)",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* SECTION 1: BOT SCHEDULES & AUTOMATION */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {(settingsSubTab === "all" || settingsSubTab === "schedules") && (
+            <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                <div>
+                  <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                    ⏰ Bot Automation &amp; Schedules
                   </div>
+                  <p style={{ color: "var(--muted)", fontSize: "0.83rem", margin: "0.25rem 0 0" }}>
+                    Configure automated daily dispatches and submission reports to your WhatsApp group (IST, 24-hour format).
+                  </p>
                 </div>
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🤖 Question Generate Time
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(auto-generate questions if stock is low)</span>
-                  </label>
-                  <input
-                    className="form-input"
-                    type="time"
-                    value={settings.questionGenerateTime}
-                    onChange={e=>setSettings(s=>({...s,questionGenerateTime:e.target.value}))}
-                    required
-                    style={{width:160,fontSize:"1.1rem"}}
-                  />
-                  <div style={{color:"var(--muted)",fontSize:"0.78rem",marginTop:"0.35rem"}}>
-                    Currently: <strong style={{color:"var(--accent)"}}>{settings.questionGenerateTime} IST</strong>
+                <div style={{ fontSize: "0.76rem", padding: "4px 10px", borderRadius: 20, background: "rgba(124, 111, 255, 0.12)", color: "#a78bfa", fontWeight: 600 }}>
+                  ⚡ Auto-syncs every minute
+                </div>
+              </div>
+
+              <form onSubmit={e => saveSettings(e, "schedule")}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem", marginBottom: "1.25rem" }}>
+                  
+                  {/* Poster Send Time */}
+                  <div style={{
+                    padding: "1rem 1.25rem",
+                    borderRadius: 12,
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)",
+                  }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      🖼️ Poster Send Time
+                    </label>
+                    <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 0.75rem" }}>
+                      Daily question / story audio poster is automatically sent to the WhatsApp group.
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <input
+                        className="form-input"
+                        type="time"
+                        value={settings.posterSendTime}
+                        onChange={e => setSettings(s => ({ ...s, posterSendTime: e.target.value }))}
+                        required
+                        style={{ width: 140, fontSize: "1.05rem", padding: "0.45rem 0.6rem" }}
+                      />
+                      <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 600 }}>
+                        Currently: {settings.posterSendTime} IST
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Question Generate Time */}
+                  <div style={{
+                    padding: "1rem 1.25rem",
+                    borderRadius: 12,
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)",
+                  }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      🤖 Question Generate Time
+                    </label>
+                    <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 0.75rem" }}>
+                      AI automatically pre-generates 14 upcoming questions if bank stock is low.
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <input
+                        className="form-input"
+                        type="time"
+                        value={settings.questionGenerateTime}
+                        onChange={e => setSettings(s => ({ ...s, questionGenerateTime: e.target.value }))}
+                        required
+                        style={{ width: 140, fontSize: "1.05rem", padding: "0.45rem 0.6rem" }}
+                      />
+                      <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 600 }}>
+                        Currently: {settings.questionGenerateTime} IST
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Daily Submission Report Schedule */}
+                {/* Submission Report Schedule Box */}
                 <div style={{
-                  marginTop: "1.25rem",
                   padding: "1.25rem",
                   borderRadius: 14,
-                  background: "rgba(124, 111, 255, 0.06)",
+                  background: "rgba(124, 111, 255, 0.05)",
                   border: "1px solid rgba(124, 111, 255, 0.25)",
                   marginBottom: "1.5rem"
                 }}>
-                  {/* Header & Toggle */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.85rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        📊 Auto-Send Submission Report
+                      <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        📊 WhatsApp Daily Submission Report (Paid Students)
                       </div>
-                      <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.15rem" }}>
-                        Sends daily attendance &amp; pending paid students list to WhatsApp group
+                      <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.15rem" }}>
+                        Auto-broadcasts daily attendance (submitted vs pending paid students) to your group at each configured time.
                       </div>
                     </div>
 
+                    {/* Active / Paused Toggle Pill */}
                     <div
                       onClick={() => setSettings(s => ({ ...s, submissionReportEnabled: !s.submissionReportEnabled }))}
                       style={{
@@ -2229,7 +2328,7 @@ export default function AdminDashboard() {
                         background: settings.submissionReportEnabled ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)",
                         border: `1px solid ${settings.submissionReportEnabled ? "rgba(74,222,128,0.4)" : "rgba(248,113,113,0.4)"}`,
                         borderRadius: 24,
-                        padding: "0.35rem 0.85rem",
+                        padding: "0.4rem 0.95rem",
                         transition: "all 0.2s ease",
                       }}
                     >
@@ -2241,31 +2340,31 @@ export default function AdminDashboard() {
                         boxShadow: `0 0 8px ${settings.submissionReportEnabled ? "#4ade80" : "#f87171"}`,
                       }} />
                       <span style={{
-                        fontSize: "0.82rem",
+                        fontSize: "0.84rem",
                         fontWeight: 700,
                         color: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
                       }}>
-                        {settings.submissionReportEnabled ? "Active (Auto-Send ON)" : "Paused (Auto-Send OFF)"}
+                        {settings.submissionReportEnabled ? "🟢 Active (Auto-Send ON)" : "🔴 Paused (Auto-Send OFF)"}
                       </span>
                     </div>
                   </div>
 
-                  {/* Configurable Times List */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
+                  {/* Dynamic Multi-Times List */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
                     {(settings.submissionReportTimes || ["18:00", "21:00"]).map((timeStr, idx) => (
                       <div
                         key={idx}
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "0.75rem",
-                          padding: "0.65rem 0.85rem",
+                          gap: "0.6rem",
+                          padding: "0.6rem 0.85rem",
                           background: "var(--bg-secondary)",
                           borderRadius: 10,
                           border: "1px solid var(--border)",
                         }}
                       >
-                        <span style={{ fontSize: "0.85rem", color: "var(--accent)", fontWeight: 700, minWidth: 80 }}>
+                        <span style={{ fontSize: "0.82rem", color: "var(--accent)", fontWeight: 700, whiteSpace: "nowrap" }}>
                           ⏰ Time #{idx + 1}
                         </span>
                         <input
@@ -2281,12 +2380,12 @@ export default function AdminDashboard() {
                             });
                           }}
                           required
-                          style={{ flex: 1, fontSize: "0.95rem", padding: "0.4rem 0.6rem" }}
+                          style={{ flex: 1, fontSize: "0.95rem", padding: "0.35rem 0.5rem" }}
                         />
                         {(settings.submissionReportTimes || []).length > 1 && (
                           <button
                             type="button"
-                            title="Remove this schedule time"
+                            title="Remove time"
                             onClick={() => {
                               setSettings(s => {
                                 const list = (s.submissionReportTimes || []).filter((_, i) => i !== idx);
@@ -2298,9 +2397,9 @@ export default function AdminDashboard() {
                               border: "1px solid rgba(248,113,113,0.3)",
                               color: "#f87171",
                               borderRadius: 8,
-                              padding: "0.4rem 0.65rem",
+                              padding: "0.35rem 0.55rem",
                               cursor: "pointer",
-                              fontSize: "0.85rem",
+                              fontSize: "0.8rem",
                             }}
                           >
                             🗑️
@@ -2310,7 +2409,6 @@ export default function AdminDashboard() {
                     ))}
                   </div>
 
-                  {/* Add New Time Button */}
                   <button
                     type="button"
                     onClick={() => {
@@ -2339,570 +2437,458 @@ export default function AdminDashboard() {
                       gap: "0.4rem",
                     }}
                   >
-                    ➕ Add Another Auto-Send Time
+                    ➕ Add Another Auto-Send Time Slot
                   </button>
                 </div>
 
-                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
-                  {savingSection === "schedule" ? "Saving…" : "💾 Save Schedule"}
+                <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
+                  {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Automation"}
                 </button>
               </form>
-              <div style={{marginTop:"1.5rem",padding:"0.75rem 1rem",background:"rgba(124,111,255,0.08)",borderRadius:10,border:"1px solid rgba(124,111,255,0.2)",fontSize:"0.82rem",color:"var(--muted)"}}>
-                <strong style={{color:"var(--accent)"}}>ℹ️ How it works:</strong><br/>
-                The bot checks for time changes every minute. After saving, the new schedule takes effect automatically — no restart needed.
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* SECTION 2: DURATION SCORING SETTINGS */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {(settingsSubTab === "all" || settingsSubTab === "duration") && (
+            <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                  ⏱️ Duration Targets &amp; Video Limits
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.83rem", margin: "0.25rem 0 0" }}>
+                  Configure recording duration targets in seconds. Students earn full duration score when reaching "Full Score Target" and can record up to "Max Limit".
+                </p>
               </div>
-            </div>
 
-            {/* Payment Settings */}
-            <div className="card" style={{ margin: 0 }}>
-              <div className="section-title">Payment Settings</div>
-              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-                Set the one-time premium membership amount shown on the payment page and charged through Razorpay.
-              </p>
-              <form onSubmit={e => saveSettings(e, "payment")}>
-                <div className="form-group" style={{marginBottom:"1.25rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    Premium Membership Amount
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(INR)</span>
-                  </label>
-                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem",flexWrap:"wrap"}}>
-                    <span style={{fontSize:"1.2rem",fontWeight:800,color:"var(--accent)"}}>₹</span>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={1}
-                      max={100000}
-                      step="0.01"
-                      value={settings.paymentAmount}
-                      onChange={e=>setSettings(s=>({...s,paymentAmount:e.target.value}))}
-                      required
-                      style={{width:140,fontSize:"1.1rem"}}
-                    />
-                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
-                      currently <strong style={{color:"var(--accent)"}}>₹{settings.paymentAmount || 5}</strong>
-                    </span>
-                  </div>
+              <form onSubmit={e => saveSettings(e, "duration")}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+                  
+                  {[
+                    { id: "default", icon: "📅", title: "Default Daily Questions", full: "durationDefaultFull", max: "durationDefaultMax", color: "#7c6fff" },
+                    { id: "story", icon: "📚", title: "Story Summary Day", full: "durationStoryFull", max: "durationStoryMax", color: "#a78bfa" },
+                    { id: "weekly", icon: "🔍", title: "Weekly Reflection Day", full: "durationWeeklyFull", max: "durationWeeklyMax", color: "#4ade80" },
+                    { id: "monthly", icon: "💬", title: "Monthly Reflection Day", full: "durationMonthlyReflectionFull", max: "durationMonthlyReflectionMax", color: "#60a5fa" },
+                    { id: "goals", icon: "🎯", title: "Monthly Goals Day", full: "durationMonthlyGoalsFull", max: "durationMonthlyGoalsMax", color: "#f472b6" },
+                    { id: "picture", icon: "🖼️", title: "Picture Description Day", full: "durationPictureFull", max: "durationPictureMax", color: "#38bdf8" },
+                  ].map(item => (
+                    <div
+                      key={item.id}
+                      style={{
+                        padding: "1rem 1.15rem",
+                        borderRadius: 12,
+                        background: "var(--bg-secondary)",
+                        border: "1px solid var(--border)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.75rem",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "0.88rem", color: item.color }}>
+                        <span>{item.icon}</span> {item.title}
+                      </div>
+
+                      <div style={{ display: "flex", gap: "0.75rem" }}>
+                        <div style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: "0.73rem", marginBottom: "0.2rem" }}>
+                            Full Score (sec)
+                          </label>
+                          <input
+                            className="form-input"
+                            type="number"
+                            min={60} max={1200}
+                            value={settings[item.full]}
+                            onChange={e => setSettings(s => ({ ...s, [item.full]: parseInt(e.target.value) || 60 }))}
+                            required
+                            style={{ textAlign: "center", padding: "0.4rem", fontSize: "0.95rem" }}
+                          />
+                          <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem", textAlign: "center" }}>
+                            ≈ {Math.round((settings[item.full] || 60) / 60)} min
+                          </div>
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: "0.73rem", marginBottom: "0.2rem" }}>
+                            Max Allowed (sec)
+                          </label>
+                          <input
+                            className="form-input"
+                            type="number"
+                            min={60} max={1200}
+                            value={settings[item.max]}
+                            onChange={e => setSettings(s => ({ ...s, [item.max]: parseInt(e.target.value) || 60 }))}
+                            required
+                            style={{ textAlign: "center", padding: "0.4rem", fontSize: "0.95rem" }}
+                          />
+                          <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem", textAlign: "center" }}>
+                            ≈ {Math.round((settings[item.max] || 60) / 60)} min
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
                 </div>
-                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
-                  {savingSection === "payment" ? "Saving…" : "Save Payment Amount"}
+
+                <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
+                  {savingSection === "duration" ? "Saving Durations…" : "💾 Save Duration Settings"}
                 </button>
               </form>
             </div>
+          )}
 
-            {/* Vocabulary Challenge Settings */}
-            <div className="card" style={{ margin: 0 }}>
-              <div className="section-title">📚 Vocabulary Challenge Settings</div>
-              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-                Control the difficulty and number of vocabulary words shown to users each day. Users must use a minimum number of words for full credit. Changes clear today's words and regenerate them on next dashboard load.
-              </p>
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* SECTION 3: VOCABULARY & CONTENT SETTINGS */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {(settingsSubTab === "all" || settingsSubTab === "vocab") && (
+            <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                  📚 Vocabulary &amp; Content Rules
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.83rem", margin: "0.25rem 0 0" }}>
+                  Set daily vocabulary targets, CEFR levels, audio story length, and special challenge day schedules.
+                </p>
+              </div>
+
               <form onSubmit={e => saveSettings(e, "vocab")}>
-                {[
-                  { key: "Normal", label: "🗣️ Normal Topics", words: "vocabNormalWordCount", required: "vocabNormalRequiredCount" },
-                  { key: "Story", label: "📖 Story Tasks", words: "vocabStoryWordCount", required: "vocabStoryRequiredCount" },
-                  { key: "Picture", label: "🖼️ Picture Tasks", words: "vocabPictureWordCount", required: "vocabPictureRequiredCount" },
-                ].map(({ key, label, words, required }) => (
-                  <div key={key} style={{marginBottom:"1.1rem",padding:"0.85rem 1rem",border:"1px solid var(--border)",borderRadius:12,background:"var(--bg-secondary)"}}>
-                    <div style={{fontWeight:700,marginBottom:"0.65rem"}}>{label}</div>
-                    <div style={{display:"flex",gap:"1rem",flexWrap:"wrap"}}>
-                      <label style={{fontSize:"0.78rem",color:"var(--muted)"}}>Shown
-                        <input className="form-input" type="number" min={1} max={10} value={settings[words]}
-                          onChange={e => setSettings(s => ({...s, [words]: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)), [required]: Math.min(s[required], parseInt(e.target.value) || 1)}))}
-                          required style={{display:"block",width:78,marginTop:"0.25rem",textAlign:"center"}} />
-                      </label>
-                      <label style={{fontSize:"0.78rem",color:"var(--muted)"}}>Required
-                        <input className="form-input" type="number" min={1} max={settings[words]} value={settings[required]}
-                          onChange={e => setSettings(s => ({...s, [required]: Math.max(1, Math.min(s[words], parseInt(e.target.value) || 1))}))}
-                          required style={{display:"block",width:78,marginTop:"0.25rem",textAlign:"center"}} />
-                      </label>
-                      <span style={{alignSelf:"center",fontSize:"0.78rem",color:"var(--muted)"}}>words shown; minimum required for full vocabulary credit</span>
-                    </div>
-                  </div>
-                ))}
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    📊 CEFR Level
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(word difficulty)</span>
-                  </label>
-                  <select
-                    className="form-input"
-                    value={settings.vocabLevel}
-                    onChange={e=>setSettings(s=>({...s,vocabLevel:e.target.value}))}
-                    style={{width:120,fontSize:"1rem"}}
-                  >
-                    {["A1","A2","B1","B2","C1","C2"].map(l=>(
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                  </select>
-                  <div style={{marginTop:"0.5rem",display:"flex",flexDirection:"column",gap:"0.2rem"}}>
-                    {[
-                      {l:"A1",d:"Beginner — very basic everyday words"},
-                      {l:"A2",d:"Elementary — simple practical words"},
-                      {l:"B1",d:"Intermediate — common useful words"},
-                      {l:"B2",d:"Upper-intermediate — richer, precise words ✓ recommended"},
-                      {l:"C1",d:"Advanced — sophisticated fluent-speaker words"},
-                      {l:"C2",d:"Proficient — complex academic vocabulary"},
-                    ].map(({l,d})=>(
-                      <div key={l} style={{fontSize:"0.75rem",color:settings.vocabLevel===l?"var(--accent)":"var(--muted)",fontWeight:settings.vocabLevel===l?600:400}}>
-                        {settings.vocabLevel===l?"▶":""} <strong>{l}</strong> — {d}
+                
+                {/* Vocabulary Word Count Targets Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+                  {[
+                    { key: "Normal", label: "🗣️ Normal Daily Topics", words: "vocabNormalWordCount", required: "vocabNormalRequiredCount" },
+                    { key: "Story", label: "📖 Story Summary Day", words: "vocabStoryWordCount", required: "vocabStoryRequiredCount" },
+                    { key: "Picture", label: "🖼️ Picture Description Day", words: "vocabPictureWordCount", required: "vocabPictureRequiredCount" },
+                  ].map(({ key, label, words, required }) => (
+                    <div key={key} style={{ padding: "1rem", border: "1px solid var(--border)", borderRadius: 12, background: "var(--bg-secondary)" }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.6rem" }}>{label}</div>
+                      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: "0.74rem", color: "var(--muted)", display: "block", marginBottom: "0.2rem" }}>Shown</label>
+                          <input className="form-input" type="number" min={1} max={10} value={settings[words]}
+                            onChange={e => setSettings(s => ({ ...s, [words]: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)), [required]: Math.min(s[required], parseInt(e.target.value) || 1) }))}
+                            required style={{ textAlign: "center", padding: "0.35rem" }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: "0.74rem", color: "var(--muted)", display: "block", marginBottom: "0.2rem" }}>Required</label>
+                          <input className="form-input" type="number" min={1} max={settings[words]} value={settings[required]}
+                            onChange={e => setSettings(s => ({ ...s, [required]: Math.max(1, Math.min(s[words], parseInt(e.target.value) || 1)) }))}
+                            required style={{ textAlign: "center", padding: "0.35rem" }} />
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🎧 Story Audio Length
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(target word count for AI-generated stories)</span>
+
+                {/* CEFR Level Selector */}
+                <div style={{ padding: "1.1rem 1.25rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)", marginBottom: "1.25rem" }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    📊 CEFR Vocabulary Difficulty Level
                   </label>
-                  <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min={100} max={400} step={10}
-                      value={settings.storyWordCount}
-                      onChange={e=>setSettings(s=>({...s,storyWordCount:parseInt(e.target.value)||200}))}
-                      style={{width:90,fontSize:"1.1rem",textAlign:"center"}}
-                    />
-                    <span style={{color:"var(--muted)",fontSize:"0.85rem"}}>
-                      words &nbsp;·&nbsp; ≈ <strong style={{color:"var(--accent)"}}>{Math.round(settings.storyWordCount / 130 * 60)}s</strong> audio
-                      &nbsp;<span style={{opacity:0.6}}>(130 wpm avg)</span>
-                    </span>
-                  </div>
-                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
-                    100 words ≈ 45s &nbsp;·&nbsp; 200 words ≈ 1:30 min &nbsp;·&nbsp; 260 words ≈ 2 min
-                  </div>
-                </div>
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🎓 Story Difficulty Level
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(CEFR level for story day)</span>
-                  </label>
-                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
-                    {[
-                      { l:"A2", desc:"Beginner" },
-                      { l:"B1", desc:"Intermediate" },
-                      { l:"B2", desc:"Upper-Intermediate" },
-                      { l:"C1", desc:"Advanced" },
-                    ].map(({l, desc}) => (
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+                    {["A1","A2","B1","B2","C1","C2"].map(l => (
                       <button
                         key={l}
                         type="button"
-                        onClick={() => setSettings(s => ({...s, storyLevel: l}))}
+                        onClick={() => setSettings(s => ({ ...s, vocabLevel: l }))}
                         style={{
-                          padding:"0.4rem 0.9rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
-                          border: settings.storyLevel === l ? "2px solid #7c6fff" : "1px solid var(--border)",
-                          background: settings.storyLevel === l ? "rgba(124,111,255,0.18)" : "var(--bg-secondary)",
-                          color: settings.storyLevel === l ? "#a78bfa" : "var(--muted)",
-                          cursor:"pointer",
+                          padding: "0.4rem 0.95rem",
+                          borderRadius: 20,
+                          fontSize: "0.84rem",
+                          fontWeight: 700,
+                          border: settings.vocabLevel === l ? "2px solid #7c6fff" : "1px solid var(--border)",
+                          background: settings.vocabLevel === l ? "rgba(124,111,255,0.22)" : "rgba(255,255,255,0.04)",
+                          color: settings.vocabLevel === l ? "#c084fc" : "var(--muted)",
+                          cursor: "pointer",
                         }}
                       >
-                        <strong>{l}</strong> — {desc}
+                        {l}
                       </button>
                     ))}
                   </div>
-                </div>
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    📅 Story Day
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(day of week auto-story runs)</span>
-                  </label>
-                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
-                    {[
-                      {d:0,label:"Sun"},
-                      {d:1,label:"Mon"},
-                      {d:2,label:"Tue"},
-                      {d:3,label:"Wed"},
-                      {d:4,label:"Thu"},
-                      {d:5,label:"Fri"},
-                      {d:6,label:"Sat"},
-                    ].map(({d, label}) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setSettings(s => ({...s, storyDay: d}))}
-                        style={{
-                          padding:"0.4rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
-                          border: settings.storyDay === d ? "2px solid #7c6fff" : "1px solid var(--border)",
-                          background: settings.storyDay === d ? "rgba(124,111,255,0.18)" : "var(--bg-secondary)",
-                          color: settings.storyDay === d ? "#a78bfa" : "var(--muted)",
-                          cursor:"pointer",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
-                    Currently: <strong style={{color:"var(--accent)"}}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
+                  <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                    {settings.vocabLevel === "A1" && "A1: Beginner — very basic everyday words"}
+                    {settings.vocabLevel === "A2" && "A2: Elementary — simple practical vocabulary"}
+                    {settings.vocabLevel === "B1" && "B1: Intermediate — common useful conversational words"}
+                    {settings.vocabLevel === "B2" && "B2: Upper-Intermediate — rich, professional words (Recommended)"}
+                    {settings.vocabLevel === "C1" && "C1: Advanced — sophisticated fluent-speaker expressions"}
+                    {settings.vocabLevel === "C2" && "C2: Proficient — complex academic & literary vocabulary"}
                   </div>
                 </div>
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🖼️ Picture Description Day
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(day of week auto-picture challenge runs, -1 to disable)</span>
-                  </label>
-                  <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap"}}>
-                    {[
-                      {d:-1,label:"Off"},
-                      {d:0,label:"Sun"},
-                      {d:1,label:"Mon"},
-                      {d:2,label:"Tue"},
-                      {d:3,label:"Wed"},
-                      {d:4,label:"Thu"},
-                      {d:5,label:"Fri"},
-                      {d:6,label:"Sat"},
-                    ].map(({d, label}) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setSettings(s => ({...s, pictureDescriptionDay: d}))}
-                        style={{
-                          padding:"0.4rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600,
-                          border: settings.pictureDescriptionDay === d ? "2px solid #63b3ed" : "1px solid var(--border)",
-                          background: settings.pictureDescriptionDay === d ? "rgba(99,179,237,0.18)" : "var(--bg-secondary)",
-                          color: settings.pictureDescriptionDay === d ? "#90cdf4" : "var(--muted)",
-                          cursor:"pointer",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
+
+                {/* Story Settings Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+                  
+                  {/* Story Audio Length */}
+                  <div style={{ padding: "1rem 1.15rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", marginBottom: "0.35rem" }}>
+                      🎧 Story Audio Word Count
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.3rem" }}>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={100} max={400} step={10}
+                        value={settings.storyWordCount}
+                        onChange={e => setSettings(s => ({ ...s, storyWordCount: parseInt(e.target.value) || 200 }))}
+                        style={{ width: 90, textAlign: "center" }}
+                      />
+                      <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+                        words &nbsp;·&nbsp; ≈ <strong style={{ color: "var(--accent)" }}>{Math.round(settings.storyWordCount / 130 * 60)}s</strong> audio
+                      </span>
+                    </div>
                   </div>
-                  <div style={{marginTop:"0.4rem",fontSize:"0.75rem",color:"var(--muted)"}}>
-                    Currently: <strong style={{color:"#90cdf4"}}>
-                      {(settings.pictureDescriptionDay ?? 4) === -1 ? "Disabled" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.pictureDescriptionDay ?? 4]}
-                    </strong>
+
+                  {/* Story Difficulty */}
+                  <div style={{ padding: "1rem 1.15rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", marginBottom: "0.35rem" }}>
+                      🎓 Story Difficulty Level
+                    </label>
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      {["A2","B1","B2","C1"].map(l => (
+                        <button
+                          key={l}
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, storyLevel: l }))}
+                          style={{
+                            padding: "0.35rem 0.75rem",
+                            borderRadius: 16,
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            border: settings.storyLevel === l ? "2px solid #7c6fff" : "1px solid var(--border)",
+                            background: settings.storyLevel === l ? "rgba(124,111,255,0.2)" : "rgba(255,255,255,0.03)",
+                            color: settings.storyLevel === l ? "#c084fc" : "var(--muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
                 </div>
-                {/* Allow Private Videos toggle */}
-                <div className="form-group" style={{marginBottom:"1.5rem"}}>
-                  <label className="form-label" style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                    🔒 Allow Private Videos
-                    <span style={{color:"var(--muted)",fontWeight:400,fontSize:"0.8rem"}}>(users can hide their videos from the community feed)</span>
-                  </label>
+
+                {/* Day of Week Selectors */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+                  
+                  {/* Story Day */}
+                  <div style={{ padding: "1rem 1.15rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", marginBottom: "0.4rem" }}>
+                      📅 Story Summary Day
+                    </label>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
+                      {[
+                        { d: 0, label: "Sun" }, { d: 1, label: "Mon" }, { d: 2, label: "Tue" },
+                        { d: 3, label: "Wed" }, { d: 4, label: "Thu" }, { d: 5, label: "Fri" }, { d: 6, label: "Sat" }
+                      ].map(({ d, label }) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, storyDay: d }))}
+                          style={{
+                            padding: "0.35rem 0.65rem", borderRadius: 14, fontSize: "0.78rem", fontWeight: 700,
+                            border: settings.storyDay === d ? "2px solid #7c6fff" : "1px solid var(--border)",
+                            background: settings.storyDay === d ? "rgba(124,111,255,0.22)" : "rgba(255,255,255,0.03)",
+                            color: settings.storyDay === d ? "#c084fc" : "var(--muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
+                      Runs on: <strong style={{ color: "var(--accent)" }}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
+                    </div>
+                  </div>
+
+                  {/* Picture Description Day */}
+                  <div style={{ padding: "1rem 1.15rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", marginBottom: "0.4rem" }}>
+                      🖼️ Picture Description Day
+                    </label>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
+                      {[
+                        { d: -1, label: "Off" }, { d: 0, label: "Sun" }, { d: 1, label: "Mon" }, { d: 2, label: "Tue" },
+                        { d: 3, label: "Wed" }, { d: 4, label: "Thu" }, { d: 5, label: "Fri" }, { d: 6, label: "Sat" }
+                      ].map(({ d, label }) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, pictureDescriptionDay: d }))}
+                          style={{
+                            padding: "0.35rem 0.65rem", borderRadius: 14, fontSize: "0.78rem", fontWeight: 700,
+                            border: settings.pictureDescriptionDay === d ? "2px solid #38bdf8" : "1px solid var(--border)",
+                            background: settings.pictureDescriptionDay === d ? "rgba(56,189,248,0.22)" : "rgba(255,255,255,0.03)",
+                            color: settings.pictureDescriptionDay === d ? "#38bdf8" : "var(--muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
+                      Runs on: <strong style={{ color: "#38bdf8" }}>{(settings.pictureDescriptionDay ?? 4) === -1 ? "Disabled" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.pictureDescriptionDay ?? 4]}</strong>
+                    </div>
+                  </div>
+
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
+                  {savingSection === "vocab" ? "Saving Vocabulary…" : "💾 Save Vocabulary & Content Settings"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* SECTION 4: PRICING & PRIVACY SETTINGS */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {(settingsSubTab === "all" || settingsSubTab === "pricing") && (
+            <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                  💳 Membership Pricing &amp; Video Privacy
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.83rem", margin: "0.25rem 0 0" }}>
+                  Set the student membership fee charged via Razorpay and manage community video privacy settings.
+                </p>
+              </div>
+
+              <form onSubmit={e => saveSettings(e, "payment")}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" }}>
+                  
+                  {/* Membership Amount */}
+                  <div style={{ padding: "1.25rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.3rem" }}>
+                      💰 Premium Membership Fee (INR)
+                    </label>
+                    <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 0.75rem" }}>
+                      Amount shown on the payment wall and charged at checkout.
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                      <span style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--accent)" }}>₹</span>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={1} max={100000} step="0.01"
+                        value={settings.paymentAmount}
+                        onChange={e => setSettings(s => ({ ...s, paymentAmount: e.target.value }))}
+                        required
+                        style={{ width: 140, fontSize: "1.1rem", fontWeight: 700 }}
+                      />
+                      <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>INR</span>
+                    </div>
+                  </div>
+
+                  {/* Allow Private Videos Toggle */}
+                  <div style={{ padding: "1.25rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.88rem", marginBottom: "0.3rem" }}>
+                      🔒 Community Video Privacy
+                    </label>
+                    <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 0.75rem" }}>
+                      Allow or disallow students from marking their submission videos private.
+                    </p>
+                    <div
+                      onClick={() => setSettings(s => ({ ...s, allowPrivateVideos: !s.allowPrivateVideos }))}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        cursor: "pointer", userSelect: "none",
+                        background: settings.allowPrivateVideos ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
+                        border: `1px solid ${settings.allowPrivateVideos ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`,
+                        borderRadius: 12, padding: "0.65rem 1rem",
+                      }}
+                    >
+                      <div style={{
+                        width: 12, height: 12, borderRadius: "50%",
+                        background: settings.allowPrivateVideos ? "#4ade80" : "#f87171",
+                        boxShadow: `0 0 8px ${settings.allowPrivateVideos ? "#4ade80" : "#f87171"}`,
+                      }} />
+                      <div>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: settings.allowPrivateVideos ? "#4ade80" : "#f87171" }}>
+                          {settings.allowPrivateVideos ? "Enabled — Students can set videos private" : "Disabled — All videos are forced public"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
+                  {savingSection === "payment" ? "Saving Pricing…" : "💾 Save Pricing & Privacy"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {/* SECTION 5: SYSTEM RESETS & MAINTENANCE */}
+          {/* ══════════════════════════════════════════════════════════════════ */}
+          {(settingsSubTab === "all" || settingsSubTab === "resets") && (
+            <div className="card" style={{
+              margin: 0, padding: "1.5rem", borderRadius: 16,
+              background: "rgba(239, 68, 68, 0.03)",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+            }}>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div className="section-title" style={{ margin: 0, fontSize: "1.1rem", color: "#f87171" }}>
+                  ⚠️ System Maintenance &amp; Reset Controls
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.83rem", margin: "0.25rem 0 0" }}>
+                  Manually trigger system resets on-demand. Note: These actions are normally performed automatically at 12:00 AM midnight.
+                </p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+                {[
+                  { label: "🌅 Reset Day", desc: "Clears today's submissions and questions for all students", key: "day", endpoint: "/users/reset/day" },
+                  { label: "📅 Reset Weekly", desc: "Resets all weekly submission counters back to 0", key: "weekly", endpoint: "/users/reset/weekly" },
+                  { label: "📆 Reset Monthly", desc: "Resets all monthly submission scores back to 0", key: "monthly", endpoint: "/users/reset/monthly" },
+                ].map(({ label, desc, key, endpoint }) => (
                   <div
-                    onClick={() => setSettings(s => ({...s, allowPrivateVideos: !s.allowPrivateVideos}))}
+                    key={key}
                     style={{
-                      display:"flex", alignItems:"center", gap:"0.75rem",
-                      cursor:"pointer", userSelect:"none",
-                      background: settings.allowPrivateVideos ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
-                      border: `1px solid ${settings.allowPrivateVideos ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
-                      borderRadius:12, padding:"0.65rem 1rem", transition:"all 0.2s",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      padding: "1rem 1.15rem",
+                      background: "var(--bg-secondary)",
+                      borderRadius: 12,
+                      border: "1px solid rgba(239, 68, 68, 0.2)",
+                      gap: "0.75rem",
                     }}
                   >
-                    <div style={{
-                      width:40, height:22, borderRadius:99, flexShrink:0,
-                      background: settings.allowPrivateVideos ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
-                      border:`1px solid ${settings.allowPrivateVideos ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)"}`,
-                      position:"relative", transition:"all 0.2s",
-                    }}>
-                      <div style={{
-                        width:16, height:16, borderRadius:"50%",
-                        background: settings.allowPrivateVideos ? "#4ade80" : "#f87171",
-                        position:"absolute", top:2,
-                        left: settings.allowPrivateVideos ? 20 : 2,
-                        transition:"left 0.2s, background 0.2s",
-                        boxShadow:`0 0 6px ${settings.allowPrivateVideos ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)"}`,
-                      }} />
-                    </div>
                     <div>
-                      <div style={{fontSize:"0.88rem", fontWeight:700, color: settings.allowPrivateVideos ? "#4ade80" : "#f87171"}}>
-                        {settings.allowPrivateVideos ? "Enabled — users can make videos private" : "Disabled — all videos are forced public"}
-                      </div>
-                      <div style={{fontSize:"0.72rem", color:"var(--muted)", marginTop:"0.1rem"}}>
-                        {settings.allowPrivateVideos ? "Users can choose to hide their video from the community feed" : "All videos will be visible to everyone regardless of user preference"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
-                  {savingSection === "vocab" ? "Saving…" : "💾 Save Vocabulary & Story Settings"}
-                </button>
-              </form>
-              <div style={{marginTop:"1rem",padding:"0.75rem 1rem",background:"rgba(124,111,255,0.08)",borderRadius:10,border:"1px solid rgba(124,111,255,0.2)",fontSize:"0.82rem",color:"var(--muted)"}}>
-                ℹ️ Changing level or count clears today's words — they regenerate automatically when any user loads the dashboard.
-              </div>
-            </div>
-
-          </div>
-
-          {/* Column 2 */}
-          <div style={{ flex: "1 1 480px", maxWidth: 480, display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            
-            {/* Duration Scoring Settings */}
-            <div className="card" style={{ margin: 0 }}>
-              <div className="section-title">⏱️ Duration Scoring Settings</div>
-              <p style={{ color: "var(--muted)", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
-                Configure duration targets and max limits in seconds (60s to 1200s).
-                Users earn full length points when meeting the "Full Score" duration, and can record up to "Max" limit.
-              </p>
-              <form onSubmit={e => saveSettings(e, "duration")}>
-                {/* 1. Default Daily */}
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
-                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>📅 Default Daily Questions</h4>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationDefaultFull}
-                        onChange={e => setSettings(s => ({ ...s, durationDefaultFull: parseInt(e.target.value) || 300 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationDefaultFull / 60)} min
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationDefaultMax}
-                        onChange={e => setSettings(s => ({ ...s, durationDefaultMax: parseInt(e.target.value) || 300 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationDefaultMax / 60)} min
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Story Summary */}
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
-                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>📚 Story Summary Day</h4>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationStoryFull}
-                        onChange={e => setSettings(s => ({ ...s, durationStoryFull: parseInt(e.target.value) || 180 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationStoryFull / 60)} min
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationStoryMax}
-                        onChange={e => setSettings(s => ({ ...s, durationStoryMax: parseInt(e.target.value) || 180 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationStoryMax / 60)} min
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Weekly Reflection */}
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
-                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>🔍 Weekly Reflection Day</h4>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationWeeklyFull}
-                        onChange={e => setSettings(s => ({ ...s, durationWeeklyFull: parseInt(e.target.value) || 300 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationWeeklyFull / 60)} min
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationWeeklyMax}
-                        onChange={e => setSettings(s => ({ ...s, durationWeeklyMax: parseInt(e.target.value) || 420 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationWeeklyMax / 60)} min
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Monthly Reflection */}
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
-                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>💬 Monthly Reflection Day</h4>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationMonthlyReflectionFull}
-                        onChange={e => setSettings(s => ({ ...s, durationMonthlyReflectionFull: parseInt(e.target.value) || 420 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationMonthlyReflectionFull / 60)} min
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationMonthlyReflectionMax}
-                        onChange={e => setSettings(s => ({ ...s, durationMonthlyReflectionMax: parseInt(e.target.value) || 420 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationMonthlyReflectionMax / 60)} min
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5. Monthly Goals */}
-                <div style={{ marginBottom: "1.5rem" }}>
-                  <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--accent)", fontSize: "0.9rem" }}>🎯 Monthly Goals Day</h4>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationMonthlyGoalsFull}
-                        onChange={e => setSettings(s => ({ ...s, durationMonthlyGoalsFull: parseInt(e.target.value) || 420 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationMonthlyGoalsFull / 60)} min
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationMonthlyGoalsMax}
-                        onChange={e => setSettings(s => ({ ...s, durationMonthlyGoalsMax: parseInt(e.target.value) || 600 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationMonthlyGoalsMax / 60)} min
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 6. Picture Description */}
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem", marginBottom: "1rem" }}>
-                  <h4 style={{ margin: "0 0 0.75rem 0", color: "#90cdf4", fontSize: "0.9rem" }}>🖼️ Picture Description Day</h4>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Full Score (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationPictureFull}
-                        onChange={e => setSettings(s => ({ ...s, durationPictureFull: parseInt(e.target.value) || 180 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationPictureFull / 60)} min
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.75rem" }}>Max Allowed (sec)</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        min={60} max={1200}
-                        value={settings.durationPictureMax}
-                        onChange={e => setSettings(s => ({ ...s, durationPictureMax: parseInt(e.target.value) || 180 }))}
-                        required
-                        style={{ textAlign: "center", padding: "0.4rem" }}
-                      />
-                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                        ≈ {Math.round(settings.durationPictureMax / 60)} min
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <button type="submit" className="btn-primary" disabled={savingSection !== null}>
-                  {savingSection === "duration" ? "Saving…" : "💾 Save Duration Settings"}
-                </button>
-              </form>
-            </div>
-            <div className="card" style={{ margin: 0 }}>
-              <div className="section-title">🔄 Reset Controls</div>
-              <p style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:"1.5rem"}}>
-                Manually trigger resets. These are normally done automatically by the bot at midnight.
-              </p>
-              <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-                {[
-                  { label:"🌅 Reset Day", desc:"Clears today's submissions & question status", key:"day", endpoint:"/users/reset/day", role:"both" },
-                  { label:"📅 Reset Weekly", desc:"Resets weekly submission counts to 0", key:"weekly", endpoint:"/users/reset/weekly", role:"both" },
-                  { label:"📆 Reset Monthly", desc:"Resets monthly submission counts to 0", key:"monthly", endpoint:"/users/reset/monthly", role:"both" },
-                ].map(({label,desc,key,endpoint})=>(
-                  <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0.75rem 1rem",background:"var(--bg-secondary)",borderRadius:10,border:"1px solid var(--border)"}}>
-                    <div>
-                      <div style={{fontWeight:600,fontSize:"0.9rem"}}>{label}</div>
-                      <div style={{color:"var(--muted)",fontSize:"0.78rem"}}>{desc}</div>
+                      <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "#fff" }}>{label}</div>
+                      <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: "0.25rem" }}>{desc}</div>
                     </div>
                     <button
                       className="btn-ghost danger"
-                      style={{fontSize:"0.82rem",whiteSpace:"nowrap"}}
-                      disabled={resetting===key}
-                      onClick={()=>setModal({
-                        type:"danger", title:label,
-                        message:`${desc}. This cannot be undone. Continue?`,
-                        confirmText:"Yes, Reset",
-                        onConfirm: async()=>{
+                      style={{ fontSize: "0.84rem", fontWeight: 700, padding: "0.45rem", alignSelf: "flex-start", width: "100%" }}
+                      disabled={resetting === key}
+                      onClick={() => setModal({
+                        type: "danger", title: label,
+                        message: `${desc}. This cannot be undone. Are you sure?`,
+                        confirmText: "Yes, Reset Now",
+                        onConfirm: async () => {
                           setModal(null); setResetting(key);
-                          try{ await api.post(endpoint); msg(`${label} done!`); load(); }
-                          catch(e){ msg(e?.response?.data?.error||"Failed","danger"); }
-                          finally{ setResetting(""); }
+                          try { await api.post(endpoint); msg(`${label} completed!`); reload(); }
+                          catch(e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                          finally { setResetting(""); }
                         },
                       })}
                     >
-                      {resetting===key?"Resetting…":"Reset"}
+                      {resetting === key ? "Resetting…" : `Execute ${label}`}
                     </button>
                   </div>
                 ))}
               </div>
             </div>
+          )}
 
-          </div>
         </div>
       )}
 
