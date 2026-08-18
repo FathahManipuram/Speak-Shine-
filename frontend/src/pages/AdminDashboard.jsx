@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   const [waLoading, setWaLoading] = useState(false);
   const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [waSendingReport, setWaSendingReport] = useState(false);
-  const [settingsSubTab, setSettingsSubTab] = useState("all");
+  const [settingsSubTab, setSettingsSubTab] = useState("schedules");
   const [settings, setSettings] = useState({
     posterSendTime: "08:00",
     questionGenerateTime: "07:00",
@@ -2189,7 +2189,6 @@ export default function AdminDashboard() {
               borderTop: "1px solid rgba(255, 255, 255, 0.08)",
             }}>
               {[
-                { id: "all", label: "🌐 All Settings" },
                 { id: "schedules", label: "⏰ Bot & Schedules" },
                 { id: "duration", label: "⏱️ Video Duration" },
                 { id: "vocab", label: "📚 Vocabulary & Tasks" },
@@ -2201,13 +2200,14 @@ export default function AdminDashboard() {
                   type="button"
                   onClick={() => setSettingsSubTab(sub.id)}
                   style={{
-                    padding: "0.45rem 0.9rem",
+                    padding: "0.5rem 1.1rem",
                     borderRadius: 20,
-                    fontSize: "0.82rem",
+                    fontSize: "0.85rem",
                     fontWeight: 700,
                     border: settingsSubTab === sub.id ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.1)",
-                    background: settingsSubTab === sub.id ? "rgba(124, 111, 255, 0.22)" : "rgba(255, 255, 255, 0.04)",
-                    color: settingsSubTab === sub.id ? "#c084fc" : "var(--muted)",
+                    background: settingsSubTab === sub.id ? "rgba(124, 111, 255, 0.25)" : "rgba(255, 255, 255, 0.04)",
+                    color: settingsSubTab === sub.id ? "#fff" : "var(--muted)",
+                    boxShadow: settingsSubTab === sub.id ? "0 0 12px rgba(124, 111, 255, 0.35)" : "none",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
                   }}
@@ -2221,7 +2221,7 @@ export default function AdminDashboard() {
           {/* ══════════════════════════════════════════════════════════════════ */}
           {/* SECTION 1: BOT SCHEDULES & AUTOMATION */}
           {/* ══════════════════════════════════════════════════════════════════ */}
-          {(settingsSubTab === "all" || settingsSubTab === "schedules") && (
+          {settingsSubTab === "schedules" && (
             <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div>
@@ -2492,7 +2492,7 @@ export default function AdminDashboard() {
           {/* ══════════════════════════════════════════════════════════════════ */}
           {/* SECTION 2: DURATION SCORING SETTINGS */}
           {/* ══════════════════════════════════════════════════════════════════ */}
-          {(settingsSubTab === "all" || settingsSubTab === "duration") && (
+          {settingsSubTab === "duration" && (
             <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
               <div style={{ marginBottom: "1.25rem" }}>
                 <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
@@ -2582,7 +2582,7 @@ export default function AdminDashboard() {
           {/* ══════════════════════════════════════════════════════════════════ */}
           {/* SECTION 3: VOCABULARY & CONTENT SETTINGS */}
           {/* ══════════════════════════════════════════════════════════════════ */}
-          {(settingsSubTab === "all" || settingsSubTab === "vocab") && (
+          {settingsSubTab === "vocab" && (
             <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
               <div style={{ marginBottom: "1.25rem" }}>
                 <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
@@ -2788,7 +2788,7 @@ export default function AdminDashboard() {
           {/* ══════════════════════════════════════════════════════════════════ */}
           {/* SECTION 4: PRICING & PRIVACY SETTINGS */}
           {/* ══════════════════════════════════════════════════════════════════ */}
-          {(settingsSubTab === "all" || settingsSubTab === "pricing") && (
+          {settingsSubTab === "pricing" && (
             <div className="card" style={{ margin: 0, padding: "1.5rem", borderRadius: 16 }}>
               <div style={{ marginBottom: "1.25rem" }}>
                 <div className="section-title" style={{ margin: 0, fontSize: "1.1rem" }}>
@@ -2868,7 +2868,7 @@ export default function AdminDashboard() {
           {/* ══════════════════════════════════════════════════════════════════ */}
           {/* SECTION 5: SYSTEM RESETS & MAINTENANCE */}
           {/* ══════════════════════════════════════════════════════════════════ */}
-          {(settingsSubTab === "all" || settingsSubTab === "resets") && (
+          {settingsSubTab === "resets" && (
             <div className="card" style={{
               margin: 0, padding: "1.5rem", borderRadius: 16,
               background: "rgba(239, 68, 68, 0.03)",
