@@ -1408,6 +1408,7 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
 
   const [speakingIndex, setSpeakingIndex] = useState(null);
   const [ttsWarning, setTtsWarning] = useState(null);
+  const audioFallbackRef = useRef(null);
 
   const parseVocabItem = (item) => {
     if (!item) return { word: "", meaning: "", example: "" };
@@ -1428,40 +1429,80 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
     return { word, meaning, example };
   };
 
-  const handleSpeak = (word, example, idx) => {
-    if (!('speechSynthesis' in window)) {
-      setTtsWarning("Audio pronunciation is not supported on this browser.");
-      setTimeout(() => setTtsWarning(null), 3000);
-      return;
-    }
+  const playAudioFallback = (text, idx) => {
     try {
-      window.speechSynthesis.cancel();
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+      if (audioFallbackRef.current) {
+        audioFallbackRef.current.pause();
+        audioFallbackRef.current = null;
       }
-      setSpeakingIndex(idx);
-      const textToSpeak = `${word}. ${example ? 'For example: ' + example : ''}`;
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.rate = 0.88;
-      utterance.pitch = 1;
-      utterance.lang = 'en-US';
-
-      const voices = window.speechSynthesis.getVoices?.() || [];
-      const enVoice = voices.find(v => v.lang?.startsWith("en") && !v.localService) || voices.find(v => v.lang?.startsWith("en"));
-      if (enVoice) utterance.voice = enVoice;
-
-      utterance.onend = () => setSpeakingIndex(null);
-      utterance.onerror = (e) => {
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`;
+      const audio = new Audio(audioUrl);
+      audioFallbackRef.current = audio;
+      audio.onended = () => setSpeakingIndex(null);
+      audio.onerror = () => {
         setSpeakingIndex(null);
-        if (e.error === "not-allowed") {
-          setTtsWarning("Audio blocked by browser sound permissions.");
-          setTimeout(() => setTtsWarning(null), 3500);
-        }
+        setTtsWarning("Please check device volume / un-mute.");
+        setTimeout(() => setTtsWarning(null), 3000);
       };
-      window.speechSynthesis.speak(utterance);
+      audio.play().catch(() => {
+        setSpeakingIndex(null);
+        setTtsWarning("Tap again to play audio.");
+        setTimeout(() => setTtsWarning(null), 3000);
+      });
     } catch {
       setSpeakingIndex(null);
     }
+  };
+
+  const handleSpeak = (rawWord, example, idx) => {
+    if (!rawWord) return;
+    const wordClean = rawWord.replace(/[^a-zA-Z0-9\s-]/g, "").trim();
+    if (!wordClean) return;
+
+    setSpeakingIndex(idx);
+
+    // Auto-safety timer so button never gets stuck
+    const safetyTimer = setTimeout(() => {
+      setSpeakingIndex(prev => prev === idx ? null : prev);
+    }, 4500);
+
+    // 1. Try SpeechSynthesis with Chrome resume + GC fix
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(wordClean);
+        utterance.rate = 0.85;
+        utterance.pitch = 1.0;
+        utterance.lang = 'en-US';
+
+        window._activeSpeechUtterance = utterance;
+
+        utterance.onend = () => {
+          clearTimeout(safetyTimer);
+          window._activeSpeechUtterance = null;
+          setSpeakingIndex(null);
+        };
+
+        utterance.onerror = (e) => {
+          console.warn("[TTS] SpeechSynthesis error, trying fallback:", e);
+          clearTimeout(safetyTimer);
+          window._activeSpeechUtterance = null;
+          playAudioFallback(wordClean, idx);
+        };
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch (err) {
+        console.warn("[TTS] Native speak failed, using fallback:", err);
+      }
+    }
+
+    // 2. High-reliability fallback
+    playAudioFallback(wordClean, idx);
   };
 
   if (compact) {
