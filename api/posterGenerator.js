@@ -52,10 +52,11 @@ function getTheme(category, contentType) {
 
 function esc(str) {
   return String(str || "")
-    .replace(/&/g, "&amp;")
+    .replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;)/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function wrapLines(text, maxChars) {
@@ -252,7 +253,7 @@ export function generateSVGPoster({
   <!-- Subtitle -->
   <text x="${W / 2}" y="98" text-anchor="middle"
     font-size="12" fill="#64748b" letter-spacing="4" font-weight="700"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${challengeTypeLabel}</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(challengeTypeLabel)}</text>
 
   <!-- Category Badge Pill -->
   <g transform="translate(${W / 2}, 132)">
@@ -268,7 +269,7 @@ export function generateSVGPoster({
     fill="rgba(14, 18, 38, 0.7)" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1.2"/>
   <text x="${PAD + 28}" y="${topicY + 28}"
     font-size="11" fill="#64748b" font-weight="800" letter-spacing="1.5"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${topicLabel}</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(topicLabel)}</text>
   ${topicRows}
 
   <!-- ═══ QUESTION CARD ═══ -->
@@ -276,7 +277,7 @@ export function generateSVGPoster({
     fill="rgba(14, 18, 38, 0.85)" stroke="rgba(56, 189, 248, 0.22)" stroke-width="1.2"/>
   <text x="${PAD + 28}" y="${qCardY + 30}"
     font-size="11" fill="#f43f5e" font-weight="800" letter-spacing="1.5"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${promptLabel}</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(promptLabel)}</text>
   ${qRows}
 
   <!-- ═══ VOCABULARY CHALLENGE CONTAINER CARD ═══ -->
@@ -286,13 +287,13 @@ export function generateSVGPoster({
   
   <text x="${PAD + 24}" y="${vocabY + 32}"
     font-size="12" fill="#818cf8" font-weight="800" letter-spacing="1.5"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">📚 TODAY'S VOCABULARY CHALLENGE</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">📚 TODAY&apos;S VOCABULARY CHALLENGE</text>
   
   ${vocabRows}
 
   <text x="${PAD + 24}" y="${vocabY + VOCAB_CARD_H - 18}"
     font-size="13" fill="#94a3b8" font-weight="500"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">✨ Use at least ${vocabRequiredCount} of today's ${wordsToRender.length} vocabulary words naturally in your speaking video!</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">✨ Use at least ${vocabRequiredCount} of today&apos;s ${wordsToRender.length} vocabulary words naturally in your speaking video!</text>
   ` : ''}
 
   <!-- ═══ FOOTER CTA BUTTON ═══ -->
@@ -301,7 +302,7 @@ export function generateSVGPoster({
       fill="url(#btnGrad)" filter="url(#btnGlow)"/>
     <text x="0" y="7" text-anchor="middle"
       font-size="17" font-weight="800" fill="#040510" letter-spacing="0.3"
-      font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${actionButtonLabel}</text>
+      font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(actionButtonLabel)}</text>
   </g>
 
   <!-- Bottom Border Accent -->
