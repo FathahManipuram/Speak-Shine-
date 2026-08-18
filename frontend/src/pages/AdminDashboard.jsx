@@ -2302,128 +2302,269 @@ export default function AdminDashboard() {
       {/* SUBMISSIONS */}
       {tab==="submissions" && (
         <>
-          <div className="stat-grid" style={{marginBottom:"1rem"}}>
-            <StatCard icon="✅" label="Submitted Today" value={users.filter(u=>u.completed).length} color="#4ade80"/>
-            <StatCard icon="⏳" label="Not Submitted"   value={users.filter(u=>!u.completed).length} color="#f87171"/>
-            <StatCard icon="👥" label="Total Students"  value={users.length} color="#7c6fff"/>
-          </div>
-
-          <div className="card">
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem",flexWrap:"wrap",gap:"0.5rem"}}>
-              <div className="section-title" style={{margin:0}}>Student Submissions</div>
-              <input className="form-input" style={{width:220}} placeholder="Search name or phone…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          {/* Submissions KPI Row */}
+          <div className="admin-kpi-row" style={{ marginBottom: "1rem" }}>
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#4ade80" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">SUBMITTED TODAY</span>
+                <span className="admin-kpi-trend up">✓ On track</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#4ade80" }}>
+                {users.filter(u => u.completed).length}
+              </div>
+              <div className="admin-kpi-sub">
+                {users.length > 0 ? Math.round((users.filter(u => u.completed).length / users.length) * 100) : 0}% of all members
+              </div>
             </div>
 
-            <div className="table-wrap">
-              <table className="data-table">
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#f87171" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">PENDING TODAY</span>
+                <span className="admin-kpi-trend down">⏳ Action needed</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#f87171" }}>
+                {users.filter(u => !u.completed).length}
+              </div>
+              <div className="admin-kpi-sub">Need to submit before 12:00 AM</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#818cf8" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">TOTAL STUDENTS</span>
+                <span className="admin-kpi-trend neu">👥 Active roster</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#a5b4fc" }}>
+                {users.length}
+              </div>
+              <div className="admin-kpi-sub">{users.filter(u => u.paid).length} active paid members</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#38bdf8" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">COMPLETION RATE</span>
+                <span className="admin-kpi-trend up">📊 Daily rate</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#38bdf8" }}>
+                {users.length > 0 ? Math.round((users.filter(u => u.completed).length / users.length) * 100) : 0}%
+              </div>
+              <div className="admin-kpi-sub">Live daily submissions pace</div>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: "1.25rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em" }}>
+                  Daily Submissions Tracker
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                  Monitor daily submission status, manage weekly &amp; monthly submission tallies, and toggle individual attendance.
+                </div>
+              </div>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 10, pointerEvents: "none" }}>
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  className="form-input"
+                  style={{ width: 220, paddingLeft: "2rem", fontSize: "0.82rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10 }}
+                  placeholder="Search name or phone…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="admin-table-wrap">
+              <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
+                    <th>Student</th>
                     <th>Phone</th>
-                    <th>Today</th>
+                    <th>Today's Status</th>
                     <th>Streak</th>
-                    <th>Weekly</th>
-                    <th>Monthly</th>
-                    <th>Actions</th>
+                    <th>Weekly Attendance</th>
+                    <th>Monthly Submissions</th>
+                    <th style={{ textAlign: "right", paddingRight: "1.25rem" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map(u=>(
-                    <tr key={u.userId}>
-                      <td style={{fontWeight:500}}>{u.registeredName||u.name||"—"}</td>
-                      <td style={{color:"var(--muted)"}}>{u.phone}</td>
-                      <td>
-                        <span style={{
-                          padding:"0.25rem 0.65rem",
-                          borderRadius:20,
-                          fontSize:"0.75rem",
-                          fontWeight:600,
-                          background:u.completed?"rgba(74,222,128,0.15)":"rgba(248,113,113,0.15)",
-                          color:u.completed?"#4ade80":"#f87171"
-                        }}>
-                          {u.completed?"✅":"⏳"}
-                        </span>
-                      </td>
-                      <td>🔥 {u.streak||0}</td>
-                      <td>
-                        <div style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                          <span style={{minWidth:35}}>{u.weeklySubmissions||0}/7</span>
-                          <div style={{display:"flex",gap:"0.25rem"}}>
-                            <button
-                              className="btn-ghost"
-                              style={{padding:"0.2rem 0.4rem",fontSize:"0.75rem",minWidth:28}}
-                              onClick={async()=>{
-                                try{
-                                  const res=await api.patch(`/submissions/${u.phone}/weekly`,{delta:-1});
-                                  setUsers(prev=>prev.map(user=>user.phone===u.phone?{...user,weeklySubmissions:res.data.weeklySubmissions}:user));
-                                }catch(e){msg(e?.response?.data?.error||"Failed","danger");}
-                              }}
-                              disabled={(u.weeklySubmissions||0)===0}
-                            >−</button>
-                            <button
-                              className="btn-ghost"
-                              style={{padding:"0.2rem 0.4rem",fontSize:"0.75rem",minWidth:28}}
-                              onClick={async()=>{
-                                try{
-                                  const res=await api.patch(`/submissions/${u.phone}/weekly`,{delta:1});
-                                  setUsers(prev=>prev.map(user=>user.phone===u.phone?{...user,weeklySubmissions:res.data.weeklySubmissions}:user));
-                                }catch(e){msg(e?.response?.data?.error||"Failed","danger");}
-                              }}
-                            >+</button>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-                          <span style={{minWidth:25}}>{u.monthlySubmissions||0}</span>
-                          <div style={{display:"flex",gap:"0.25rem"}}>
-                            <button
-                              className="btn-ghost"
-                              style={{padding:"0.2rem 0.4rem",fontSize:"0.75rem",minWidth:28}}
-                              onClick={async()=>{
-                                try{
-                                  const res=await api.patch(`/submissions/${u.phone}/monthly`,{delta:-1});
-                                  setUsers(prev=>prev.map(user=>user.phone===u.phone?{...user,monthlySubmissions:res.data.monthlySubmissions}:user));
-                                }catch(e){msg(e?.response?.data?.error||"Failed","danger");}
-                              }}
-                              disabled={(u.monthlySubmissions||0)===0}
-                            >−</button>
-                            <button
-                              className="btn-ghost"
-                              style={{padding:"0.2rem 0.4rem",fontSize:"0.75rem",minWidth:28}}
-                              onClick={async()=>{
-                                try{
-                                  const res=await api.patch(`/submissions/${u.phone}/monthly`,{delta:1});
-                                  setUsers(prev=>prev.map(user=>user.phone===u.phone?{...user,monthlySubmissions:res.data.monthlySubmissions}:user));
-                                }catch(e){msg(e?.response?.data?.error||"Failed","danger");}
-                              }}
-                            >+</button>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{whiteSpace:"nowrap"}}>
-                        <button
-                          className="btn-ghost"
-                          style={{
-                            marginRight:4,
-                            fontSize:"0.78rem",
-                            color: u.completed ? "#4ade80" : "#f87171",
-                            borderColor: u.completed ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
-                          }}
-                          onClick={async()=>{
-                            try{
-                              const res = await api.patch(`/users/${u.phone}/toggle-submitted`);
-                              setUsers(prev=>prev.map(user=>user.phone===u.phone?{...user,completed:res.data.completed}:user));
-                              msg(res.data.completed?"Marked as submitted":"Marked as not submitted");
-                            }catch(e){msg(e?.response?.data?.error||"Failed","danger");}
-                          }}
-                        >
-                          {u.completed ? "✅ Submitted" : "⏳ Not Submitted"}
-                        </button>
-                        <button className="btn-ghost" onClick={()=>viewStudentDetail(u)}>View</button>
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "var(--muted)" }}>
+                        No matching students found
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredUsers.map(u => {
+                      const initials = (u.registeredName || u.name || "?").slice(0, 2).toUpperCase();
+                      const streak = u.streak || 0;
+                      return (
+                        <tr key={u.userId}>
+                          {/* Student Cell */}
+                          <td>
+                            <div className="admin-user-cell">
+                              <div className="admin-user-avatar">
+                                {initials}
+                                <div
+                                  className="admin-user-avatar-dot"
+                                  style={{ background: u.isActive ? "#4ade80" : "#f87171" }}
+                                />
+                              </div>
+                              <div>
+                                <div className="admin-user-name">{u.registeredName || u.name || "—"}</div>
+                                <div style={{ fontSize: "0.68rem", color: u.paid ? "#a5b4fc" : "#94a3b8", fontWeight: 600 }}>
+                                  {u.paid ? "💳 Paid Member" : "Free User"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Phone */}
+                          <td>
+                            <div className="admin-user-phone-wrap">
+                              <span className="admin-user-phone">{u.phone}</span>
+                              <button
+                                className="copy-btn"
+                                onClick={() => { navigator.clipboard?.writeText(u.phone); msg("Phone copied!"); }}
+                                title="Copy phone"
+                              >
+                                ⎘
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Today's Status */}
+                          <td>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.35rem",
+                                padding: "0.28rem 0.65rem",
+                                borderRadius: 12,
+                                fontSize: "0.74rem",
+                                fontWeight: 700,
+                                background: u.completed ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
+                                color: u.completed ? "#4ade80" : "#f87171",
+                                border: `1px solid ${u.completed ? "rgba(74, 222, 128, 0.28)" : "rgba(248, 113, 113, 0.28)"}`,
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: u.completed ? "#4ade80" : "#f87171" }} />
+                              {u.completed ? "Submitted" : "Pending"}
+                            </span>
+                          </td>
+
+                          {/* Streak */}
+                          <td>
+                            <span className={`streak-badge-pill${streak === 0 ? " dead" : ""}`}>
+                              {streak > 0 ? "🔥" : "❄️"} {streak} {streak === 1 ? "day" : "days"}
+                            </span>
+                          </td>
+
+                          {/* Weekly Stepper */}
+                          <td>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", background: "rgba(255,255,255,0.03)", padding: "0.25rem 0.5rem", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <span style={{ minWidth: 28, fontSize: "0.82rem", fontWeight: 700, color: (u.weeklySubmissions || 0) >= 5 ? "#4ade80" : (u.weeklySubmissions || 0) >= 3 ? "#fbbf24" : "#94a3b8" }}>
+                                {u.weeklySubmissions || 0}/7
+                              </span>
+                              <div style={{ display: "flex", gap: "0.2rem" }}>
+                                <button
+                                  className="copy-btn"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.patch(`/submissions/${u.phone}/weekly`, { delta: -1 });
+                                      setUsers(prev => prev.map(user => user.phone === u.phone ? { ...user, weeklySubmissions: res.data.weeklySubmissions } : user));
+                                    } catch(e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                                  }}
+                                  disabled={(u.weeklySubmissions || 0) === 0}
+                                  title="Decrease weekly count"
+                                >
+                                  −
+                                </button>
+                                <button
+                                  className="copy-btn"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.patch(`/submissions/${u.phone}/weekly`, { delta: 1 });
+                                      setUsers(prev => prev.map(user => user.phone === u.phone ? { ...user, weeklySubmissions: res.data.weeklySubmissions } : user));
+                                    } catch(e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                                  }}
+                                  title="Increase weekly count"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Monthly Stepper */}
+                          <td>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", background: "rgba(255,255,255,0.03)", padding: "0.25rem 0.5rem", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                              <span style={{ minWidth: 24, fontSize: "0.82rem", fontWeight: 700, color: "#f8fafc" }}>
+                                {u.monthlySubmissions || 0}
+                              </span>
+                              <div style={{ display: "flex", gap: "0.2rem" }}>
+                                <button
+                                  className="copy-btn"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.patch(`/submissions/${u.phone}/monthly`, { delta: -1 });
+                                      setUsers(prev => prev.map(user => user.phone === u.phone ? { ...user, monthlySubmissions: res.data.monthlySubmissions } : user));
+                                    } catch(e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                                  }}
+                                  disabled={(u.monthlySubmissions || 0) === 0}
+                                  title="Decrease monthly count"
+                                >
+                                  −
+                                </button>
+                                <button
+                                  className="copy-btn"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.patch(`/submissions/${u.phone}/monthly`, { delta: 1 });
+                                      setUsers(prev => prev.map(user => user.phone === u.phone ? { ...user, monthlySubmissions: res.data.monthlySubmissions } : user));
+                                    } catch(e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                                  }}
+                                  title="Increase monthly count"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td style={{ textAlign: "right", whiteSpace: "nowrap", paddingRight: "1rem" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                              <button
+                                className={`paid-toggle-btn ${u.completed ? "paid" : "unpaid"}`}
+                                onClick={async () => {
+                                  try {
+                                    const res = await api.patch(`/users/${u.phone}/toggle-submitted`);
+                                    setUsers(prev => prev.map(user => user.phone === u.phone ? { ...user, completed: res.data.completed } : user));
+                                    msg(res.data.completed ? "Marked as submitted" : "Marked as not submitted");
+                                  } catch(e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                                }}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: u.completed ? "#4ade80" : "#f87171" }} />
+                                {u.completed ? "Submitted" : "Mark Done"}
+                              </button>
+                              <button
+                                className="act-icon-btn"
+                                onClick={() => viewStudentDetail(u)}
+                                title="View Student Detail"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -2438,75 +2579,154 @@ export default function AdminDashboard() {
             <div className="spinner-wrap"><div className="spinner"/></div>
           ) : paymentData ? (
             <>
-              {/* Stats row */}
-              <div className="stat-grid" style={{marginBottom:"1rem"}}>
-                <div className="card" style={{textAlign:"center"}}>
-                  <div style={{fontSize:"1.8rem",fontWeight:900,color:"#4ade80"}}>₹{paymentData.stats?.totalRevenue||0}</div>
-                  <div style={{fontSize:"0.75rem",color:"var(--muted)",marginTop:"0.25rem"}}>Total Revenue</div>
+              {/* Payment KPI Row */}
+              <div className="admin-kpi-row" style={{ marginBottom: "1rem" }}>
+                <div className="admin-kpi-card" style={{ "--kpi-accent": "#4ade80" }}>
+                  <div className="admin-kpi-top">
+                    <span className="admin-kpi-label">TOTAL REVENUE</span>
+                    <span className="admin-kpi-trend up">₹ INR</span>
+                  </div>
+                  <div className="admin-kpi-value" style={{ color: "#4ade80" }}>
+                    ₹{(paymentData.stats?.totalRevenue || 0).toLocaleString("en-IN")}
+                  </div>
+                  <div className="admin-kpi-sub">Total verified collections</div>
                 </div>
-                <div className="card" style={{textAlign:"center"}}>
-                  <div style={{fontSize:"1.8rem",fontWeight:900,color:"#7c6fff"}}>{paymentData.stats?.totalPaid||0}</div>
-                  <div style={{fontSize:"0.75rem",color:"var(--muted)",marginTop:"0.25rem"}}>Paid Users</div>
+
+                <div className="admin-kpi-card" style={{ "--kpi-accent": "#818cf8" }}>
+                  <div className="admin-kpi-top">
+                    <span className="admin-kpi-label">PAID STUDENTS</span>
+                    <span className="admin-kpi-trend up">👥 Active</span>
+                  </div>
+                  <div className="admin-kpi-value" style={{ color: "#a5b4fc" }}>
+                    {paymentData.stats?.totalPaid || 0}
+                  </div>
+                  <div className="admin-kpi-sub">Active course subscriptions</div>
                 </div>
-                <div className="card" style={{textAlign:"center"}}>
-                  <div style={{fontSize:"1.8rem",fontWeight:900,color:"#fbbf24"}}>{paymentData.stats?.totalManual||0}</div>
-                  <div style={{fontSize:"0.75rem",color:"var(--muted)",marginTop:"0.25rem"}}>Manual Activations</div>
+
+                <div className="admin-kpi-card" style={{ "--kpi-accent": "#fbbf24" }}>
+                  <div className="admin-kpi-top">
+                    <span className="admin-kpi-label">MANUAL ACTIVATIONS</span>
+                    <span className="admin-kpi-trend neu">🔧 Admin</span>
+                  </div>
+                  <div className="admin-kpi-value" style={{ color: "#fbbf24" }}>
+                    {paymentData.stats?.totalManual || 0}
+                  </div>
+                  <div className="admin-kpi-sub">Directly activated by admin</div>
                 </div>
-                <div className="card" style={{textAlign:"center"}}>
-                  <div style={{fontSize:"1.8rem",fontWeight:900,color:"#38bdf8"}}>{paymentData.pagination?.total||0}</div>
-                  <div style={{fontSize:"0.75rem",color:"var(--muted)",marginTop:"0.25rem"}}>Total Transactions</div>
+
+                <div className="admin-kpi-card" style={{ "--kpi-accent": "#38bdf8" }}>
+                  <div className="admin-kpi-top">
+                    <span className="admin-kpi-label">TOTAL TRANSACTIONS</span>
+                    <span className="admin-kpi-trend up">💳 Logs</span>
+                  </div>
+                  <div className="admin-kpi-value" style={{ color: "#38bdf8" }}>
+                    {paymentData.pagination?.total || 0}
+                  </div>
+                  <div className="admin-kpi-sub">Total gateway &amp; manual orders</div>
                 </div>
               </div>
 
               {/* Transactions table */}
-              <div className="card">
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem",flexWrap:"wrap",gap:"0.5rem"}}>
-                  <div className="section-title" style={{margin:0}}>💳 All Transactions</div>
-                  <button className="btn-ghost" onClick={loadPayments} style={{fontSize:"0.8rem"}}>🔄 Refresh</button>
+              <div className="card" style={{ padding: "1.25rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                  <div>
+                    <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em" }}>
+                      Transaction History &amp; Orders
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                      Live audit log of all payment gateway checkouts and manual admin tier overrides.
+                    </div>
+                  </div>
+                  <button
+                    className="cmd-refresh-btn"
+                    onClick={loadPayments}
+                    style={{ fontSize: "0.78rem" }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
+                    Refresh Logs
+                  </button>
                 </div>
-                <div className="table-wrap">
-                  <table className="data-table">
+
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
                     <thead>
                       <tr>
-                        <th>Date</th>
-                        <th>Name / Phone</th>
+                        <th>Date &amp; Time (IST)</th>
+                        <th>Student &amp; Phone</th>
                         <th>Amount</th>
                         <th>Status</th>
-                        <th>Source</th>
+                        <th>Gateway / Source</th>
                         <th>Payment ID</th>
-                        <th>Note</th>
+                        <th>Remarks / Note</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(paymentData.transactions||[]).map((tx,i)=>(
-                        <tr key={tx._id||i}>
-                          <td style={{color:"var(--muted)",whiteSpace:"nowrap",fontSize:"0.8rem"}}>
-                            {new Date(tx.createdAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+                      {(paymentData.transactions || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: "center", color: "var(--muted)", padding: "2.5rem 1rem" }}>
+                            No transactions recorded yet
                           </td>
-                          <td>
-                            <div style={{fontWeight:600,fontSize:"0.85rem"}}>{tx.name||"—"}</div>
-                            <div style={{color:"var(--muted)",fontSize:"0.75rem"}}>{tx.phone}</div>
-                          </td>
-                          <td style={{fontWeight:700,color:"#4ade80"}}>{tx.amount>0?`₹${tx.amount}`:"—"}</td>
-                          <td>
-                            <span style={{
-                              background: tx.status==="success"?"rgba(74,222,128,0.12)":tx.status==="manual"?"rgba(251,191,36,0.12)":"rgba(248,113,113,0.12)",
-                              color: tx.status==="success"?"#4ade80":tx.status==="manual"?"#fbbf24":"#f87171",
-                              border: `1px solid ${tx.status==="success"?"rgba(74,222,128,0.3)":tx.status==="manual"?"rgba(251,191,36,0.3)":"rgba(248,113,113,0.3)"}`,
-                              borderRadius:8,padding:"0.2rem 0.6rem",fontSize:"0.72rem",fontWeight:700,
-                            }}>
-                              {tx.status==="success"?"✅ Success":tx.status==="manual"?"🔧 Manual":tx.status==="refunded"?"↩️ Refunded":"❌ Failed"}
-                            </span>
-                          </td>
-                          <td style={{fontSize:"0.8rem",color:"var(--muted)"}}>{tx.source==="admin"?"👤 Admin":"💳 Razorpay"}</td>
-                          <td style={{fontFamily:"monospace",fontSize:"0.75rem",color:"var(--muted)"}}>
-                            {tx.razorpayPaymentId?tx.razorpayPaymentId.slice(-12):"—"}
-                          </td>
-                          <td style={{fontSize:"0.78rem",color:"var(--muted)"}}>{tx.note||"—"}</td>
                         </tr>
-                      ))}
-                      {(paymentData.transactions||[]).length===0&&(
-                        <tr><td colSpan={7} style={{textAlign:"center",color:"var(--muted)",padding:"2rem"}}>No transactions yet</td></tr>
+                      ) : (
+                        (paymentData.transactions || []).map((tx, i) => (
+                          <tr key={tx._id || i}>
+                            <td style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: "0.78rem" }}>
+                              {new Date(tx.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.85rem" }}>{tx.name || "—"}</div>
+                              <div className="admin-user-phone">{tx.phone}</div>
+                            </td>
+                            <td>
+                              <span style={{ fontWeight: 800, color: "#4ade80", fontSize: "0.9rem" }}>
+                                {tx.amount > 0 ? `₹${tx.amount.toLocaleString("en-IN")}` : "—"}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{
+                                background: tx.status === "success" ? "rgba(74,222,128,0.12)" : tx.status === "manual" ? "rgba(251,191,36,0.12)" : "rgba(248,113,113,0.12)",
+                                color: tx.status === "success" ? "#4ade80" : tx.status === "manual" ? "#fbbf24" : "#f87171",
+                                border: `1px solid ${tx.status === "success" ? "rgba(74,222,128,0.3)" : tx.status === "manual" ? "rgba(251,191,36,0.3)" : "rgba(248,113,113,0.3)"}`,
+                                borderRadius: 8,
+                                padding: "0.22rem 0.6rem",
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.3rem",
+                              }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: tx.status === "success" ? "#4ade80" : tx.status === "manual" ? "#fbbf24" : "#f87171" }} />
+                                {tx.status === "success" ? "Success" : tx.status === "manual" ? "Manual" : tx.status === "refunded" ? "Refunded" : "Failed"}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: "0.78rem", color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                {tx.source === "admin" ? "👤 Admin Manual" : "💳 Razorpay Gateway"}
+                              </span>
+                            </td>
+                            <td>
+                              {tx.razorpayPaymentId ? (
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                  <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#a5b4fc" }}>
+                                    {tx.razorpayPaymentId.slice(-12)}
+                                  </span>
+                                  <button
+                                    className="copy-btn"
+                                    onClick={() => { navigator.clipboard?.writeText(tx.razorpayPaymentId); msg("Payment ID copied!"); }}
+                                    title="Copy full Razorpay ID"
+                                  >
+                                    ⎘
+                                  </button>
+                                </div>
+                              ) : "—"}
+                            </td>
+                            <td style={{ fontSize: "0.78rem", color: "var(--muted)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {tx.note || "—"}
+                            </td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
@@ -2524,49 +2744,93 @@ export default function AdminDashboard() {
 
       {/* REGISTRATIONS */}
       {tab==="registrations" && (
-        <div className="card">
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem" }}>
-            <div className="section-title" style={{ margin:0 }}>📋 Pending Registrations</div>
-            <button className="btn-ghost" style={{ fontSize:"0.8rem" }} onClick={loadPendingRegs} disabled={pendingRegsLoading}>
-              {pendingRegsLoading ? "Loading…" : "↻ Refresh"}
+        <div className="card" style={{ padding: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div>
+              <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span>Pending Registrations</span>
+                {pendingRegs.length > 0 && (
+                  <span style={{ fontSize: "0.72rem", background: "rgba(245, 158, 11, 0.15)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                    {pendingRegs.length} pending
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                Review and approve new student sign-up requests before account credentials expire.
+              </div>
+            </div>
+            <button
+              className="cmd-refresh-btn"
+              onClick={loadPendingRegs}
+              disabled={pendingRegsLoading}
+              style={{ fontSize: "0.78rem" }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+              </svg>
+              {pendingRegsLoading ? "Loading…" : "Refresh Queue"}
             </button>
           </div>
 
-          {pendingRegsLoading && <div style={{ textAlign:"center", color:"var(--muted)", padding:"2rem" }}>Loading…</div>}
+          {pendingRegsLoading && <div style={{ textAlign: "center", color: "var(--muted)", padding: "2.5rem" }}>Loading registration queue…</div>}
 
           {!pendingRegsLoading && pendingRegs.length === 0 && (
-            <div style={{ textAlign:"center", color:"var(--muted)", padding:"2rem" }}>
-              <div style={{ fontSize:"2rem", marginBottom:"0.5rem" }}>✅</div>
-              No pending registrations
+            <div style={{ textAlign: "center", color: "var(--muted)", padding: "3rem 1rem" }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(74, 222, 128, 0.1)", border: "1px solid rgba(74, 222, 128, 0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", margin: "0 auto 0.75rem", color: "#4ade80" }}>
+                ✓
+              </div>
+              <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.95rem" }}>All Caught Up!</div>
+              <div style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>There are no pending registrations waiting for review.</div>
             </div>
           )}
 
           {!pendingRegsLoading && pendingRegs.length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               {pendingRegs.map(p => {
                 const hoursLeft = Math.max(0, Math.round((new Date(p.expiresAt) - Date.now()) / 3600000));
                 const urgent = hoursLeft < 4;
                 return (
-                  <div key={p.id} style={{
-                    display:"flex", alignItems:"center", gap:"1rem", flexWrap:"wrap",
-                    background: urgent ? "rgba(248,113,113,0.06)" : "var(--bg2)",
-                    border: `1px solid ${urgent ? "rgba(248,113,113,0.25)" : "var(--border)"}`,
-                    borderRadius:12, padding:"0.85rem 1rem",
-                  }}>
-                    <div style={{ width:38, height:38, borderRadius:"50%", background:"rgba(124,111,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1rem", fontWeight:700, color:"#a78bfa", flexShrink:0 }}>
-                      {p.name[0]?.toUpperCase()}
+                  <div
+                    key={p.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1rem",
+                      flexWrap: "wrap",
+                      background: urgent ? "rgba(239, 68, 68, 0.04)" : "rgba(255, 255, 255, 0.02)",
+                      border: `1px solid ${urgent ? "rgba(239, 68, 68, 0.25)" : "rgba(255, 255, 255, 0.07)"}`,
+                      borderRadius: 14,
+                      padding: "0.9rem 1.1rem",
+                      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                    }}
+                  >
+                    <div className="admin-user-avatar" style={{ background: urgent ? "linear-gradient(135deg, #f87171, #fb923c)" : "linear-gradient(135deg, #6366f1, #06b6d4)" }}>
+                      {p.name[0]?.toUpperCase() || "?"}
                     </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:"0.9rem", color:"var(--text)" }}>{p.name}</div>
-                      <div style={{ fontSize:"0.75rem", color:"var(--muted)" }}>📱 {p.phone}</div>
-                      <div style={{ fontSize:"0.68rem", color: urgent ? "#f87171" : "var(--muted)", marginTop:"0.15rem" }}>
-                        {urgent ? "⚠️" : "⏳"} Expires in {hoursLeft}h · {new Date(p.createdAt).toLocaleString("en-IN", { dateStyle:"short", timeStyle:"short" })}
+
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "#f8fafc" }}>{p.name}</div>
+                      <div className="admin-user-phone-wrap" style={{ marginTop: "0.15rem" }}>
+                        <span className="admin-user-phone">📱 {p.phone}</span>
+                        <button
+                          className="copy-btn"
+                          onClick={() => { navigator.clipboard?.writeText(p.phone); msg("Phone copied!"); }}
+                          title="Copy phone"
+                        >
+                          ⎘
+                        </button>
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: urgent ? "#f87171" : "var(--muted)", marginTop: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <span>{urgent ? "⚠️" : "⏳"} Expires in {hoursLeft}h</span>
+                        <span>·</span>
+                        <span>Requested {new Date(p.createdAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</span>
                       </div>
                     </div>
-                    <div style={{ display:"flex", gap:"0.5rem", flexShrink:0 }}>
+
+                    <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
                       <button
-                        className="btn-primary"
-                        style={{ fontSize:"0.8rem", padding:"0.4rem 0.9rem", background:"linear-gradient(135deg,#4ade80,#22c55e)", color:"#065f46" }}
+                        className="paid-toggle-btn paid"
+                        style={{ padding: "0.45rem 0.95rem" }}
                         onClick={async () => {
                           try {
                             await api.post(`/auth/pending/${p.id}/approve`);
@@ -2574,10 +2838,12 @@ export default function AdminDashboard() {
                             loadPendingRegs();
                           } catch (e) { msg(e.response?.data?.error || "Approve failed", "danger"); }
                         }}
-                      >✅ Approve</button>
+                      >
+                        ✓ Approve
+                      </button>
                       <button
-                        className="btn-ghost"
-                        style={{ fontSize:"0.8rem", padding:"0.4rem 0.9rem", color:"#f87171", borderColor:"rgba(248,113,113,0.3)" }}
+                        className="paid-toggle-btn unpaid"
+                        style={{ padding: "0.45rem 0.95rem" }}
                         onClick={async () => {
                           try {
                             await api.delete(`/auth/pending/${p.id}`);
@@ -2585,7 +2851,9 @@ export default function AdminDashboard() {
                             loadPendingRegs();
                           } catch (e) { msg(e.response?.data?.error || "Reject failed", "danger"); }
                         }}
-                      >❌ Reject</button>
+                      >
+                        ✕ Reject
+                      </button>
                     </div>
                   </div>
                 );
@@ -4061,17 +4329,230 @@ export default function AdminDashboard() {
 
       {/* STUDENT DETAIL */}
       {tab==="student-detail" && selectedStudent && (
-        <>
-          <div className="stat-grid" style={{marginBottom:"1rem"}}>
-            <StatCard icon="🔥" label="Streak" value={`${selectedStudent.streak||0} days`} color="#f97316"/>
-            <StatCard icon="🧊" label="Freeze" value={selectedStudent.streakFreeze||0} color="#38bdf8"/>
-            <StatCard icon="⭐" label="Monthly Score" value={selectedStudent.monthlyScore||0} color="#a78bfa"/>
-            <StatCard icon="📅" label="Weekly" value={`${selectedStudent.weeklySubmissions||0}/7`} color="#4ade80"/>
-            <StatCard icon="📆" label="Monthly" value={selectedStudent.monthlySubmissions||0} color="#7c6fff"/>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", maxWidth: 1000, margin: "0 auto" }}>
+          {/* Back Navigation */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <button
+              onClick={() => setTab("users")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                color: "#c4b5fd",
+                padding: "0.45rem 0.9rem",
+                borderRadius: 10,
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+              </svg>
+              Back to Students Directory
+            </button>
+
+            <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+              Student ID: <span style={{ fontFamily: "monospace", color: "#a5b4fc" }}>{selectedStudent.userId || selectedStudent._id || selectedStudent.phone}</span>
+            </span>
           </div>
 
-          <div className="card" style={{marginBottom:"1rem"}}>
-            <div className="section-title">Manage Submissions</div>
+          {/* Hero Student Profile Card */}
+          <div
+            className="card"
+            style={{
+              padding: "1.5rem",
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(15, 17, 30, 0.8) 100%)",
+              border: "1px solid rgba(124, 111, 255, 0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "1.25rem",
+              borderRadius: 16,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "1.1rem" }}>
+              <div
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #6366f1, #a855f7)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.4rem",
+                  fontWeight: 800,
+                  color: "#fff",
+                  boxShadow: "0 0 20px rgba(99, 102, 241, 0.4)",
+                  position: "relative",
+                  flexShrink: 0,
+                }}
+              >
+                {(selectedStudent.registeredName || selectedStudent.name || "?").slice(0, 2).toUpperCase()}
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 2,
+                    right: 2,
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    background: selectedStudent.isActive ? "#4ade80" : "#f87171",
+                    border: "2.5px solid #0f111e",
+                  }}
+                />
+              </div>
+
+              <div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#f8fafc" }}>
+                  {selectedStudent.registeredName || selectedStudent.name || "Student Profile"}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "0.3rem", flexWrap: "wrap" }}>
+                  <div className="admin-user-phone-wrap">
+                    <span className="admin-user-phone" style={{ fontSize: "0.85rem" }}>📱 {selectedStudent.phone}</span>
+                    <button
+                      className="copy-btn"
+                      onClick={() => { navigator.clipboard?.writeText(selectedStudent.phone); msg("Phone copied!"); }}
+                      title="Copy phone"
+                    >
+                      ⎘
+                    </button>
+                  </div>
+
+                  <span style={{
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 12,
+                    background: selectedStudent.role === "admin" || selectedStudent.role === "admins" ? "rgba(168, 85, 247, 0.18)" : selectedStudent.role === "trainer" ? "rgba(245, 158, 11, 0.18)" : "rgba(148, 163, 184, 0.18)",
+                    color: selectedStudent.role === "admin" || selectedStudent.role === "admins" ? "#c4b5fd" : selectedStudent.role === "trainer" ? "#fbbf24" : "#cbd5e1",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    textTransform: "uppercase",
+                  }}>
+                    {selectedStudent.role || "user"}
+                  </span>
+
+                  <span style={{
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 12,
+                    background: selectedStudent.paid ? "rgba(74, 222, 128, 0.15)" : "rgba(248, 113, 113, 0.15)",
+                    color: selectedStudent.paid ? "#4ade80" : "#f87171",
+                    border: `1px solid ${selectedStudent.paid ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`,
+                  }}>
+                    {selectedStudent.paid ? "💳 Paid Member" : "Free Tier"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Toggles */}
+            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+              <button
+                className={`paid-toggle-btn ${selectedStudent.completed ? "paid" : "unpaid"}`}
+                style={{ padding: "0.5rem 1rem", fontSize: "0.82rem" }}
+                onClick={async () => {
+                  try {
+                    const res = await api.patch(`/users/${selectedStudent.phone}/toggle-submitted`);
+                    setSelectedStudent(s => ({ ...s, completed: res.data.completed }));
+                    setUsers(prev => prev.map(u => u.phone === selectedStudent.phone ? { ...u, completed: res.data.completed } : u));
+                    msg(res.data.completed ? "Marked as submitted" : "Marked as pending");
+                  } catch (e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: selectedStudent.completed ? "#4ade80" : "#f87171" }} />
+                {selectedStudent.completed ? "✓ Submitted Today" : "⏳ Mark as Done"}
+              </button>
+
+              <button
+                className={`paid-toggle-btn ${selectedStudent.paid ? "paid" : "unpaid"}`}
+                style={{ padding: "0.5rem 1rem", fontSize: "0.82rem" }}
+                onClick={async () => {
+                  try {
+                    const res = await api.patch(`/users/${selectedStudent.phone}/toggle-paid`);
+                    setSelectedStudent(s => ({ ...s, paid: res.data.paid }));
+                    setUsers(prev => prev.map(u => u.phone === selectedStudent.phone ? { ...u, paid: res.data.paid } : u));
+                    msg(res.data.paid ? "Marked as Paid" : "Marked as Unpaid");
+                  } catch (e) { msg(e?.response?.data?.error || "Failed", "danger"); }
+                }}
+              >
+                {selectedStudent.paid ? "🟢 Paid Member" : "🔴 Unpaid"}
+              </button>
+            </div>
+          </div>
+
+          {/* Student KPI Row */}
+          <div className="admin-kpi-row">
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#f97316" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">CURRENT STREAK</span>
+                <span className="admin-kpi-trend up">🔥 Active</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#f97316" }}>
+                {selectedStudent.streak || 0} <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>days</span>
+              </div>
+              <div className="admin-kpi-sub">Best consecutive daily speaking</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#38bdf8" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">STREAK FREEZES</span>
+                <span className="admin-kpi-trend neu">🧊 Shields</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#38bdf8" }}>
+                {selectedStudent.streakFreeze || 0}
+              </div>
+              <div className="admin-kpi-sub">Available freeze passes</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#a78bfa" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">MONTHLY SCORE</span>
+                <span className="admin-kpi-trend up">⭐ Points</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#c4b5fd" }}>
+                {(selectedStudent.monthlyScore || 0).toLocaleString()}
+              </div>
+              <div className="admin-kpi-sub">Accumulated points this month</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#4ade80" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">WEEKLY COMPLETION</span>
+                <span className="admin-kpi-trend up">📅 7-Day</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#4ade80" }}>
+                {selectedStudent.weeklySubmissions || 0}/7
+              </div>
+              <div className="admin-kpi-sub">Target: 5+ sessions per week</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#818cf8" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">MONTHLY SUBMISSIONS</span>
+                <span className="admin-kpi-trend up">📆 Total</span>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#a5b4fc" }}>
+                {selectedStudent.monthlySubmissions || 0}
+              </div>
+              <div className="admin-kpi-sub">Verified video submissions</div>
+            </div>
+          </div>
+
+          {/* Manage Submissions Controls */}
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", marginBottom: "0.25rem" }}>
+              ⚡ Adjust Attendance &amp; Submission Counters
+            </div>
+            <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "1rem" }}>
+              Directly override weekly and monthly completion counts for this student.
+            </div>
             <SubmissionControls 
               phone={selectedStudent.phone}
               weeklySubmissions={selectedStudent.weeklySubmissions || 0}
@@ -4080,36 +4561,42 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="card">
-            <div className="section-title">Student Information</div>
-            <div style={{display:"grid",gap:"0.75rem",fontSize:"0.9rem"}}>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{color:"var(--muted)"}}>Name:</span>
-                <span style={{fontWeight:500}}>{selectedStudent.registeredName||selectedStudent.name||"—"}</span>
+          {/* Student Profile Overview Card */}
+          <div className="card" style={{ padding: "1.5rem" }}>
+            <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", marginBottom: "1rem" }}>
+              📋 Student Account Details
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: 10, padding: "0.85rem 1rem" }}>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>Full Name</div>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#f8fafc", marginTop: "0.2rem" }}>
+                  {selectedStudent.registeredName || selectedStudent.name || "—"}
+                </div>
               </div>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{color:"var(--muted)"}}>Phone:</span>
-                <span style={{fontWeight:500}}>{selectedStudent.phone}</span>
+
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: 10, padding: "0.85rem 1rem" }}>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>Phone Number</div>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#f8fafc", marginTop: "0.2rem" }}>
+                  {selectedStudent.phone}
+                </div>
               </div>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{color:"var(--muted)"}}>Role:</span>
-                <span style={{fontWeight:500}}>{selectedStudent.role||"user"}</span>
+
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: 10, padding: "0.85rem 1rem" }}>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>System Role</div>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#f8fafc", marginTop: "0.2rem", textTransform: "capitalize" }}>
+                  {selectedStudent.role || "user"}
+                </div>
               </div>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{color:"var(--muted)"}}>Status:</span>
-                <span style={{color:selectedStudent.isActive?"var(--success)":"var(--danger)",fontWeight:600}}>
-                  {selectedStudent.isActive?"Active":"Disabled"}
-                </span>
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{color:"var(--muted)"}}>Today's Submission:</span>
-                <span style={{color:selectedStudent.completed?"var(--success)":"var(--danger)",fontWeight:600}}>
-                  {selectedStudent.completed?"✅ Submitted":"⏳ Pending"}
-                </span>
+
+              <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid rgba(255, 255, 255, 0.06)", borderRadius: 10, padding: "0.85rem 1rem" }}>
+                <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>Account Status</div>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: selectedStudent.isActive ? "#4ade80" : "#f87171", marginTop: "0.2rem" }}>
+                  {selectedStudent.isActive ? "🟢 Active & Enabled" : "🔴 Account Disabled"}
+                </div>
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
         </div>
       </div>
