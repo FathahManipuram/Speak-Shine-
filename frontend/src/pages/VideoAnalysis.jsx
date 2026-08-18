@@ -1406,6 +1406,21 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
     ? `Use at least ${required} of today's ${total} vocabulary words naturally in your speaking video!`
     : "Try to use these words naturally in your speaking video today!";
 
+  const [speakingIndex, setSpeakingIndex] = useState(null);
+
+  const handleSpeak = (word, example, idx) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    setSpeakingIndex(idx);
+    const textToSpeak = `${word}. For example: ${example || ''}`;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.88;
+    utterance.pitch = 1;
+    utterance.onend = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    window.speechSynthesis.speak(utterance);
+  };
+
   if (compact) {
     return (
       <div style={{
@@ -1447,39 +1462,64 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
 
   // Full card — word + meaning + example
   return (
-    <div style={{
-      marginTop: "1rem",
-      marginBottom: "0.5rem",
-      background: "rgba(124,111,255,0.07)",
-      border: "1px solid rgba(124,111,255,0.25)",
-      borderRadius: 14,
-      padding: "1rem",
-    }}>
-      <div style={{
-        fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-        letterSpacing: "0.1em", color: "rgba(124,111,255,0.9)", marginBottom: "0.75rem",
-      }}>
-        📚 TODAY'S VOCABULARY CHALLENGE
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-        {words.map((w, i) => (
-          <div key={i} style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(124,111,255,0.15)",
-            borderRadius: 10,
-            padding: "0.65rem 0.85rem",
+    <div className="vocab-container-pro" style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.85rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{ fontSize: "1.1rem" }}>📚</span>
+          <span style={{
+            fontSize: "0.74rem", fontWeight: 800, textTransform: "uppercase",
+            letterSpacing: "0.1em", color: "#c4b5fd",
           }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.2rem" }}>
-              <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#a78bfa" }}>{w.word}</span>
-              <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>— {w.meaning}</span>
-            </div>
-            <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.4 }}>
-              💬 <em>"{w.example}"</em>
-            </div>
-          </div>
-        ))}
+            Today's Vocabulary Challenge
+          </span>
+        </div>
+        <div style={{
+          fontSize: "0.72rem", fontWeight: 700,
+          background: "rgba(124, 111, 255, 0.15)",
+          border: "1px solid rgba(124, 111, 255, 0.3)",
+          color: "#c4b5fd",
+          padding: "2px 8px", borderRadius: 99,
+        }}>
+          🎯 Goal: {required} / {total} words (+33.3 pts)
+        </div>
       </div>
-      <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+        {words.map((w, i) => {
+          const isSpeaking = speakingIndex === i;
+          return (
+            <div key={i} className="vocab-card-pro">
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <div className="vocab-num-badge">0{i + 1}</div>
+                  <span className="vocab-word-title">{w.word}</span>
+                  <span style={{ fontSize: "0.76rem", color: "rgba(255, 255, 255, 0.8)", fontWeight: 500 }}>
+                    — {w.meaning}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSpeak(w.word, w.example, i)}
+                  className="vocab-listen-btn"
+                  title="Listen to pronunciation"
+                  style={isSpeaking ? { background: "#7c6fff", color: "#fff", transform: "scale(1.15)" } : {}}
+                >
+                  {isSpeaking ? "🔊" : "🔈"}
+                </button>
+              </div>
+
+              {w.example && (
+                <div className="vocab-example-bubble">
+                  💬 <span style={{ fontStyle: "italic" }}>"{w.example}"</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: "0.85rem", fontSize: "0.74rem", color: "rgba(255, 255, 255, 0.65)" }}>
         ✨ {fullHint}
       </div>
     </div>

@@ -581,48 +581,119 @@ function getGreeting() {
   return "evening";
 }
 
-// ── Vocabulary Words Card ────────────────────────────────────────────────────
+// ── Vocabulary Words Card (Enhanced Pro) ────────────────────────────────────
 function VocabularyWords({ words, requiredCount, totalCount }) {
   if (!words || words.length === 0) return null;
   const required = requiredCount ?? 3;
   const total = totalCount ?? words.length;
-  const hint = total > required
-    ? `Use at least ${required} of today's ${total} vocabulary words naturally in your speaking video!`
-    : "Try to use these words naturally in your speaking video today!";
+  const [speakingIndex, setSpeakingIndex] = useState(null);
+  const [plannedWords, setPlannedWords] = useState({});
+
+  const handleSpeak = (word, example, idx) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    setSpeakingIndex(idx);
+    const textToSpeak = `${word}. For example: ${example || ''}`;
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 0.88;
+    utterance.pitch = 1;
+    utterance.onend = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const togglePlanned = (idx) => {
+    setPlannedWords(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const plannedCount = Object.values(plannedWords).filter(Boolean).length;
+
   return (
-    <div style={{
-      marginTop: "1.25rem",
-      background: "rgba(124,111,255,0.07)",
-      border: "1px solid rgba(124,111,255,0.25)",
-      borderRadius: 14,
-      padding: "1rem",
-    }}>
-      <div style={{
-        fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-        letterSpacing: "0.1em", color: "rgba(124,111,255,0.9)", marginBottom: "0.75rem",
-      }}>
-        📚 TODAY'S VOCABULARY CHALLENGE
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-        {words.map((w, i) => (
-          <div key={i} style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(124,111,255,0.15)",
-            borderRadius: 10,
-            padding: "0.65rem 0.85rem",
+    <div className="vocab-container-pro">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.85rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{ fontSize: "1.1rem" }}>📚</span>
+          <span style={{
+            fontSize: "0.74rem", fontWeight: 800, textTransform: "uppercase",
+            letterSpacing: "0.1em", color: "#c4b5fd",
           }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.2rem" }}>
-              <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#a78bfa" }}>{w.word}</span>
-              <span style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>— {w.meaning}</span>
-            </div>
-            <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.4 }}>
-              💬 <em>"{w.example}"</em>
-            </div>
-          </div>
-        ))}
+            Today's Vocabulary Challenge
+          </span>
+        </div>
+        <div style={{
+          fontSize: "0.72rem", fontWeight: 700,
+          background: plannedCount >= required ? "rgba(74, 222, 128, 0.15)" : "rgba(124, 111, 255, 0.15)",
+          border: `1px solid ${plannedCount >= required ? "rgba(74, 222, 128, 0.4)" : "rgba(124, 111, 255, 0.3)"}`,
+          color: plannedCount >= required ? "#4ade80" : "#c4b5fd",
+          padding: "2px 8px", borderRadius: 99,
+        }}>
+          🎯 Goal: {required} / {total} words (+33.3 pts)
+        </div>
       </div>
-      <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
-        ✨ {hint}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+        {words.map((w, i) => {
+          const isPlanned = !!plannedWords[i];
+          const isSpeaking = speakingIndex === i;
+          return (
+            <div key={i} className="vocab-card-pro" style={isPlanned ? { borderColor: "rgba(74, 222, 128, 0.45)", background: "rgba(74, 222, 128, 0.05)" } : {}}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <div className="vocab-num-badge">0{i + 1}</div>
+                  <span className="vocab-word-title">{w.word}</span>
+                  <span style={{ fontSize: "0.76rem", color: "rgba(255, 255, 255, 0.8)", fontWeight: 500 }}>
+                    — {w.meaning}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSpeak(w.word, w.example, i)}
+                    className="vocab-listen-btn"
+                    title="Listen to pronunciation"
+                    style={isSpeaking ? { background: "#7c6fff", color: "#fff", transform: "scale(1.15)" } : {}}
+                  >
+                    {isSpeaking ? "🔊" : "🔈"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePlanned(i)}
+                    style={{
+                      background: isPlanned ? "rgba(74, 222, 128, 0.2)" : "rgba(255, 255, 255, 0.06)",
+                      border: `1px solid ${isPlanned ? "rgba(74, 222, 128, 0.4)" : "rgba(255, 255, 255, 0.15)"}`,
+                      color: isPlanned ? "#4ade80" : "rgba(255, 255, 255, 0.6)",
+                      borderRadius: 6,
+                      padding: "2px 6px",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Mark if you plan to use this word in your recording"
+                  >
+                    {isPlanned ? "✓ Planned" : "+ Plan to use"}
+                  </button>
+                </div>
+              </div>
+
+              {w.example && (
+                <div className="vocab-example-bubble">
+                  💬 <span style={{ fontStyle: "italic" }}>"{w.example}"</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: "0.85rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.74rem", color: "rgba(255, 255, 255, 0.65)" }}>
+        <span>✨ Speak naturally: past tense & plurals are automatically recognized!</span>
+        {plannedCount > 0 && (
+          <span style={{ color: plannedCount >= required ? "#4ade80" : "#fbbf24", fontWeight: 700 }}>
+            {plannedCount} of {required} words planned
+          </span>
+        )}
       </div>
     </div>
   );
@@ -727,8 +798,16 @@ export default function UserDashboard() {
   const [sessionPage, setSessionPage] = useState(1);
   const [celebrationQueue, setCelebrationQueue] = useState([]);
   const [showBadgeCatalog, setShowBadgeCatalog] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
   const badgeStateInitialized = useRef(false);
   const navigate = useNavigate();
+
+  const handleCopyPrompt = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2500);
+  };
 
   const applyDashboardData = (nextData) => {
     const earned = nextData?.profile?.earnedBadges || [];
@@ -869,6 +948,42 @@ export default function UserDashboard() {
       {showBadgeCatalog && <BadgeCatalogModal badges={profile?.availableBadges} earnedBadges={profile?.earnedBadges} onClose={() => setShowBadgeCatalog(false)} />}
       {/* Guest banner — shown to unauthenticated visitors */}
       {isGuest && <GuestBanner />}
+
+      {/* Modern Student Hero Banner */}
+      <div className="student-hero-banner">
+        <div>
+          <div className="student-hero-greeting">
+            <span>{getGreeting() === "morning" ? "🌅" : getGreeting() === "afternoon" ? "☀️" : "🌙"}</span>
+            <span>Good {getGreeting()}{profile?.name ? `, ${profile.name.split(" ")[0]}` : ""}!</span>
+            <span style={{ fontSize: "1.15rem" }}>✨</span>
+          </div>
+          <div className="student-hero-sub">
+            {profile?.completed
+              ? "🎉 You've completed today's challenge! Great job keeping the momentum."
+              : "🔥 Today's speaking challenge is live — record your video and claim your daily points!"}
+          </div>
+        </div>
+
+        <div className="student-hero-stats">
+          {profile && (
+            <>
+              <div className="student-stat-pill flame" title="Current Daily Streak">
+                <span style={{ fontSize: "1rem" }}>🔥</span>
+                <span>{profile.streak || 0} Day Streak</span>
+              </div>
+              <div className="student-stat-pill score" title="Monthly Leaderboard Points">
+                <span style={{ fontSize: "1rem" }}>⭐</span>
+                <span>{Math.round(profile.monthlyScore || 0)} Pts</span>
+              </div>
+              <div className="student-stat-pill freeze" title="Available Streak Freezes">
+                <span style={{ fontSize: "1rem" }}>🧊</span>
+                <span>{profile.streakFreeze || 0} Freezes</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {data?.showReport && data?.dailyReport && (
         <div className="daily-poster" style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)" }}>
           <div className="daily-poster-header">
@@ -1144,12 +1259,35 @@ export default function UserDashboard() {
             <>
               {data.today.topic && (
                 <div className="daily-poster-topic-wrap">
-                  <div className="daily-poster-section-label">TOPIC</div>
+                  <div className="daily-poster-section-label">🎯 TOPIC</div>
                   <div className="daily-poster-topic">"{data.today.topic}"</div>
                 </div>
               )}
               <div className="daily-poster-question-wrap">
-                <div className="daily-poster-section-label">❓ QUESTION</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                  <div className="daily-poster-section-label">❓ QUESTION PROMPT</div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyPrompt(data.today.question)}
+                    style={{
+                      background: copiedPrompt ? "rgba(74, 222, 128, 0.2)" : "rgba(255, 255, 255, 0.08)",
+                      border: `1px solid ${copiedPrompt ? "rgba(74, 222, 128, 0.4)" : "rgba(255, 255, 255, 0.15)"}`,
+                      color: copiedPrompt ? "#4ade80" : "rgba(255, 255, 255, 0.75)",
+                      padding: "3px 8px",
+                      borderRadius: 8,
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Copy question to clipboard"
+                  >
+                    {copiedPrompt ? "✓ Copied!" : "📋 Copy"}
+                  </button>
+                </div>
                 <div className="daily-poster-question">{data.today.question}</div>
               </div>
             </>
@@ -1164,32 +1302,51 @@ export default function UserDashboard() {
             />
           )}
 
-          {/* CTA Button */}
-          <button
-            className="daily-poster-cta"
-            onClick={() => isGuest ? navigate('/register') : navigate('/record')}
-            style={{
-              cursor: 'pointer', border: 'none', width: '100%',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              ...(isGuest ? { background: "linear-gradient(135deg,#7c6fff,#4f46e5)", boxShadow: "0 4px 20px rgba(124,111,255,0.4)" }
-                : data?.today?.isMonthlyReflection ? { background: "linear-gradient(135deg,#7c3aed,#5b21b6)", boxShadow: "0 4px 20px rgba(139,92,246,0.4)" }
-                  : data?.today?.isMonthlyGoals ? { background: "linear-gradient(135deg,#16a34a,#15803d)", boxShadow: "0 4px 20px rgba(34,197,94,0.4)" }
-                    : data?.today?.isWeeklyReflection ? { background: "linear-gradient(135deg,#0ea5e9,#0284c7)", boxShadow: "0 4px 20px rgba(14,165,233,0.4)" }
-                      : data?.today?.isStorySummary ? { background: "linear-gradient(135deg,#0f766e,#0d9488)", boxShadow: "0 4px 20px rgba(20,184,166,0.35)" }
-                        : data?.today?.isPictureDescription ? { background: "linear-gradient(135deg,#1e40af,#1d4ed8)", boxShadow: "0 4px 20px rgba(66,153,225,0.35)" }
-                        : {}),
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            {isGuest ? "✨ Register to Submit Your Answer"
-              : data?.today?.isMonthlyReflection ? "🌟 Record Monthly Reflection Video"
-                : data?.today?.isMonthlyGoals ? "🎯 Record Monthly Goals Video"
-                  : data?.today?.isWeeklyReflection ? "📅 Record Weekly Reflection Video"
-                    : data?.today?.isStorySummary ? "🎧 Record Story Summary Video"
-                      : data?.today?.isPictureDescription ? "🖼️ Record Picture Description"
-                      : "🎥 Upload Your Speaking Video Now!"}
-          </button>
+          {/* Speaking Readiness Tips Checklist */}
+          <div className="readiness-strip">
+            <div className="readiness-chip">
+              <span className="icon">⏱️</span>
+              <span>Speak 60s+ for Full Marks</span>
+            </div>
+            <div className="readiness-chip">
+              <span className="icon">📚</span>
+              <span>Include 3+ Target Words</span>
+            </div>
+            <div className="readiness-chip">
+              <span className="icon">🗣️</span>
+              <span>Natural Tone & Flow</span>
+            </div>
+          </div>
+
+          {/* Dual CTA Hero Buttons */}
+          <div className="daily-poster-cta-row">
+            <button
+              type="button"
+              className="btn-hero-primary"
+              onClick={() => isGuest ? navigate('/register') : navigate('/record')}
+            >
+              <span>🎥</span>
+              <span>
+                {isGuest ? "Register to Submit Video"
+                  : data?.today?.isMonthlyReflection ? "Record Monthly Reflection"
+                    : data?.today?.isMonthlyGoals ? "Record Monthly Goals"
+                      : data?.today?.isWeeklyReflection ? "Record Weekly Reflection"
+                        : data?.today?.isStorySummary ? "Record Story Summary"
+                          : data?.today?.isPictureDescription ? "Record Picture Description"
+                            : "Record Video Now"}
+              </span>
+            </button>
+            {!isGuest && (
+              <button
+                type="button"
+                className="btn-hero-secondary"
+                onClick={() => navigate('/video-analysis')}
+              >
+                <span>📁</span>
+                <span>Upload Video File</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
