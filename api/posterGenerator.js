@@ -97,20 +97,20 @@ export function generateSVGPoster({
   // Header texts
   let badgeTitle = category || "General";
   let challengeTypeLabel = "DAILY SPEAKING CHALLENGE";
-  let actionButtonLabel = "🎥 Send your 1-min speaking video!";
+  let actionButtonLabel = "Send your 1-min speaking video →";
   let topicLabel = "TOPIC";
   let promptLabel = "? QUESTION";
 
   if (contentType === "picture_description") {
     badgeTitle = "Picture Description";
     challengeTypeLabel = "VISUAL FLUENCY CHALLENGE";
-    actionButtonLabel = "📸 Record your picture description!";
+    actionButtonLabel = "Record your picture description →";
     topicLabel = "CHALLENGE THEME";
     promptLabel = "YOUR SPEAKING TASK";
   } else if (contentType === "story_audio") {
     badgeTitle = "Story Summary";
     challengeTypeLabel = "LISTENING & RETELLING CHALLENGE";
-    actionButtonLabel = "🎙️ Listen & submit your story summary!";
+    actionButtonLabel = "Listen & submit your story summary →";
     topicLabel = "STORY TITLE";
     promptLabel = "SUMMARY ASSIGNMENT";
   }
@@ -190,7 +190,7 @@ export function generateSVGPoster({
         <!-- Example sentence -->
         ${w.exLines.map((exLine, li) =>
           `<text x="16" y="${46 + li * 20}" font-size="14" fill="#cbd5e1" font-style="italic"
-            font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">💬 ${esc(exLine)}</text>`
+            font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(exLine)}</text>`
         ).join("\n        ")}
       </g>`;
       curItemY += w.itemH + 10;
@@ -287,13 +287,13 @@ export function generateSVGPoster({
   
   <text x="${PAD + 24}" y="${vocabY + 32}"
     font-size="12" fill="#818cf8" font-weight="800" letter-spacing="1.5"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">📚 TODAY&apos;S VOCABULARY CHALLENGE</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">◆ TODAY&apos;S VOCABULARY CHALLENGE</text>
   
   ${vocabRows}
 
   <text x="${PAD + 24}" y="${vocabY + VOCAB_CARD_H - 18}"
     font-size="13" fill="#94a3b8" font-weight="500"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">✨ Use at least ${vocabRequiredCount} of today&apos;s ${wordsToRender.length} vocabulary words naturally in your speaking video!</text>
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">★ Use at least ${vocabRequiredCount} of today&apos;s ${wordsToRender.length} vocabulary words naturally in your speaking video!</text>
   ` : ''}
 
   <!-- ═══ FOOTER CTA BUTTON ═══ -->
