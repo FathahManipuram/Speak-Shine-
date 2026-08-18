@@ -2439,11 +2439,52 @@ export default function AdminDashboard() {
                   >
                     ➕ Add Another Auto-Send Time Slot
                   </button>
+
+                  <div style={{
+                    marginTop: "0.85rem",
+                    padding: "0.6rem 0.85rem",
+                    borderRadius: 8,
+                    background: settings.submissionReportEnabled ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
+                    border: `1px solid ${settings.submissionReportEnabled ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+                    fontSize: "0.78rem",
+                    color: settings.submissionReportEnabled ? "#4ade80" : "#f87171",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "0.5rem"
+                  }}>
+                    <span>
+                      {settings.submissionReportEnabled
+                        ? "✅ Auto-sending is ACTIVE — reports will automatically broadcast at the times above."
+                        : "⚠️ Auto-sending is PAUSED — click the switch above to turn it ON, then click 'Save Schedule & Automation'."}
+                    </span>
+                  </div>
                 </div>
 
-                <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
-                  {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Automation"}
-                </button>
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+                  <button type="submit" className="btn-primary" disabled={savingSection !== null} style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}>
+                    {savingSection === "schedule" ? "Saving Schedules…" : "💾 Save Schedule & Automation"}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{
+                      padding: "0.75rem 1.25rem",
+                      fontSize: "0.9rem",
+                      fontWeight: 700,
+                      border: "1px solid rgba(124, 111, 255, 0.4)",
+                      background: "rgba(124, 111, 255, 0.12)",
+                      color: "#c084fc",
+                      cursor: "pointer",
+                    }}
+                    disabled={!waStatus?.isConnected || waSendingReport}
+                    onClick={handleSendSubmissionReportToGroup}
+                  >
+                    {waSendingReport ? "⏳ Sending Report..." : "⚡ Send Test Report to Group Now"}
+                  </button>
+                </div>
               </form>
             </div>
           )}
