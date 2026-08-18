@@ -21,6 +21,7 @@ import QRCode from "qrcode";
 import qrcodeTerminal from "qrcode-terminal";
 import { generatePNGPosterBuffer } from "../../../api/posterGenerator.js";
 import Status from "../../../models/statusSchema.js";
+import WhatsAppAuth from "../../../models/whatsAppAuthSchema.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,79 @@ function broadcastStatus() {
     socketIoInstance.emit("whatsapp:status", getStatus());
   } catch (err) {
     // Ignore socket broadcast errors
+  }
+}
+
+/**
+ * Restores all Baileys auth files from MongoDB into AUTH_DIR.
+ * Ensures the session survives container destruction, server restarts, and deployments.
+ */
+async function restoreAuthFromMongo() {
+  try {
+    const docs = await WhatsAppAuth.find({}).lean();
+    if (!docs || docs.length === 0) return 0;
+    if (!fs.existsSync(AUTH_DIR)) {
+      fs.mkdirSync(AUTH_DIR, { recursive: true });
+    }
+    for (const doc of docs) {
+      const filePath = path.join(AUTH_DIR, doc.key);
+      fs.writeFileSync(filePath, doc.value, "utf-8");
+    }
+    console.log(`[WhatsApp] 📥 Restored ${docs.length} session credential files from MongoDB`);
+    return docs.length;
+  } catch (err) {
+    console.warn("[WhatsApp] Could not restore auth from MongoDB:", err.message);
+    return 0;
+  }
+}
+
+let isSyncingToMongo = false;
+async function syncAuthDirToMongo() {
+  if (isSyncingToMongo) return;
+  isSyncingToMongo = true;
+  try {
+    if (!fs.existsSync(AUTH_DIR)) return;
+    const files = fs.readdirSync(AUTH_DIR);
+    if (files.length === 0) return;
+
+    const operations = [];
+    for (const file of files) {
+      const filePath = path.join(AUTH_DIR, file);
+      try {
+        if (fs.statSync(filePath).isFile()) {
+          const content = fs.readFileSync(filePath, "utf-8");
+          operations.push({
+            updateOne: {
+              filter: { key: file },
+              update: { $set: { value: content, updatedAt: new Date() } },
+              upsert: true,
+            },
+          });
+        }
+      } catch {}
+    }
+
+    const chunkSize = 500;
+    for (let i = 0; i < operations.length; i += chunkSize) {
+      const chunk = operations.slice(i, i + chunkSize);
+      await WhatsAppAuth.bulkWrite(chunk, { ordered: false });
+    }
+  } catch (err) {
+    console.warn("[WhatsApp] Could not sync auth to MongoDB:", err.message);
+  } finally {
+    isSyncingToMongo = false;
+  }
+}
+
+/**
+ * Removes all auth files from MongoDB when user deliberately logs out.
+ */
+async function clearMongoAuth() {
+  try {
+    await WhatsAppAuth.deleteMany({});
+    console.log("[WhatsApp] 🗑️ Cleared auth credentials from MongoDB");
+  } catch (err) {
+    console.warn("[WhatsApp] Could not clear auth from MongoDB:", err.message);
   }
 }
 
@@ -87,6 +161,9 @@ export async function initWhatsAppBot() {
       fs.mkdirSync(AUTH_DIR, { recursive: true });
     }
 
+    // 1. Restore persistent session files from MongoDB if available
+    await restoreAuthFromMongo();
+
     if (sock) {
       try {
         sock.ev?.removeAllListeners();
@@ -120,7 +197,10 @@ export async function initWhatsAppBot() {
       keepAliveIntervalMs: 25000,
     });
 
-    sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("creds.update", async () => {
+      await saveCreds();
+      await syncAuthDirToMongo();
+    });
 
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;
@@ -154,6 +234,7 @@ export async function initWhatsAppBot() {
         userPhone = rawJid.split(":")[0]?.split("@")[0] || rawJid.split("@")[0];
 
         console.log(`\n✅ [WhatsApp] Connected successfully as +${userPhone} (${sock.user?.name || "Speak & Shine Bot"})\n`);
+        await syncAuthDirToMongo();
         broadcastStatus();
       }
 
@@ -205,6 +286,7 @@ function scheduleReconnect(delayMs) {
 
 async function clearAuthDir() {
   try {
+    await clearMongoAuth();
     if (fs.existsSync(AUTH_DIR)) {
       fs.rmSync(AUTH_DIR, { recursive: true, force: true });
       fs.mkdirSync(AUTH_DIR, { recursive: true });

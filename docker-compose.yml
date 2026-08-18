@@ -14,6 +14,9 @@ services:
     ports:
       - "3001:3001"
 
+    volumes:
+      - whatsapp_auth_data:/app/auth
+
     depends_on:
       - mongodb
 
@@ -87,6 +90,7 @@ services:
 
 volumes:
   mongodb_data:
+  whatsapp_auth_data:
 
 networks:
   speakshine-network:
