@@ -575,8 +575,8 @@ export async function sendDailyPosterToGroup(options = {}) {
 
 export const DEFAULT_SUBMISSION_TEMPLATES = {
   comprehensive: `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`,
-  urgent: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🔥 *Streak Leader:* {top_streak_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to avoid fine & keep your streak!\n🚀 *Submit here:* {app_url}`,
-  motivation: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Performer:* {top_streak_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`,
+  urgent: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🏆 *Top Scorer Today:* {top_points_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to pints & keep your streak!\n\n🚀 *Submit here:* {app_url}`,
+  motivation: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Scorer Today:* {top_points_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`,
   custom: `🔔 *SPEAK & SHINE — DAILY UPDATE*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} left):*\n{pending_list}\n\n🚀 *Submit your video here:* {app_url}`,
 };
 
@@ -619,8 +619,8 @@ export function buildSubmissionReportMessage({
   if (submittedUsers.length > 0) {
     submittedListStr = submittedUsers.map((u, i) => {
       const displayName = u.name || `Student ${u.phone ? u.phone.slice(-4) : i + 1}`;
-      const streakText = (u.streak && u.streak > 0) ? ` 🔥 ${u.streak}d streak` : "";
-      return `${i + 1}. ${displayName}${streakText}`;
+      const scoreText = (u.todayScore != null && u.todayScore > 0) ? ` ⭐ ${Math.round(u.todayScore)} pts` : ((u.streak && u.streak > 0) ? ` 🔥 ${u.streak}d` : "");
+      return `${i + 1}. ${displayName}${scoreText}`;
     }).join("\n");
   } else {
     submittedListStr = "_No submissions yet today._";
@@ -637,11 +637,15 @@ export function buildSubmissionReportMessage({
     pendingListStr = "🎉 _All paid students have completed today's challenge! Amazing work!_ 🌟";
   }
 
-  // Top streak student
-  const topStreakUserObj = [...paidUsers].sort((a, b) => (b.streak || 0) - (a.streak || 0))[0];
-  const topStreakUser = topStreakUserObj && (topStreakUserObj.streak || 0) > 0
-    ? `${topStreakUserObj.name || "Student"} (${topStreakUserObj.streak}d streak 🔥)`
-    : "None yet";
+  // Top points student today (users who completed and have todayScore)
+  const usersWithScoreToday = paidUsers
+    .filter(u => u.completed && u.todayScore != null && u.todayScore > 0)
+    .sort((a, b) => (b.todayScore || 0) - (a.todayScore || 0));
+
+  const topPointsUserObj = usersWithScoreToday[0];
+  const topPointsUser = topPointsUserObj
+    ? `${topPointsUserObj.name || `Student ${topPointsUserObj.phone ? topPointsUserObj.phone.slice(-4) : ""}`} (${Math.round(topPointsUserObj.todayScore)} pts 🌟)`
+    : (submittedUsers.length > 0 ? `${submittedUsers[0].name || "Student"} (Completed ✅)` : "None yet");
 
   // Visual emoji progress bar: 10 blocks (e.g. 70% => [███████░░░])
   const filledBlocks = Math.min(10, Math.max(0, Math.round(percent / 10)));
@@ -666,7 +670,8 @@ export function buildSubmissionReportMessage({
     .replace(/\{progress_bar\}/gi, `[${progressBar}]`)
     .replace(/\{topic\}/gi, topicName)
     .replace(/\{app_url\}/gi, frontendUrl)
-    .replace(/\{top_streak_user\}/gi, topStreakUser);
+    .replace(/\{top_points_user\}/gi, topPointsUser)
+    .replace(/\{top_streak_user\}/gi, topPointsUser);
 }
 
 /**

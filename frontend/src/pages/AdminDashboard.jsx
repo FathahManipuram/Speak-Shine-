@@ -17,8 +17,8 @@ const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c",
 const tt = { background:"#16162a", border:"1px solid #252545", borderRadius:10, fontSize:12 };
 const DEFAULT_SUBMISSION_TEMPLATES = {
   comprehensive: `📊 *SPEAK & SHINE — DAILY SUBMISSION REPORT*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ *SUBMITTED TODAY ({submitted_count}/{total_paid})*\n{submitted_list}\n\n⏳ *PENDING SUBMISSIONS ({pending_count}/{total_paid})*\n{pending_list}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 *Completion Rate:* {percent} {progress_bar}\n💡 *Reminder:* Please record and submit your 1-minute speaking video before midnight (12:00 AM) to keep your streak active!\n🚀 *Submit your video here:* {app_url}`,
-  urgent: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🔥 *Streak Leader:* {top_streak_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to avoid fine & keep your streak!\n🚀 *Submit here:* {app_url}`,
-  motivation: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Performer:* {top_streak_user}\n📈 *Completion Rate:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`,
+  urgent: `⚠️ *FINAL CALL — URGENT SUBMISSION REMINDER* ⚠️\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} remaining):*\n{pending_list}\n\n🏆 *Top Scorer Today:* {top_points_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n⚡ Midnight deadline approaching! Record & submit your video now to pints & keep your streak!\n\n🚀 *Submit here:* {app_url}`,
+  motivation: `🌟 *SPEAK & SHINE — DAILY PROGRESS UPDATE* 🌟\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 *Top Scorer Today:* {top_points_user}\n📈 *Class Progress:* {percent} {progress_bar}\n\n✅ *Submitted Heroes ({submitted_count}/{total_paid}):*\n{submitted_list}\n\n⏳ *Still Time to Submit ({pending_count} pending):*\n{pending_list}\n\n🚀 *Submit your video now:* {app_url}`,
   custom: `🔔 *SPEAK & SHINE — DAILY UPDATE*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} left):*\n{pending_list}\n\n🚀 *Submit your video here:* {app_url}`,
 };
 
@@ -2790,7 +2790,7 @@ export default function AdminDashboard() {
                         { tag: "{total_paid}", label: "{total_paid}" },
                         { tag: "{percent}", label: "{percent} (%)" },
                         { tag: "{progress_bar}", label: "{progress_bar} (Bar)" },
-                        { tag: "{top_streak_user}", label: "{top_streak_user} (Leader)" },
+                        { tag: "{top_points_user}", label: "{top_points_user} (Top Scorer Today)" },
                         { tag: "{topic}", label: "{topic} (Topic)" },
                         { tag: "{app_url}", label: "{app_url} (Link)" },
                       ].map(({ tag, label }) => (
@@ -2941,7 +2941,8 @@ export default function AdminDashboard() {
                             .replace(/\{progress_bar\}/gi, bar)
                             .replace(/\{topic\}/gi, dash?.today?.topic || "Speaking Practice")
                             .replace(/\{app_url\}/gi, window.location.origin || "https://speak-shine.sidhartht.online")
-                            .replace(/\{top_streak_user\}/gi, "John Doe (15d streak 🔥)");
+                            .replace(/\{top_points_user\}/gi, "John Doe (95 pts 🌟)")
+                            .replace(/\{top_streak_user\}/gi, "John Doe (95 pts 🌟)");
                         })()}
                       </div>
                     </div>
