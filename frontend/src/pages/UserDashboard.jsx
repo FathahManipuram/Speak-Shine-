@@ -718,6 +718,20 @@ function VocabularyWords({ words, requiredCount, totalCount }) {
         </div>
       </div>
 
+      {speakingIndex !== null && (
+        <div style={{
+          marginBottom: "0.65rem", padding: "0.45rem 0.85rem", borderRadius: 8,
+          background: "rgba(124, 111, 255, 0.15)", border: "1px solid rgba(124, 111, 255, 0.4)",
+          color: "#c4b5fd", fontSize: "0.75rem", fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem",
+        }}>
+          <span>🔊 Playing audio pronunciation...</span>
+          <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>
+            (If silent, check that your browser tab/site sound is un-muted)
+          </span>
+        </div>
+      )}
+
       {ttsWarning && (
         <div style={{
           marginBottom: "0.65rem", padding: "0.4rem 0.75rem", borderRadius: 8,
