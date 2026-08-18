@@ -1508,42 +1508,74 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="card">
-            {/* Filter Chip Bar */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem", flexWrap: "wrap", gap: "0.5rem" }}>
-              <div className="admin-section-title">
-                👥 All Users
-                <span style={{ fontSize: "0.72rem", background: "rgba(124,111,255,0.15)", color: "#c4b5fd", padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>
-                  {filteredUsers.length}
-                </span>
+          <div className="card" style={{ padding: "1.25rem" }}>
+            {/* Directory Header Toolbar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.85rem" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em" }}>
+                    Students Directory
+                  </div>
+                  <span style={{ fontSize: "0.72rem", background: "rgba(99,102,241,0.15)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.3)", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                    {filteredUsers.length} {filteredUsers.length === 1 ? "student" : "students"}
+                  </span>
+                  <span style={{ fontSize: "0.72rem", background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.25)", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                    {users.filter(u => u.paid).length} paid
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                  Manage student profiles, streak freezes, role permissions, and payment verification.
+                </div>
               </div>
-              <input
-                className="form-input" style={{ width: 200, fontSize: "0.82rem" }}
-                placeholder="🔍 Search name or phone…"
-                value={search} onChange={e => setSearch(e.target.value)}
-              />
+
+              {/* Search Bar with SVG Icon */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 10, pointerEvents: "none" }}>
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    className="form-input"
+                    style={{ width: 230, paddingLeft: "2rem", fontSize: "0.82rem", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10 }}
+                    placeholder="Search name, phone..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch("")}
+                      style={{ position: "absolute", right: 8, background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "0.9rem" }}
+                      title="Clear search"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="admin-filter-bar" style={{ marginBottom: "0.9rem" }}>
+
+            {/* Segmented Filter Chips */}
+            <div className="admin-filter-bar" style={{ marginBottom: "1rem" }}>
               {[
-                { key: "all",       label: "All",             count: users.length },
-                { key: "paid",      label: "💳 Paid",          count: users.filter(u=>u.paid).length },
-                { key: "submitted", label: "✅ Submitted",     count: users.filter(u=>u.completed).length },
-                { key: "pending",   label: "⏳ Pending",       count: users.filter(u=>u.paid&&!u.completed).length },
-                { key: "streak",    label: "🔥 High Streak",   count: users.filter(u=>(u.streak||0)>=7).length },
-                { key: "trainers",  label: "🎓 Staff",         count: users.filter(u=>["trainer","admins","admin"].includes(u.role)).length },
+                { key: "all",       label: "All Students",     count: users.length },
+                { key: "paid",      label: "💳 Paid Members",  count: users.filter(u=>u.paid).length },
+                { key: "submitted", label: "✅ Submitted Today",count: users.filter(u=>u.completed).length },
+                { key: "pending",   label: "⏳ Pending Today",  count: users.filter(u=>u.paid&&!u.completed).length },
+                { key: "streak",    label: "🔥 High Streak 7d+", count: users.filter(u=>(u.streak||0)>=7).length },
+                { key: "trainers",  label: "🎓 Staff & Admins", count: users.filter(u=>["trainer","admins","admin"].includes(u.role)).length },
               ].map(chip => (
                 <button
                   key={chip.key}
                   className={`admin-chip${userFilter === chip.key ? " active" : ""}`}
                   onClick={() => setUserFilter(chip.key)}
                 >
-                  {chip.label}
+                  <span>{chip.label}</span>
                   <span className="admin-chip-count">{chip.count}</span>
                 </button>
               ))}
             </div>
 
-            {/* Premium Table */}
+            {/* Premium Responsive Table */}
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
@@ -1551,90 +1583,187 @@ export default function AdminDashboard() {
                     <th>Student</th>
                     <th>Phone</th>
                     <th>Role</th>
-                    <th>🔥 Streak</th>
-                    <th>🧊 Freeze</th>
+                    <th>Streak</th>
+                    <th>Freeze</th>
                     <th>Weekly</th>
                     <th>Monthly</th>
-                    <th>⭐ Score</th>
-                    <th>💳 Paid</th>
-                    <th>Actions</th>
+                    <th>Score</th>
+                    <th>Payment</th>
+                    <th style={{ textAlign: "right", paddingRight: "1.25rem" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map(u => {
-                    const initials = (u.registeredName||u.name||"?").slice(0,2).toUpperCase();
-                    const streak = u.streak || 0;
-                    return (
-                      <tr key={u.userId}>
-                        <td>
-                          <div className="admin-user-cell">
-                            <div className="admin-user-avatar">{initials}</div>
-                            <div>
-                              <div className="admin-user-name">{u.registeredName||u.name||"—"}</div>
-                              <div style={{ fontSize: "0.68rem", color: u.isActive ? "#4ade80" : "#f87171", fontWeight: 600 }}>
-                                {u.isActive ? "● Active" : "● Disabled"}
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} style={{ textAlign: "center", padding: "2.5rem 1rem", color: "var(--muted)" }}>
+                        <div style={{ fontSize: "1.8rem", marginBottom: "0.5rem" }}>🔍</div>
+                        <div style={{ fontWeight: 600, color: "#f8fafc" }}>No matching students found</div>
+                        <div style={{ fontSize: "0.78rem", marginTop: "0.2rem" }}>Try adjusting your search query or filter chips.</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map(u => {
+                      const initials = (u.registeredName || u.name || "?").slice(0, 2).toUpperCase();
+                      const streak = u.streak || 0;
+                      return (
+                        <tr key={u.userId}>
+                          {/* Student Name & Avatar */}
+                          <td>
+                            <div className="admin-user-cell">
+                              <div className="admin-user-avatar">
+                                {initials}
+                                <div
+                                  className="admin-user-avatar-dot"
+                                  style={{ background: u.isActive ? "#4ade80" : "#f87171" }}
+                                  title={u.isActive ? "Active Student" : "Disabled Account"}
+                                />
+                              </div>
+                              <div>
+                                <div className="admin-user-name">{u.registeredName || u.name || "—"}</div>
+                                <div style={{ fontSize: "0.68rem", color: u.isActive ? "#4ade80" : "#f87171", fontWeight: 600, marginTop: "1px" }}>
+                                  {u.isActive ? "● Active" : "● Disabled"}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                            <span className="admin-user-phone">{u.phone}</span>
-                            <button className="copy-btn" onClick={() => { navigator.clipboard?.writeText(u.phone); msg("Copied!"); }}>⎘</button>
-                          </div>
-                        </td>
-                        <td>
-                          <RoleSelector
-                            phone={u.phone}
-                            currentRole={u.role || "user"}
-                            onRoleChange={() => reload(['users'])}
-                          />
-                        </td>
-                        <td>
-                          <span className={`streak-flame${streak === 0 ? " dead" : ""}`}>
-                            {streak > 0 ? "🔥" : "❄️"} {streak}
-                          </span>
-                        </td>
-                        <td style={{ color: "#38bdf8", fontWeight: 600 }}>🧊 {u.streakFreeze||0}</td>
-                        <td>
-                          <span style={{ color: (u.weeklySubmissions||0)>=5 ? "#4ade80" : (u.weeklySubmissions||0)>=3 ? "#fbbf24" : "var(--muted)", fontWeight: 600 }}>
-                            {u.weeklySubmissions||0}/7
-                          </span>
-                        </td>
-                        <td>{u.monthlySubmissions||0}</td>
-                        <td style={{ color: "#a78bfa", fontWeight: 700 }}>⭐ {u.monthlyScore||0}</td>
-                        <td>
-                          <button
-                            className={`act-btn ${u.paid ? "success" : "danger"}`}
-                            onClick={async () => {
-                              try {
-                                const { data } = await api.patch(`/payments/admin/toggle-paid/${encodeURIComponent(u.phone)}`);
-                                setUsers(prev => prev.map(x => x.phone===u.phone ? {...x, paid: data.paid, paidAt: data.paidAt} : x));
-                                msg(`${u.registeredName||u.name||u.phone} marked as ${data.paid?"✅ Paid":"❌ Unpaid"}`);
-                              } catch(e) { msg(e?.response?.data?.error||"Failed","danger"); }
-                            }}
-                          >
-                            {u.paid ? "✅ Paid" : "❌ Unpaid"}
-                          </button>
-                        </td>
-                        <td style={{ whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
-                            <button className="act-btn primary" onClick={() => viewStudentDetail(u)}>View</button>
-                            <button className="act-btn amber" onClick={() => toggleUser(u.phone)}>
-                              {u.isActive ? "Disable" : "Enable"}
+                          </td>
+
+                          {/* Phone & Copy */}
+                          <td>
+                            <div className="admin-user-phone-wrap">
+                              <span className="admin-user-phone">{u.phone}</span>
+                              <button
+                                className="copy-btn"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(u.phone);
+                                  msg("Phone copied!");
+                                }}
+                                title="Copy phone number"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect width="14" height="14" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Role Selector */}
+                          <td>
+                            <RoleSelector
+                              phone={u.phone}
+                              currentRole={u.role || "user"}
+                              onRoleChange={() => reload(['users'])}
+                            />
+                          </td>
+
+                          {/* Streak */}
+                          <td>
+                            <span className={`streak-badge-pill${streak === 0 ? " dead" : ""}`}>
+                              {streak > 0 ? "🔥" : "❄️"} {streak} {streak === 1 ? "day" : "days"}
+                            </span>
+                          </td>
+
+                          {/* Streak Freeze */}
+                          <td>
+                            <span className="freeze-badge-pill">
+                              🧊 {u.streakFreeze || 0}
+                            </span>
+                          </td>
+
+                          {/* Weekly Submissions */}
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: (u.weeklySubmissions || 0) >= 5 ? "#4ade80" : (u.weeklySubmissions || 0) >= 3 ? "#fbbf24" : "#94a3b8" }}>
+                                {u.weeklySubmissions || 0}/7
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Monthly Submissions */}
+                          <td>
+                            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text)" }}>
+                              {u.monthlySubmissions || 0} sub
+                            </span>
+                          </td>
+
+                          {/* Score / Points */}
+                          <td>
+                            <span className="score-badge-pill">
+                              ⭐ {Math.round(u.monthlyScore || 0).toLocaleString()}
+                            </span>
+                          </td>
+
+                          {/* Payment Toggle */}
+                          <td>
+                            <button
+                              className={`paid-toggle-btn ${u.paid ? "paid" : "unpaid"}`}
+                              onClick={async () => {
+                                try {
+                                  const { data } = await api.patch(`/payments/admin/toggle-paid/${encodeURIComponent(u.phone)}`);
+                                  setUsers(prev => prev.map(x => x.phone === u.phone ? { ...x, paid: data.paid, paidAt: data.paidAt } : x));
+                                  msg(`${u.registeredName || u.name || u.phone} marked as ${data.paid ? "✅ Paid" : "❌ Unpaid"}`);
+                                } catch(e) {
+                                  msg(e?.response?.data?.error || "Failed to update payment status", "danger");
+                                }
+                              }}
+                              title={u.paid ? "Click to mark as unpaid" : "Click to mark as paid"}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: u.paid ? "#4ade80" : "#f87171", display: "inline-block" }} />
+                              {u.paid ? "Paid" : "Unpaid"}
                             </button>
-                            <button className="act-btn primary" onClick={async () => {
-                              try {
-                                await api.post(`/video/admin/reset-limit/${u._id || u.userId}`);
-                                msg(`Upload limit reset for ${u.registeredName||u.name||u.phone}`);
-                              } catch(e) { msg(e?.response?.data?.error||"Reset failed","danger"); }
-                            }}>🔄</button>
-                            <button className="act-btn danger" onClick={() => deleteUser(u.phone)}>Remove</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+
+                          {/* Action Buttons */}
+                          <td style={{ textAlign: "right", whiteSpace: "nowrap", paddingRight: "1rem" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                              <button
+                                className="act-icon-btn"
+                                onClick={() => viewStudentDetail(u)}
+                                title="View Student Profile"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                                </svg>
+                              </button>
+                              <button
+                                className="act-icon-btn amber"
+                                onClick={() => toggleUser(u.phone)}
+                                title={u.isActive ? "Disable Account" : "Enable Account"}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                </svg>
+                              </button>
+                              <button
+                                className="act-icon-btn"
+                                onClick={async () => {
+                                  try {
+                                    await api.post(`/video/admin/reset-limit/${u._id || u.userId}`);
+                                    msg(`Upload limit reset for ${u.registeredName || u.name || u.phone}`);
+                                  } catch(e) {
+                                    msg(e?.response?.data?.error || "Reset failed", "danger");
+                                  }
+                                }}
+                                title="Reset Upload Limit"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                                </svg>
+                              </button>
+                              <button
+                                className="act-icon-btn danger"
+                                onClick={() => deleteUser(u.phone)}
+                                title="Remove Student"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

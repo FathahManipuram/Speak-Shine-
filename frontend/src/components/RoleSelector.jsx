@@ -31,19 +31,38 @@ export default function RoleSelector({ phone, currentRole, onRoleChange }) {
     }
   };
 
+  const getRoleStyle = (r) => {
+    switch (r) {
+      case "admin":
+      case "admins":
+        return { bg: "rgba(139, 92, 246, 0.15)", border: "rgba(139, 92, 246, 0.35)", color: "#c4b5fd" };
+      case "trainer":
+        return { bg: "rgba(245, 158, 11, 0.15)", border: "rgba(245, 158, 11, 0.35)", color: "#fbbf24" };
+      case "viewer":
+        return { bg: "rgba(20, 184, 166, 0.15)", border: "rgba(20, 184, 166, 0.35)", color: "#5eead4" };
+      default:
+        return { bg: "rgba(255, 255, 255, 0.05)", border: "rgba(255, 255, 255, 0.12)", color: "#94a3b8" };
+    }
+  };
+
+  const style = getRoleStyle(role);
+
   if (locked) {
-    // admins-tier user viewing an admin-level account — read-only badge
     return (
       <span style={{
-        background: "rgba(124,111,255,0.15)",
-        border: "1px solid rgba(124,111,255,0.3)",
-        color: "#a78bfa",
+        background: style.bg,
+        border: `1px solid ${style.border}`,
+        color: style.color,
         borderRadius: 8,
-        padding: "0.2rem 0.6rem",
-        fontSize: "0.75rem",
-        fontWeight: 600,
+        padding: "0.25rem 0.6rem",
+        fontSize: "0.72rem",
+        fontWeight: 700,
+        textTransform: "capitalize",
         cursor: "not-allowed",
         userSelect: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.3rem",
       }}>
         🔒 {role}
       </span>
@@ -56,22 +75,24 @@ export default function RoleSelector({ phone, currentRole, onRoleChange }) {
       onChange={(e) => changeRole(e.target.value)}
       disabled={loading}
       style={{
-        background: "var(--bg2)",
-        border: "1px solid var(--border)",
-        color: loading ? "var(--muted)" : "var(--text)",
+        background: style.bg,
+        border: `1px solid ${style.border}`,
+        color: loading ? "var(--muted)" : style.color,
         borderRadius: 8,
-        padding: "0.2rem 0.4rem",
-        fontSize: "0.75rem",
+        padding: "0.25rem 0.55rem",
+        fontSize: "0.72rem",
+        fontWeight: 700,
+        textTransform: "capitalize",
         cursor: loading ? "not-allowed" : "pointer",
         opacity: loading ? 0.6 : 1,
+        outline: "none",
       }}
     >
-      <option value="user">User</option>
-      <option value="trainer">Trainer</option>
-      <option value="viewer">Viewer</option>
-      {/* admins-tier cannot assign admin-level roles */}
-      {!isAdminsTier && <option value="admins">Admins</option>}
-      {!isAdminsTier && <option value="admin">Admin</option>}
+      <option value="user" style={{ background: "#11121d", color: "#f8fafc" }}>User</option>
+      <option value="trainer" style={{ background: "#11121d", color: "#fbbf24" }}>Trainer</option>
+      <option value="viewer" style={{ background: "#11121d", color: "#5eead4" }}>Viewer</option>
+      {!isAdminsTier && <option value="admins" style={{ background: "#11121d", color: "#c4b5fd" }}>Admins</option>}
+      {!isAdminsTier && <option value="admin" style={{ background: "#11121d", color: "#c4b5fd" }}>Admin</option>}
     </select>
   );
 }
