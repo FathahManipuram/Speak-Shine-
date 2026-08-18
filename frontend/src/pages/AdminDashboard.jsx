@@ -365,6 +365,8 @@ export default function AdminDashboard() {
   const [waLoading, setWaLoading] = useState(false);
   const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [waSendingReport, setWaSendingReport] = useState(false);
+  const [waPreviewTab, setWaPreviewTab] = useState("report");
+  const [showWaPhone, setShowWaPhone] = useState(false);
   const [settingsSubTab, setSettingsSubTab] = useState("schedules");
   const [editingTemplateType, setEditingTemplateType] = useState("comprehensive");
   const [settings, setSettings] = useState({
@@ -1211,27 +1213,29 @@ export default function AdminDashboard() {
             );
           })()}
 
-          {/* ── Premium KPI Cards ── */}
-          <div className="admin-kpi-row">
-            {[
-              { icon: "👥", label: "Total Students", value: dash?.stats?.total||0, accent: "#7c6fff", trend: "neu", sub: `${users.filter(u=>u.paid).length} paid members` },
-              { icon: "✅", label: "Submitted Today", value: dash?.stats?.completed||0, accent: "#4ade80", trend: "up", sub: `${dash?.stats?.total ? Math.round((dash.stats.completed/dash.stats.total)*100) : 0}% completion rate` },
-              { icon: "⏳", label: "Pending Today", value: dash?.stats?.pending||0, accent: "#f87171", trend: (dash?.stats?.pending||0) > 0 ? "down" : "up", sub: "Need to submit today" },
-              { icon: "🧊", label: "Streak Freezes", value: users.reduce((s,u)=>s+(u.streakFreeze||0),0), accent: "#38bdf8", trend: "neu", sub: `Across ${users.length} users` },
-            ].map(({ icon, label, value, accent, trend, sub }) => (
-              <div key={label} className="admin-kpi-card" style={{ "--kpi-accent": accent }}>
-                <div className="admin-kpi-top">
-                  <div className="admin-kpi-icon" style={{ background: `${accent}18` }}>{icon}</div>
-                  <span className={`admin-kpi-trend ${trend}`}>
-                    {trend === "up" ? "▲" : trend === "down" ? "▼" : "—"}
-                  </span>
+          {/* ── Overview & Activity KPI Cards (Contextual) ── */}
+          {["overview", "today", "reports", "points"].includes(tab) && (
+            <div className="admin-kpi-row" style={{ marginBottom: "1.25rem" }}>
+              {[
+                { icon: "👥", label: "Total Students", value: dash?.stats?.total||0, accent: "#7c6fff", trend: "neu", sub: `${users.filter(u=>u.paid).length} paid members` },
+                { icon: "✅", label: "Submitted Today", value: dash?.stats?.completed||0, accent: "#4ade80", trend: "up", sub: `${dash?.stats?.total ? Math.round((dash.stats.completed/dash.stats.total)*100) : 0}% completion rate` },
+                { icon: "⏳", label: "Pending Today", value: dash?.stats?.pending||0, accent: "#f87171", trend: (dash?.stats?.pending||0) > 0 ? "down" : "up", sub: "Need to submit today" },
+                { icon: "🧊", label: "Streak Freezes", value: users.reduce((s,u)=>s+(u.streakFreeze||0),0), accent: "#38bdf8", trend: "neu", sub: `Across ${users.length} users` },
+              ].map(({ icon, label, value, accent, trend, sub }) => (
+                <div key={label} className="admin-kpi-card" style={{ "--kpi-accent": accent }}>
+                  <div className="admin-kpi-top">
+                    <div className="admin-kpi-icon" style={{ background: `${accent}18` }}>{icon}</div>
+                    <span className={`admin-kpi-trend ${trend}`}>
+                      {trend === "up" ? "✓ Up" : trend === "down" ? "⏳ Action" : "• Stable"}
+                    </span>
+                  </div>
+                  <div className="admin-kpi-value">{value}</div>
+                  <div className="admin-kpi-label">{label}</div>
+                  <div className="admin-kpi-sub">{sub}</div>
                 </div>
-                <div className="admin-kpi-value">{value}</div>
-                <div className="admin-kpi-label">{label}</div>
-                <div className="admin-kpi-sub">{sub}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
 
       {/* OVERVIEW */}
@@ -2865,355 +2869,429 @@ export default function AdminDashboard() {
 
       {/* WHATSAPP TAB */}
       {tab === "whatsapp" && (
-        <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-          {/* Card 1: Connection & QR Code Scanner */}
-          <div className="card" style={{ flex: "1 1 480px", maxWidth: 540, margin: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <div className="section-title" style={{ margin: 0 }}>📱 WhatsApp Scanner &amp; Connection</div>
-              <button 
-                className="btn-sm btn-ghost" 
-                onClick={loadWhatsAppStatus} 
-                disabled={waLoading}
-                title="Refresh Status"
-              >
-                🔄 Refresh
-              </button>
-            </div>
-
-            {/* Status Banner */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              padding: "0.85rem 1.1rem",
-              borderRadius: 12,
-              background: waStatus?.isConnected ? "rgba(34, 197, 94, 0.12)" : waStatus?.hasSavedCredentials ? "rgba(56, 189, 248, 0.12)" : "rgba(234, 179, 8, 0.12)",
-              border: `1px solid ${waStatus?.isConnected ? "rgba(34, 197, 94, 0.35)" : waStatus?.hasSavedCredentials ? "rgba(56, 189, 248, 0.35)" : "rgba(234, 179, 8, 0.35)"}`,
-              marginBottom: "1.5rem",
-            }}>
-              <span style={{ fontSize: "1.4rem" }}>{waStatus?.isConnected ? "🟢" : waStatus?.hasSavedCredentials ? "🔵" : "🟡"}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24" }}>
-                  {waStatus?.isConnected
-                    ? `Connected as ${waStatus.userPhone}`
-                    : waStatus?.hasSavedCredentials
-                    ? `Reconnecting Session (${waStatus.userPhone})...`
-                    : waStatus?.qrCodeDataUrl
-                    ? "QR Code Ready — Scan with WhatsApp"
-                    : "Connecting to WhatsApp..."}
-                </div>
-                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.15rem" }}>
-                  {waStatus?.isConnected
-                    ? "Linked to your WhatsApp number. Daily posters will be sent to the group from this number."
-                    : waStatus?.hasSavedCredentials
-                    ? "Saved session authenticated. Socket is establishing live connection..."
-                    : "Open WhatsApp on your phone > Linked Devices > Link a Device to scan"}
-                </div>
-              </div>
-            </div>
-
-            {/* Middle panel */}
-            {waStatus?.isConnected ? (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                background: "rgba(34, 197, 94, 0.05)",
-                padding: "2rem 1.5rem",
-                borderRadius: 16,
-                border: "1px solid rgba(34, 197, 94, 0.2)",
-                marginBottom: "1.5rem",
-                textAlign: "center"
-              }}>
-                <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📱✨</div>
-                <div style={{ fontWeight: 700, color: "#fff", fontSize: "1.1rem", marginBottom: "0.3rem" }}>
-                  WhatsApp Linked: {waStatus.userPhone}
-                </div>
-                <p style={{ color: "var(--muted)", fontSize: "0.85rem", maxWidth: 360, margin: 0 }}>
-                  Ready to send daily question posters directly to your target group.
-                </p>
-              </div>
-            ) : waStatus?.hasSavedCredentials && !waStatus?.qrCodeDataUrl ? (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                background: "rgba(56, 189, 248, 0.05)",
-                padding: "2rem 1.5rem",
-                borderRadius: 16,
-                border: "1px solid rgba(56, 189, 248, 0.2)",
-                marginBottom: "1.5rem",
-                textAlign: "center"
-              }}>
-                <div className="spinner" style={{ margin: "0 auto 1rem" }}></div>
-                <div style={{ fontWeight: 600, color: "#fff", marginBottom: "0.4rem" }}>
-                  Reconnecting to {waStatus.userPhone}...
-                </div>
-                <p style={{ color: "var(--muted)", fontSize: "0.82rem", maxWidth: 360, margin: 0 }}>
-                  Your phone is already linked. Syncing socket with WhatsApp servers...
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                background: "rgba(15, 10, 30, 0.7)",
-                padding: "1.5rem",
-                borderRadius: 16,
-                border: "1px dashed rgba(167, 139, 250, 0.4)",
-                marginBottom: "1.5rem",
-                textAlign: "center"
-              }}>
-                {waStatus?.qrCodeDataUrl ? (
-                  <>
-                    <div style={{
-                      padding: "12px",
-                      background: "#ffffff",
-                      borderRadius: 16,
-                      boxShadow: "0 8px 32px rgba(124, 111, 255, 0.3)",
-                      display: "inline-block",
-                      marginBottom: "1rem"
-                    }}>
-                      <img
-                        src={waStatus.qrCodeDataUrl}
-                        alt="WhatsApp QR Code"
-                        style={{ width: 240, height: 240, display: "block" }}
-                      />
-                    </div>
-                    <div style={{ fontWeight: 600, color: "#fff", marginBottom: "0.4rem" }}>
-                      Scan this QR code with WhatsApp
-                    </div>
-                    <p style={{ color: "var(--muted)", fontSize: "0.82rem", maxWidth: 360, margin: 0, lineHeight: 1.5 }}>
-                      1. Open WhatsApp on your phone<br/>
-                      2. Tap <strong>Settings</strong> (iOS) or <strong>⋮ Menu</strong> (Android)<br/>
-                      3. Select <strong>Linked Devices</strong> → <strong>Link a Device</strong><br/>
-                      4. Point camera at this screen
-                    </p>
-                  </>
-                ) : (
-                  <div style={{ padding: "2rem 1rem", color: "var(--muted)" }}>
-                    <div className="spinner" style={{ margin: "0 auto 1rem" }}></div>
-                    <div>Generating fresh WhatsApp QR code...</div>
+        <div className="wa-grid-layout">
+          {/* Left Column: Device & Connection Hub */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <div className="card" style={{ padding: "1.5rem", margin: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                <div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span>📱 WhatsApp Gateway</span>
                   </div>
+                  <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                    Multi-device session powered by Baileys
+                  </div>
+                </div>
+                <button 
+                  className="cmd-refresh-btn" 
+                  onClick={loadWhatsAppStatus} 
+                  disabled={waLoading}
+                  style={{ fontSize: "0.78rem" }}
+                  title="Refresh Gateway Status"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                  </svg>
+                  Sync
+                </button>
+              </div>
+
+              {/* Status Banner */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.85rem",
+                padding: "0.95rem 1.15rem",
+                borderRadius: 14,
+                background: waStatus?.isConnected ? "rgba(34, 197, 94, 0.08)" : waStatus?.hasSavedCredentials ? "rgba(56, 189, 248, 0.08)" : "rgba(234, 179, 8, 0.08)",
+                border: `1px solid ${waStatus?.isConnected ? "rgba(34, 197, 94, 0.3)" : waStatus?.hasSavedCredentials ? "rgba(56, 189, 248, 0.3)" : "rgba(234, 179, 8, 0.3)"}`,
+                marginBottom: "1.25rem",
+              }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: "50%",
+                  background: waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24",
+                  boxShadow: `0 0 10px ${waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24"}`,
+                  flexShrink: 0,
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: "0.9rem", color: waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24" }}>
+                    {waStatus?.isConnected
+                      ? "Connected & Broadcasting Live"
+                      : waStatus?.hasSavedCredentials
+                      ? "Re-authenticating Saved Session..."
+                      : waStatus?.qrCodeDataUrl
+                      ? "QR Code Ready — Scan with Phone"
+                      : "Establishing WhatsApp Handshake..."}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.15rem" }}>
+                    {waStatus?.isConnected
+                      ? "Device is synced. Auto-dispatches will be delivered to your target group."
+                      : waStatus?.hasSavedCredentials
+                      ? "Session restored from disk. Connecting socket to WhatsApp gateway..."
+                      : "Open WhatsApp > Linked Devices > Link a Device."}
+                  </div>
+                </div>
+              </div>
+
+              {/* Connected Details Card */}
+              {waStatus?.isConnected ? (
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.02)",
+                  border: "1px solid rgba(255, 255, 255, 0.07)",
+                  borderRadius: 14,
+                  padding: "1.25rem",
+                  marginBottom: "1.25rem",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>
+                      Authenticated Sender Phone
+                    </span>
+                    <button
+                      className="copy-btn"
+                      onClick={() => setShowWaPhone(!showWaPhone)}
+                      title={showWaPhone ? "Mask number" : "Reveal full number"}
+                      style={{ fontSize: "0.75rem" }}
+                    >
+                      {showWaPhone ? "Hide" : "Reveal"}
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(74, 222, 128, 0.14)", border: "1px solid rgba(74, 222, 128, 0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>
+                      📱
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", fontFamily: "monospace" }}>
+                        {showWaPhone
+                          ? waStatus.userPhone
+                          : waStatus.userPhone?.replace(/(\+\d{2})(\d{3})\d{4}(\d{2})/, "$1 ••••• ••$3") || "Connected Number"}
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "#4ade80", fontWeight: 600, marginTop: "0.15rem" }}>
+                        ⚡ Baileys Protocol Socket · Online
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : waStatus?.hasSavedCredentials && !waStatus?.qrCodeDataUrl ? (
+                <div style={{
+                  padding: "2rem 1.5rem",
+                  background: "rgba(56, 189, 248, 0.04)",
+                  border: "1px solid rgba(56, 189, 248, 0.15)",
+                  borderRadius: 14,
+                  marginBottom: "1.25rem",
+                  textAlign: "center",
+                }}>
+                  <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+                  <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.95rem" }}>Reconnecting to {waStatus.userPhone}...</div>
+                  <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: "0.25rem" }}>
+                    Saved credentials detected. Restoring live socket handshake.
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  padding: "1.5rem",
+                  background: "rgba(0, 0, 0, 0.3)",
+                  border: "1px dashed rgba(167, 139, 250, 0.35)",
+                  borderRadius: 14,
+                  marginBottom: "1.25rem",
+                  textAlign: "center",
+                }}>
+                  {waStatus?.qrCodeDataUrl ? (
+                    <>
+                      <div style={{
+                        padding: "12px",
+                        background: "#ffffff",
+                        borderRadius: 14,
+                        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+                        display: "inline-block",
+                        marginBottom: "1rem",
+                      }}>
+                        <img
+                          src={waStatus.qrCodeDataUrl}
+                          alt="WhatsApp QR Code"
+                          style={{ width: 220, height: 220, display: "block" }}
+                        />
+                      </div>
+                      <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.95rem" }}>
+                        Scan QR Code with WhatsApp
+                      </div>
+                      <p style={{ color: "var(--muted)", fontSize: "0.78rem", maxWidth: 320, margin: "0.4rem auto 0", lineHeight: 1.45 }}>
+                        1. Open WhatsApp on phone<br/>
+                        2. Tap <strong>Linked Devices</strong> → <strong>Link a Device</strong><br/>
+                        3. Scan this screen
+                      </p>
+                    </>
+                  ) : (
+                    <div style={{ padding: "2rem 1rem", color: "var(--muted)" }}>
+                      <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+                      <div style={{ fontSize: "0.85rem" }}>Generating fresh WhatsApp QR Code...</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
+                <button 
+                  className="btn-secondary" 
+                  onClick={handleReconnectWhatsApp}
+                  style={{ flex: 1, padding: "0.6rem 1rem", fontSize: "0.82rem", fontWeight: 700 }}
+                >
+                  🔄 {waStatus?.hasSavedCredentials ? "Reconnect Socket" : "Refresh QR"}
+                </button>
+                {(waStatus?.isConnected || waStatus?.hasSavedCredentials) && (
+                  <button 
+                    className="paid-toggle-btn unpaid" 
+                    onClick={handleLogoutWhatsApp}
+                    style={{ padding: "0.6rem 1rem", fontSize: "0.82rem" }}
+                  >
+                    🚪 Unlink Device
+                  </button>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* Connection Actions */}
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <button 
-                className="btn-secondary" 
-                onClick={handleReconnectWhatsApp}
-                style={{ flex: 1 }}
-              >
-                🔄 {waStatus?.hasSavedCredentials ? "Reconnect Socket" : "Refresh QR"}
-              </button>
-              {(waStatus?.isConnected || waStatus?.hasSavedCredentials) && (
-                <button 
-                  className="btn-danger" 
-                  onClick={handleLogoutWhatsApp}
-                >
-                  🚪 Disconnect &amp; Unlink
-                </button>
-              )}
+            {/* Target Group Info Card */}
+            <div className="card" style={{ padding: "1.25rem", margin: 0 }}>
+              <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#f8fafc", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <span>🎯 Configured Target Group JID</span>
+              </div>
+              <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginBottom: "0.75rem" }}>
+                All automated posters and attendance reminders are sent to this WhatsApp Group.
+              </div>
+
+              <div style={{
+                padding: "0.75rem 0.9rem",
+                borderRadius: 10,
+                background: "rgba(124, 111, 255, 0.08)",
+                border: "1px solid rgba(124, 111, 255, 0.22)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.5rem",
+              }}>
+                <span style={{ fontFamily: "monospace", fontSize: "0.84rem", fontWeight: 700, color: waStatus?.targetGroup ? "#c4b5fd" : "#f87171", wordBreak: "break-all" }}>
+                  {waStatus?.targetGroup || "⚠️ TARGET_GROUP not set in .env"}
+                </span>
+                {waStatus?.targetGroup && (
+                  <button
+                    className="copy-btn"
+                    onClick={() => { navigator.clipboard?.writeText(waStatus.targetGroup); msg("Group JID copied!"); }}
+                    title="Copy Group JID"
+                  >
+                    ⎘
+                  </button>
+                )}
+              </div>
+              
+              <div style={{ fontSize: "0.74rem", color: "var(--muted)", marginTop: "0.6rem" }}>
+                🕒 Poster Time: <strong style={{ color: "var(--accent)" }}>{settings?.posterSendTime || "08:00"} IST</strong> · Auto-Sync: <span style={{ color: "#4ade80" }}>Active</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 2: Group Dispatch & Today's Question Poster */}
-          <div className="card" style={{ flex: "1 1 480px", maxWidth: 540, margin: 0 }}>
-            <div className="section-title">📤 Target WhatsApp Group &amp; Poster Dispatch</div>
+          {/* Right Column: Live Message Simulation & Dispatch Hub */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <div className="card" style={{ padding: "1.5rem", margin: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                <div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}>
+                    💬 Live Message Preview &amp; Dispatch Hub
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                    Real-time WhatsApp rendering simulation and 1-click group broadcasting.
+                  </div>
+                </div>
 
-            {/* Target Group Info */}
-            <div style={{
-              padding: "1rem",
-              borderRadius: 12,
-              background: "rgba(124, 111, 255, 0.08)",
-              border: "1px solid rgba(124, 111, 255, 0.2)",
-              marginBottom: "1.25rem",
-            }}>
-              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.25rem" }}>
-                CONFIGURED TARGET GROUP JID
+                {/* Simulation Mode Switcher */}
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setWaPreviewTab("report")}
+                    style={{
+                      padding: "0.38rem 0.85rem",
+                      borderRadius: 10,
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      border: waPreviewTab === "report" ? "1px solid #7c6fff" : "1px solid rgba(255,255,255,0.1)",
+                      background: waPreviewTab === "report" ? "rgba(124, 111, 255, 0.25)" : "rgba(255,255,255,0.04)",
+                      color: waPreviewTab === "report" ? "#fff" : "var(--muted)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    📊 Attendance Report
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWaPreviewTab("poster")}
+                    style={{
+                      padding: "0.38rem 0.85rem",
+                      borderRadius: 10,
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      border: waPreviewTab === "poster" ? "1px solid #7c6fff" : "1px solid rgba(255,255,255,0.1)",
+                      background: waPreviewTab === "poster" ? "rgba(124, 111, 255, 0.25)" : "rgba(255,255,255,0.04)",
+                      color: waPreviewTab === "poster" ? "#fff" : "var(--muted)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    🖼️ Daily Challenge Poster
+                  </button>
+                </div>
               </div>
-              <div style={{
-                fontFamily: "monospace",
-                fontSize: "0.95rem",
-                fontWeight: 700,
-                color: waStatus?.targetGroup ? "#a78bfa" : "#ef4444",
-                wordBreak: "break-all"
-              }}>
-                {waStatus?.targetGroup || "⚠️ TARGET_GROUP not set"}
+
+              {/* Simulated WhatsApp Phone Frame */}
+              <div className="wa-phone-mock" style={{ marginBottom: "1.25rem" }}>
+                <div className="wa-phone-header">
+                  <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", color: "#fff", fontWeight: 700 }}>
+                    🌟
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#e9edef", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      Speak &amp; Shine VIP Community
+                    </div>
+                    <div style={{ fontSize: "0.68rem", color: "#8696a0" }}>
+                      {users.length} members · tap here for group info
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.75rem", color: "#aebac1", fontSize: "0.9rem" }}>
+                    <span>📞</span>
+                    <span>⋮</span>
+                  </div>
+                </div>
+
+                <div className="wa-phone-body">
+                  <div style={{ alignSelf: "center", background: "#182229", padding: "3px 10px", borderRadius: 8, fontSize: "0.65rem", color: "#8696a0", textTransform: "uppercase", fontWeight: 600 }}>
+                    Today · {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </div>
+
+                  {waPreviewTab === "report" ? (
+                    <div className="wa-msg-bubble">
+                      <div style={{ fontWeight: 800, color: "#25d366", marginBottom: "0.4rem" }}>
+                        📊 *DAILY SUBMISSION STATUS REPORT*
+                      </div>
+                      <div>📅 *Date:* {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} | ⏰ *Time:* {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
+                      <div style={{ opacity: 0.7 }}>━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <strong>✅ Submitted Students ({users.filter(u => u.completed).length}):</strong><br/>
+                        {users.filter(u => u.completed).slice(0, 4).map((u, i) => (
+                          <div key={i}>• {u.registeredName || u.name} (🔥 {u.streak || 0}d)</div>
+                        ))}
+                        {users.filter(u => u.completed).length === 0 && <em>No submissions recorded yet today.</em>}
+                      </div>
+
+                      <div style={{ marginTop: "0.5rem" }}>
+                        <strong>⏳ Pending Students ({users.filter(u => !u.completed).length} remaining):</strong><br/>
+                        {users.filter(u => !u.completed).slice(0, 4).map((u, i) => (
+                          <div key={i}>{i + 1}. {u.registeredName || u.name}</div>
+                        ))}
+                        {users.filter(u => !u.completed).length > 4 && <div>...and {users.filter(u => !u.completed).length - 4} more</div>}
+                      </div>
+
+                      <div style={{ marginTop: "0.5rem" }}>
+                        📈 *Class Progress:* {users.length > 0 ? Math.round((users.filter(u => u.completed).length / users.length) * 100) : 0}% ▰▰▱▱▱▱▱▱▱▱<br/>
+                        ⭐ *Top Points Today:* {users.sort((a,b) => (b.monthlyScore||0) - (a.monthlyScore||0))[0]?.name || "Leader"} ({users.sort((a,b) => (b.monthlyScore||0) - (a.monthlyScore||0))[0]?.monthlyScore || 0} pts)
+                      </div>
+
+                      <div style={{ marginTop: "0.5rem", color: "#53bdeb" }}>
+                        🚀 *Submit here:* https://speak-shine.app
+                      </div>
+
+                      <div className="wa-msg-time">
+                        {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                        <span style={{ color: "#53bdeb" }}>✓✓</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="wa-msg-bubble">
+                      <div style={{ fontWeight: 800, color: "#25d366", marginBottom: "0.4rem" }}>
+                        🎯 *SPEAK &amp; SHINE — DAILY CHALLENGE*
+                      </div>
+                      <div>📅 *Date:* {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                      <div style={{ opacity: 0.7 }}>━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+
+                      <div style={{ marginTop: "0.4rem" }}>
+                        📌 *Category:* {waStatus?.todayQuestion?.category || dash?.today?.category || "Speaking Practice"}<br/>
+                        💬 *Topic:* {waStatus?.todayQuestion?.topic || dash?.today?.topic || "Daily Routine"}<br/><br/>
+                        📝 *Challenge:*<br/>
+                        "{waStatus?.todayQuestion?.imageInstructions || waStatus?.todayQuestion?.question || dash?.today?.question || "No daily challenge published yet."}"
+                      </div>
+
+                      <div style={{ marginTop: "0.5rem", color: "#53bdeb" }}>
+                        🚀 *Record and submit your 1-5 min video on the portal!*
+                      </div>
+
+                      <div className="wa-msg-time">
+                        {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                        <span style={{ color: "#53bdeb" }}>✓✓</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.35rem" }}>
-                Auto-sends every morning at <strong style={{ color: "var(--accent)" }}>{settings?.posterSendTime || "08:00"} IST</strong>
+
+              {/* Action Buttons Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                <button
+                  className="btn-primary"
+                  style={{
+                    padding: "0.85rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.45rem",
+                  }}
+                  disabled={!waStatus?.isConnected || waSendingPoster}
+                  onClick={handleSendPosterToGroup}
+                >
+                  {waSendingPoster ? "⏳ Sending Poster..." : "🚀 Broadcast Poster Now"}
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  style={{
+                    padding: "0.85rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.45rem",
+                    border: "1px solid rgba(124, 111, 255, 0.4)",
+                    background: "rgba(124, 111, 255, 0.14)",
+                    color: "#c084fc",
+                  }}
+                  disabled={!waStatus?.isConnected || waSendingReport}
+                  onClick={handleSendSubmissionReportToGroup}
+                >
+                  {waSendingReport ? "⏳ Sending Report..." : "📊 Broadcast Report Now"}
+                </button>
+              </div>
+
+              {/* Configure Timers Shortcut */}
+              <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => { setTab("settings"); setSettingsSubTab("schedules"); }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#a5b4fc",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  ⚙️ Configure Automated Multi-Slot Timers &amp; Custom Message Templates →
+                </button>
               </div>
             </div>
-
-            {/* Today's Question / Task Preview */}
-            <div style={{
-              padding: "1rem",
-              borderRadius: 12,
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              marginBottom: "1.5rem"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem", flexWrap: "wrap", gap: "0.4rem" }}>
-                <span style={{
-                  fontSize: "0.74rem",
-                  padding: "2px 8px",
-                  borderRadius: 6,
-                  background: waStatus?.todayQuestion?.contentType === "picture_description"
-                    ? "rgba(56, 189, 248, 0.2)"
-                    : waStatus?.todayQuestion?.contentType === "story_audio"
-                    ? "rgba(167, 139, 250, 0.2)"
-                    : "rgba(124, 111, 255, 0.2)",
-                  color: waStatus?.todayQuestion?.contentType === "picture_description"
-                    ? "#38bdf8"
-                    : waStatus?.todayQuestion?.contentType === "story_audio"
-                    ? "#a78bfa"
-                    : "#c084fc",
-                  fontWeight: 700,
-                  letterSpacing: 0.5,
-                  textTransform: "uppercase"
-                }}>
-                  {waStatus?.todayQuestion?.contentType === "picture_description"
-                    ? "🖼️ Picture Description"
-                    : waStatus?.todayQuestion?.contentType === "story_audio"
-                    ? "🎧 Story Summary"
-                    : "💬 Speaking Question"}
-                </span>
-
-                {waStatus?.todayQuestion?.category && (
-                  <span style={{
-                    fontSize: "0.72rem",
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    background: "rgba(255, 255, 255, 0.08)",
-                    color: "#e2e8f0",
-                    fontWeight: 600
-                  }}>
-                    {waStatus.todayQuestion.category}
-                  </span>
-                )}
-              </div>
-
-              {/* Picture thumbnail if picture challenge */}
-              {waStatus?.todayQuestion?.imageUrl && (
-                <div style={{ marginBottom: "0.75rem", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", maxHeight: 180 }}>
-                  <img
-                    src={waStatus.todayQuestion.imageUrl}
-                    alt="Challenge Photo"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                  />
-                </div>
-              )}
-
-              {/* Audio badge if story challenge */}
-              {waStatus?.todayQuestion?.audioUrl && (
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: 8,
-                  background: "rgba(167, 139, 250, 0.12)",
-                  border: "1px solid rgba(167, 139, 250, 0.3)",
-                  marginBottom: "0.75rem",
-                  fontSize: "0.8rem",
-                  color: "#c084fc",
-                  fontWeight: 600
-                }}>
-                  🎵 Audio Story Attached (will be sent as voice/audio to group)
-                </div>
-              )}
-
-              <div style={{ fontWeight: 700, color: "#fff", fontSize: "1.05rem", marginBottom: "0.35rem" }}>
-                {waStatus?.todayQuestion?.topic || dash?.today?.topic || "Speaking Practice"}
-              </div>
-              <div style={{ color: "var(--muted)", fontSize: "0.88rem", lineHeight: 1.45 }}>
-                {waStatus?.todayQuestion?.imageInstructions || waStatus?.todayQuestion?.question || dash?.today?.question || "No daily challenge published yet."}
-              </div>
-            </div>
-
-            {/* Send Button */}
-            <button
-              className="btn-primary"
-              style={{
-                width: "100%",
-                padding: "0.9rem",
-                fontSize: "1rem",
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.5rem",
-              }}
-              disabled={!waStatus?.isConnected || waSendingPoster}
-              onClick={handleSendPosterToGroup}
-            >
-              {waSendingPoster
-                ? "⏳ Sending to WhatsApp Group..."
-                : waStatus?.todayQuestion?.contentType === "picture_description"
-                ? "🚀 Send Picture Challenge to Group Now"
-                : waStatus?.todayQuestion?.contentType === "story_audio"
-                ? "🚀 Send Story & Audio to Group Now"
-                : "🚀 Send Today's Poster to Group Now"}
-            </button>
-
-            {/* Submission Status Report to Group */}
-            <div style={{
-              marginTop: "1.5rem",
-              paddingTop: "1.25rem",
-              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
-                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  📊 Daily Submission Status Report
-                </div>
-                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 6, background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", fontWeight: 700 }}>
-                    ✅ {waStatus?.submissionSummary?.submittedCount ?? 0} Submitted
-                  </span>
-                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 6, background: "rgba(248, 113, 113, 0.15)", color: "#f87171", fontWeight: 700 }}>
-                    ⏳ {waStatus?.submissionSummary?.pendingCount ?? 0} Pending
-                  </span>
-                  <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 6, background: "rgba(124, 111, 255, 0.15)", color: "#a78bfa", fontWeight: 700 }}>
-                    👥 {waStatus?.submissionSummary?.totalPaid ?? 0} Paid Students
-                  </span>
-                </div>
-              </div>
-
-              <p style={{ color: "var(--muted)", fontSize: "0.82rem", margin: "0 0 1rem", lineHeight: 1.45 }}>
-                Send a formatted WhatsApp message to your group listing all <strong>Submitted Paid Students</strong> (with streaks) and <strong>Pending Paid Students</strong> who still need to submit today.
-              </p>
-
-              <button
-                className="btn-secondary"
-                style={{
-                  width: "100%",
-                  padding: "0.8rem",
-                  fontSize: "0.92rem",
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                  border: "1px solid rgba(124, 111, 255, 0.4)",
-                  background: "rgba(124, 111, 255, 0.12)",
-                  color: "#c084fc",
-                }}
-                disabled={!waStatus?.isConnected || waSendingReport}
-                onClick={handleSendSubmissionReportToGroup}
-              >
-                {waSendingReport ? "⏳ Sending Submission Report..." : "📊 Send Submission Report to WhatsApp Group Now"}
-              </button>
-            </div>
-
-            {!waStatus?.isConnected && (
-              <div style={{ color: "#fbbf24", fontSize: "0.8rem", marginTop: "0.6rem", textAlign: "center" }}>
-                ⚠️ Connect your WhatsApp number above to enable sending.
-              </div>
-            )}
           </div>
         </div>
       )}
