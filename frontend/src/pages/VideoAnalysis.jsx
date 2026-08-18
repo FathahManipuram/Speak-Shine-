@@ -3643,6 +3643,36 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl }) {
                   </div>
                 </div>
               ))}
+
+              {Array.isArray(a.vocabularyUsed) && a.vocabularyUsed.length > 0 && (
+                <div style={{
+                  marginTop: "0.25rem",
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: 10,
+                  background: "rgba(167, 139, 250, 0.08)",
+                  border: "1px solid rgba(167, 139, 250, 0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                  flexWrap: "wrap",
+                  fontSize: "0.74rem",
+                }}>
+                  <span style={{ color: "#c4b5fd", fontWeight: 700 }}>🎯 Target Words Recognized:</span>
+                  {a.vocabularyUsed.map((w, i) => (
+                    <span key={i} style={{
+                      background: "rgba(74, 222, 128, 0.15)",
+                      border: "1px solid rgba(74, 222, 128, 0.35)",
+                      color: "#4ade80",
+                      padding: "1px 7px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      fontSize: "0.72rem",
+                    }}>
+                      ✓ {w}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

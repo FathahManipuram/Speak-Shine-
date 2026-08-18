@@ -15,7 +15,7 @@ import { getVideoDuration } from "../ai/videoProcessor.js";
 import { scanFile } from "../ai/virusScanner.js";
 import { validateVideoCodecs } from "../ai/videoValidator.js";
 import { moderateVideo } from "../ai/contentModerator.js";
-import { calculateCompositeScore } from "./submitGate.js";
+import { calculateCompositeScore, matchVocabularyInTranscript } from "./submitGate.js";
 import { checkSecurityCache, saveSecurityCache } from "../ai/securityCache.js";
 import { fileTypeFromBuffer, fileTypeFromFile } from "file-type";
 import fs from "fs";
@@ -1046,7 +1046,7 @@ async function prepareReportAnalysis(report) {
   // Compatibility for reports created before challengeType/picture breakdown
   // fields were persisted. Do not change the stored score; only hydrate the
   // display payload exactly as the individual report endpoint does.
-  const status = analysis && !challengeType ? await Status.findOne().lean() : null;
+  const status = analysis ? await Status.findOne().lean() : null;
   if (!challengeType && analysis && status?.isPictureDescriptionDay) {
     const source = analysis.toObject ? analysis.toObject() : { ...analysis };
     const { breakdown } = calculateCompositeScore({
@@ -1061,6 +1061,70 @@ async function prepareReportAnalysis(report) {
     });
     analysis = { ...source, scoreBreakdown: breakdown };
     challengeType = "picture_description";
+  }
+
+  // Self-heal vocabulary matching if transcript exists and today's vocabulary has words
+  if (analysis && analysis.transcription && status?.todayVocabulary?.length > 0) {
+    const todayVocab = status.todayVocabulary || [];
+    const rechecked = matchVocabularyInTranscript(analysis.transcription, todayVocab, analysis);
+    const existingCount = Array.isArray(analysis.vocabularyUsed) ? analysis.vocabularyUsed.length : 0;
+    
+    if (rechecked.length > existingCount) {
+      const source = analysis.toObject ? analysis.toObject() : { ...analysis };
+      source.vocabularyUsed = rechecked;
+      
+      const isPic = challengeType === "picture_description" || status?.isPictureDescriptionDay;
+      const isStory = challengeType === "story_summary" || status?.isStorySummaryDay;
+      const configuredWordCount = isPic
+        ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
+        : isStory
+        ? (status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5)
+        : (status?.vocabNormalWordCount ?? status?.vocabWordCount ?? 5);
+      const configuredRequiredCount = isPic
+        ? (status?.vocabPictureRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : isStory
+        ? (status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3)
+        : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
+      const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
+      const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
+
+      const { score, breakdown } = calculateCompositeScore({
+        durationSeconds: report.videoDuration || 0,
+        maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : (status?.durationDefaultFull ?? 300),
+        vocabularyUsed: rechecked,
+        totalVocabWords: effectiveTotalWords,
+        requiredVocabWords: effectiveRequiredWords,
+        topicRelevance: source.topicRelevance ?? null,
+        analysis: source,
+        isPictureDescription: isPic || false,
+      });
+
+      source.compositeScore = score;
+      source.scoreBreakdown = isPic ? {
+        ...breakdown,
+        maxCommunication: 30,
+        maxContent: 40,
+        maxVocabulary: 10,
+        maxDuration: 20,
+      } : {
+        ...breakdown,
+        maxLength: 33.33,
+        maxVocab: 33.33,
+        maxTopic: breakdown.isSpecialDay ? 0 : 16.67,
+        maxComm: breakdown.isSpecialDay ? 33.34 : 16.67,
+      };
+
+      // Persist the corrected analysis in database asynchronously
+      VideoReport.findByIdAndUpdate(report._id, {
+        $set: {
+          "analysis.vocabularyUsed": rechecked,
+          "analysis.compositeScore": score,
+          "analysis.scoreBreakdown": source.scoreBreakdown,
+        }
+      }).catch(err => console.warn("[VideoService] Failed to persist self-healed vocab score:", err.message));
+
+      analysis = source;
+    }
   }
 
   // The community endpoint receives a lean report and must expose the same

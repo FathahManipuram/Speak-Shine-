@@ -435,25 +435,214 @@ export function calculateCompositeScore({
 }
 
 /**
- * Match vocabulary words against a transcript (case-insensitive whole-word).
+ * Extract root stem of an English word by removing common inflectional & derivational suffixes.
+ */
+function getWordStem(word) {
+  let w = (word || "").trim().toLowerCase();
+  if (w.length <= 3) return w;
+  
+  const suffixes = [
+    "ational", "ization", "isation", "fulness", "ousness", "ability", "ibility",
+    "ation", "ition", "ution", "ement", "iment", "ance", "ence", "able", "ible",
+    "ment", "ness", "ship", "ical", "ally", "ized", "ised", "izes", "ises",
+    "ting", "sing", "ning", "ring", "ling", "ping", "ming", "king", "ding",
+    "ing", "ies", "ied", "ive", "ity", "ous", "ful", "less", "est", "ist",
+    "ism", "ant", "ent", "ate", "ize", "ise", "ted", "sed", "ned", "red",
+    "led", "ped", "med", "ked", "ded", "ed", "es", "ly", "er", "or", "al", "ic", "y", "s"
+  ];
+  
+  for (const suf of suffixes) {
+    if (w.endsWith(suf) && (w.length - suf.length) >= 3) {
+      w = w.slice(0, -suf.length);
+      break;
+    }
+  }
+  return w;
+}
+
+/**
+ * Common English morphological variations / synonyms dictionary for vocabulary matching.
+ */
+const IRREGULAR_VOCAB_MAP = {
+  resilience: ["resilient", "resiliently", "resilience"],
+  resilient: ["resilience", "resiliently", "resilient"],
+  perseverance: ["persevere", "persevered", "persevering", "perseverance"],
+  persevere: ["perseverance", "persevered", "persevering", "persevere"],
+  strategy: ["strategies", "strategic", "strategically", "strategy"],
+  priority: ["priorities", "prioritize", "prioritizing", "prioritized", "priority"],
+  fluent: ["fluency", "fluently", "fluent"],
+  fluency: ["fluent", "fluently", "fluency"],
+  confident: ["confidence", "confidently", "confident"],
+  confidence: ["confident", "confidently", "confidence"],
+  enthusiastic: ["enthusiasm", "enthusiastically", "enthusiastic"],
+  enthusiasm: ["enthusiastic", "enthusiastically", "enthusiasm"],
+  patient: ["patience", "patiently", "patient"],
+  patience: ["patient", "patiently", "patience"],
+  inspire: ["inspiration", "inspirational", "inspiring", "inspired", "inspire"],
+  inspiration: ["inspire", "inspirational", "inspiring", "inspired", "inspiration"],
+  innovative: ["innovation", "innovate", "innovating", "innovated", "innovative"],
+  innovation: ["innovative", "innovate", "innovating", "innovated", "innovation"],
+  collaborate: ["collaboration", "collaborative", "collaborated", "collaborating", "collaborate"],
+  collaboration: ["collaborate", "collaborative", "collaborated", "collaborating", "collaboration"],
+  articulate: ["articulation", "articulating", "articulated", "articulate"],
+  articulation: ["articulate", "articulating", "articulated", "articulation"],
+  achieve: ["achievement", "achievements", "achieved", "achieving", "achieve"],
+  achievement: ["achieve", "achievements", "achieved", "achieving", "achievement"],
+  dedicate: ["dedication", "dedicated", "dedicating", "dedicate"],
+  dedication: ["dedicate", "dedicated", "dedicating", "dedication"],
+  efficient: ["efficiency", "efficiently", "efficient"],
+  efficiency: ["efficient", "efficiently", "efficiency"],
+  adaptable: ["adaptability", "adaptation", "adapted", "adapting", "adapt"],
+  adaptability: ["adaptable", "adaptation", "adapted", "adapting", "adapt"],
+};
+
+function levenshteinDist(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Match vocabulary words against a transcript with morphological, multi-word,
+ * hyphenation, and stem-aware tolerance.
  * Returns array of matched word strings.
  *
  * @param {string}   transcript  - full spoken text
- * @param {Array<{word: string}>} vocabWords - today's vocabulary list
+ * @param {Array<{word: string}|string>} vocabWords - today's vocabulary list
+ * @param {Object}   [extraAnalysis] - optional analysis object with vocabularyHighlights
  * @returns {string[]}
  */
-export function matchVocabularyInTranscript(transcript, vocabWords) {
+export function matchVocabularyInTranscript(transcript, vocabWords, extraAnalysis = null) {
   if (!transcript || !Array.isArray(vocabWords) || vocabWords.length === 0) return [];
-  const lower = transcript.toLowerCase();
+
+  const rawLower = transcript.toLowerCase();
+  const cleanTranscript = rawLower.replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ");
+  const cleanSpaced = cleanTranscript.replace(/-/g, " ");
+  const transcriptWords = cleanSpaced.split(/\s+/).filter((w) => w.length > 0);
+
+  // Collect AI-detected strong vocabulary words if available
+  const strongHighlights = Array.isArray(extraAnalysis?.vocabularyHighlights?.strong)
+    ? extraAnalysis.vocabularyHighlights.strong.map((w) => String(w).toLowerCase().trim())
+    : [];
+
   const matched = [];
+
   for (const item of vocabWords) {
-    const w = (item.word || "").trim().toLowerCase();
-    if (!w) continue;
-    // Whole-word match — handles multi-word phrases too
-    const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`\\b${escaped}\\b`);
-    if (regex.test(lower)) matched.push(item.word.trim());
+    const rawWord = typeof item === "string" ? item : (item?.word || item?.term || item?.name || "");
+    const cleanWord = (rawWord || "").trim().toLowerCase();
+    if (!cleanWord) continue;
+
+    const displayWord = typeof item === "string" ? item.trim() : (item?.word || cleanWord).trim();
+    let isFound = false;
+
+    // Check if AI strong highlights explicitly caught this word
+    if (strongHighlights.length > 0) {
+      if (strongHighlights.some((h) => h === cleanWord || h.includes(cleanWord) || cleanWord.includes(h))) {
+        isFound = true;
+      }
+    }
+
+    if (!isFound) {
+      // Multi-word phrase (e.g. "time management", "self-discipline", "problem solving")
+      if (cleanWord.includes(" ") || cleanWord.includes("-")) {
+        const phraseSpaced = cleanWord.replace(/[-_]/g, " ").replace(/\s+/g, " ");
+        const phraseHyphen = cleanWord.replace(/[\s_]/g, "-");
+
+        if (
+          cleanTranscript.includes(phraseSpaced) ||
+          cleanTranscript.includes(phraseHyphen) ||
+          cleanSpaced.includes(phraseSpaced) ||
+          rawLower.includes(cleanWord)
+        ) {
+          isFound = true;
+        } else {
+          // Check stem phrase: e.g. "problem solving" vs "problem solved" / "problem solver"
+          const parts = phraseSpaced.split(" ");
+          if (parts.length === 2) {
+            const stem0 = getWordStem(parts[0]);
+            const stem1 = getWordStem(parts[1]);
+            const phraseRegex = new RegExp(`\\b${stem0}[a-z]*\\s+${stem1}[a-z]*\\b`, "i");
+            if (phraseRegex.test(cleanSpaced)) {
+              isFound = true;
+            }
+          }
+        }
+      } else {
+        // Single word matching
+        // 1. Direct whole-word regex match
+        const escaped = cleanWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const directRegex = new RegExp(`\\b${escaped}\\b`, "i");
+        if (directRegex.test(cleanSpaced) || directRegex.test(rawLower)) {
+          isFound = true;
+        }
+
+        // 2. Stem / Morphological variant matching (e.g. collaborate -> collaborated, collaborating, collaboration)
+        if (!isFound && cleanWord.length >= 4) {
+          const stem = getWordStem(cleanWord);
+          if (stem && stem.length >= 3) {
+            const stemRegex = new RegExp(`\\b${stem}[a-z]{0,8}\\b`, "i");
+            if (stemRegex.test(cleanSpaced)) {
+              isFound = true;
+            }
+          }
+        }
+
+        // 3. Common English irregular variations table
+        if (!isFound) {
+          const variations = IRREGULAR_VOCAB_MAP[cleanWord] || [];
+          for (const v of variations) {
+            const vRegex = new RegExp(`\\b${v}\\b`, "i");
+            if (vRegex.test(cleanSpaced)) {
+              isFound = true;
+              break;
+            }
+          }
+        }
+
+        // 4. Fuzzy speech-to-text typo tolerance (Levenshtein distance <= 1 for 5+ char stems/words)
+        if (!isFound && cleanWord.length >= 5) {
+          const targetStem = getWordStem(cleanWord);
+          for (const tw of transcriptWords) {
+            // Direct word typo check (e.g. "articualte" vs "articulate")
+            if (Math.abs(tw.length - cleanWord.length) <= 1 && levenshteinDist(tw, cleanWord) <= 1) {
+              isFound = true;
+              break;
+            }
+            // Stem-level typo check (e.g. "colaboration" -> stem "colaborat" vs targetStem "collaborat")
+            if (targetStem && targetStem.length >= 4) {
+              const twStem = getWordStem(tw);
+              if (twStem && Math.abs(twStem.length - targetStem.length) <= 1 && levenshteinDist(twStem, targetStem) <= 1) {
+                isFound = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (isFound) {
+      matched.push(displayWord);
+    }
   }
+
   return matched;
 }
 

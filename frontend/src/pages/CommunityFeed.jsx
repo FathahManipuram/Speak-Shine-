@@ -236,6 +236,36 @@ function DetailedReport({ a }) {
                   </div>
                 </div>
               ))}
+
+              {Array.isArray(a.vocabularyUsed) && a.vocabularyUsed.length > 0 && (
+                <div style={{
+                  marginTop: "0.2rem",
+                  padding: "0.4rem 0.65rem",
+                  borderRadius: 8,
+                  background: "rgba(167, 139, 250, 0.08)",
+                  border: "1px solid rgba(167, 139, 250, 0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  flexWrap: "wrap",
+                  fontSize: "0.72rem",
+                }}>
+                  <span style={{ color: "#c4b5fd", fontWeight: 700 }}>🎯 Target Words Recognized:</span>
+                  {a.vocabularyUsed.map((w, i) => (
+                    <span key={i} style={{
+                      background: "rgba(74, 222, 128, 0.15)",
+                      border: "1px solid rgba(74, 222, 128, 0.35)",
+                      color: "#4ade80",
+                      padding: "1px 6px",
+                      borderRadius: 6,
+                      fontWeight: 700,
+                      fontSize: "0.7rem",
+                    }}>
+                      ✓ {w}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

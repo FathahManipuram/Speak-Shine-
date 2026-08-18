@@ -307,7 +307,7 @@ async function processJob(job) {
         : (status?.vocabNormalRequiredCount ?? status?.vocabRequiredCount ?? 3);
       const transcript = result.analysis?.transcription || "";
       if (todayVocab.length > 0 && transcript) {
-        vocabularyUsed = matchVocabularyInTranscript(transcript, todayVocab);
+        vocabularyUsed = matchVocabularyInTranscript(transcript, todayVocab, result.analysis);
         const requiredCount = Math.min(
           configuredRequiredCount,
           todayVocab.length
