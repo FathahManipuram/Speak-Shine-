@@ -174,6 +174,9 @@ async function publishAutoPictureDescription() {
     }, { upsert: true });
 
     console.log(`[QuestionScheduler] ✅ Picture Description published: "${challenge.title}"`);
+    await ensureTodayVocabulary().catch(err =>
+      console.warn("[QuestionScheduler] Vocabulary generation failed (non-fatal):", err.message)
+    );
     dispatchPosterToWhatsApp({ topic: challenge.title, question: challenge.instructions, category: "Picture Description" });
     return { published: true, type: "picture_description", topic: challenge.title, source: "auto" };
   } catch (err) {
@@ -225,6 +228,9 @@ export async function publishAutoSaturdayStory() {
     }, { upsert: true });
 
     console.log(`[QuestionScheduler] ✅ Saturday story published: "${story.topic}"`);
+    await ensureTodayVocabulary().catch(err =>
+      console.warn("[QuestionScheduler] Vocabulary generation failed (non-fatal):", err.message)
+    );
     dispatchPosterToWhatsApp({ topic: story.topic, question: story.question, category: STORY_SUMMARY_CATEGORY });
     return { published: true, type: "story_summary", topic: story.topic, source: "auto" };
   } catch (err) {
@@ -609,8 +615,8 @@ export async function publishDailyQuestion() {
 
     await Question.findByIdAndDelete(question._id);
     
-    // Generate vocabulary words for today's question (fire-and-forget, non-blocking)
-    ensureTodayVocabulary().catch(err =>
+    // Generate vocabulary words for today's question before poster dispatch
+    await ensureTodayVocabulary().catch(err =>
       console.warn("[QuestionScheduler] Vocabulary generation failed (non-fatal):", err.message)
     );
 
