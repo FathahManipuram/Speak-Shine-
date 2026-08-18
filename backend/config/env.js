@@ -93,6 +93,7 @@ const env = {
   GROQ_VISION_MODEL: getVar('GROQ_VISION_MODEL', 'meta-llama/llama-4-scout-17b-16e-instruct'),
   ELEVENLABS_API_KEY: getVar('ELEVENLABS_API_KEY', ''),
   PEXELS_API_KEY: getVar('PEXELS_API_KEY', ''),
+  TARGET_GROUP: getVar('TARGET_GROUP', ''),
 
   FRONTEND_URL: getVar('FRONTEND_URL', DEFAULTS.FRONTEND_URL),
   APP_URL: getVar('APP_URL', DEFAULTS.APP_URL),

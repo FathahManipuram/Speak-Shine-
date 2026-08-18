@@ -1,54 +1,18 @@
-/**
- * Server-side SVG poster generator — modern, high-definition Speak & Shine visual challenges.
- */
-
-import Status from "../models/statusSchema.js";
+import fs from "fs";
 import sharp from "sharp";
 
-// ── Theme map ─────────────────────────────────────────────────────────────────
 const THEMES = {
-  "Daily Life":          { primary: "#4ade80", secondary: "#22c55e", glow: "34,197,94",   badgeBg: "rgba(34,197,94,0.18)" },
-  "English Growth":      { primary: "#fbbf24", secondary: "#f59e0b", glow: "251,191,36",  badgeBg: "rgba(251,191,36,0.18)" },
-  "Free Talk":           { primary: "#38bdf8", secondary: "#0284c7", glow: "56,189,248",  badgeBg: "rgba(56,189,248,0.18)" },
-  "Fun Topic":           { primary: "#fb923c", secondary: "#ea580c", glow: "251,146,60",  badgeBg: "rgba(251,146,60,0.18)" },
-  "Future Goals":        { primary: "#c084fc", secondary: "#9333ea", glow: "192,132,252", badgeBg: "rgba(192,132,252,0.18)" },
-  "Opinion":             { primary: "#f472b6", secondary: "#db2777", glow: "244,114,182", badgeBg: "rgba(244,114,182,0.18)" },
-  "Personal Experience": { primary: "#fb7185", secondary: "#e11d48", glow: "251,113,133", badgeBg: "rgba(251,113,133,0.18)" },
-  "Picture Description": { primary: "#38bdf8", secondary: "#818cf8", glow: "99,102,241",   badgeBg: "rgba(99,102,241,0.18)" },
-  "Story Summary":       { primary: "#a78bfa", secondary: "#7c3aed", glow: "167,139,250", badgeBg: "rgba(167,139,250,0.18)" },
-  "Monthly Goals":       { primary: "#34d399", secondary: "#059669", glow: "52,211,153",  badgeBg: "rgba(52,211,153,0.18)" },
-  "Monthly Reflection":  { primary: "#f59e0b", secondary: "#d97706", glow: "245,158,11",  badgeBg: "rgba(245,158,11,0.18)" },
-  "default":             { primary: "#c084fc", secondary: "#9333ea", glow: "192,132,252", badgeBg: "rgba(192,132,252,0.18)" },
+  "Daily Life":          { primary: "#4ade80", secondary: "#22c55e", glow: "34,197,94", badgeBg: "rgba(34,197,94,0.18)", accentText: "#4ade80" },
+  "English Growth":      { primary: "#fbbf24", secondary: "#f59e0b", glow: "251,191,36", badgeBg: "rgba(251,191,36,0.18)", accentText: "#fbbf24" },
+  "Free Talk":           { primary: "#38bdf8", secondary: "#0284c7", glow: "56,189,248", badgeBg: "rgba(56,189,248,0.18)", accentText: "#38bdf8" },
+  "Fun Topic":           { primary: "#fb923c", secondary: "#ea580c", glow: "251,146,60", badgeBg: "rgba(251,146,60,0.18)", accentText: "#fb923c" },
+  "Future Goals":        { primary: "#c084fc", secondary: "#9333ea", glow: "192,132,252", badgeBg: "rgba(192,132,252,0.18)", accentText: "#c084fc" },
+  "Opinion":             { primary: "#f472b6", secondary: "#db2777", glow: "244,114,182", badgeBg: "rgba(244,114,182,0.18)", accentText: "#f472b6" },
+  "Personal Experience": { primary: "#fb7185", secondary: "#e11d48", glow: "251,113,133", badgeBg: "rgba(251,113,133,0.18)", accentText: "#fb7185" },
+  "Picture Description": { primary: "#38bdf8", secondary: "#818cf8", glow: "99,102,241", badgeBg: "rgba(99,102,241,0.18)", accentText: "#38bdf8" },
+  "Story Summary":       { primary: "#a78bfa", secondary: "#7c3aed", glow: "167,139,250", badgeBg: "rgba(167,139,250,0.18)", accentText: "#a78bfa" },
+  "default":             { primary: "#38bdf8", secondary: "#6366f1", glow: "99,102,241", badgeBg: "rgba(99,102,241,0.18)", accentText: "#38bdf8" },
 };
-
-const KEYWORD_MAP = [
-  { keywords: ["daily", "routine", "morning", "evening"],           theme: "Daily Life" },
-  { keywords: ["english", "grammar", "language", "vocab", "speak"], theme: "English Growth" },
-  { keywords: ["free", "talk", "chat", "casual"],                   theme: "Free Talk" },
-  { keywords: ["fun", "funny", "humor", "joke"],                    theme: "Fun Topic" },
-  { keywords: ["future", "goal", "dream", "plan", "ambition", "retire"], theme: "Future Goals" },
-  { keywords: ["opinion", "think", "view", "perspective", "believe"], theme: "Opinion" },
-  { keywords: ["personal", "experience", "story", "memory"],        theme: "Personal Experience" },
-  { keywords: ["picture", "image", "photo", "describe"],            theme: "Picture Description" },
-  { keywords: ["story", "listen", "audio"],                         theme: "Story Summary" },
-];
-
-function getTheme(category, contentType) {
-  if (contentType === "picture_description") return THEMES["Picture Description"];
-  if (contentType === "story_audio") return THEMES["Story Summary"];
-  if (!category) return THEMES.default;
-  const cat = category.toLowerCase().trim();
-  const exactKey = Object.keys(THEMES).find(k => k.toLowerCase() === cat);
-  if (exactKey) return THEMES[exactKey];
-  const partialKey = Object.keys(THEMES).find(k =>
-    k !== "default" && (cat.includes(k.toLowerCase()) || k.toLowerCase().includes(cat))
-  );
-  if (partialKey) return THEMES[partialKey];
-  for (const { keywords, theme } of KEYWORD_MAP) {
-    if (keywords.some(kw => cat.includes(kw))) return THEMES[theme];
-  }
-  return THEMES.default;
-}
 
 function esc(str) {
   return String(str || "")
@@ -75,18 +39,15 @@ function wrapLines(text, maxChars) {
   return lines;
 }
 
-/**
- * Generate an SVG poster that matches the Speak & Shine HD challenge design.
- */
 export function generateSVGPoster({
   topic = "Speaking Practice",
   question = "",
-  category = "General",
+  category = "Personal Experience",
   contentType = "question",
   vocabulary = [],
   vocabRequiredCount = 3,
 }) {
-  const theme = getTheme(category || topic, contentType);
+  const theme = THEMES[category] || THEMES.default;
 
   const W = 900;
   const PAD = 48;
@@ -308,83 +269,30 @@ export function generateSVGPoster({
   <rect x="0" y="${H - 4}" width="${W}" height="4" fill="url(#titleGrad)"/>
 </svg>`;
 
-  const b64 = Buffer.from(svg).toString("base64");
-  return `data:image/svg+xml;base64,${b64}`;
+  return svg;
 }
 
-/**
- * Ensure a poster exists in DB for today's question.
- * If the WhatsApp bot already stored one, use it as-is.
- * Only generate a new one if there's genuinely no poster stored.
- */
-export async function ensurePoster(status) {
-  if (!status || !status.todayQuestion) return status;
+async function test() {
+  const sampleVocabulary = [
+    { word: "self-discipline", meaning: "the ability to control actions and stay focused on goals", example: "My self-discipline helped me practice the guitar daily without skipping lessons." },
+    { word: "time management", meaning: "organizing tasks efficiently to use time wisely", example: "Good time management lets me balance work, study, and hobbies each week." },
+    { word: "problem-solving", meaning: "finding effective solutions to challenges or obstacles", example: "Problem-solving skills I learned from DIY projects saved me money on repairs." },
+    { word: "critical thinking", meaning: "analyzing information objectively to form reasoned judgments", example: "Critical thinking helped me evaluate online advice before trying it at home." },
+    { word: "hands-on", meaning: "learning by doing rather than just theoretical study", example: "A hands-on approach taught me how to fix a leaky faucet quickly." },
+  ];
 
-  // ── If poster exists and not expired, use it directly ──────────────────
-  if (status.todayPosterImage) {
-    const isExpired = status.posterExpiresAt && new Date() > new Date(status.posterExpiresAt);
-    if (!isExpired) return status; // ✅ use bot's poster as-is
-
-    // Expired — clear it so we regenerate below
-    await Status.updateOne({}, { $set: { todayPosterImage: null, posterExpiresAt: null } });
-    status = { ...status, todayPosterImage: null, posterExpiresAt: null };
-  }
-
-  // ── No poster stored — generate one (fallback only) ────────────────────
-  try {
-    const isPicture = status.isPictureDescriptionDay || status.todayContentType === "picture_description";
-    const isStory = status.isStorySummaryDay || status.todayContentType === "story_audio";
-    const vocabRequiredCount = isPicture
-      ? (status.vocabPictureRequiredCount ?? 1)
-      : isStory
-      ? (status.vocabStoryRequiredCount ?? 3)
-      : (status.vocabNormalRequiredCount ?? 3);
-
-    console.log("[Poster] No poster in DB — generating fallback SVG...");
-    const posterDataUri = generateSVGPoster({
-      topic:              status.todayTopic    || "Speaking Practice",
-      question:           status.todayQuestion || "",
-      category:           status.todayCategory || "General",
-      contentType:        status.todayContentType || "question",
-      vocabulary:         status.todayVocabulary || [],
-      vocabRequiredCount: vocabRequiredCount,
-    });
-
-    const expiresAt = new Date(Date.now() + 14 * 60 * 60 * 1000); // 14 hours
-    await Status.updateOne(
-      {},
-      { $set: { todayPosterImage: posterDataUri, posterExpiresAt: expiresAt } }
-    );
-    console.log("[Poster] Fallback poster saved to DB");
-    return { ...status, todayPosterImage: posterDataUri, posterExpiresAt: expiresAt };
-  } catch (err) {
-    console.error("[Poster] Generation failed:", err.message);
-    return status;
-  }
-}
-
-/**
- * Generate a high-resolution PNG poster buffer for sending to WhatsApp.
- * Returns a Buffer containing PNG image data.
- */
-export async function generatePNGPosterBuffer(options = {}) {
-  const svgDataUri = generateSVGPoster({
-    topic:              options.topic || "Speaking Practice",
-    question:           options.question || "",
-    category:           options.category || "General",
-    contentType:        options.contentType || "question",
-    vocabulary:         options.vocabulary || [],
-    vocabRequiredCount: options.vocabRequiredCount || 3,
+  const svg = generateSVGPoster({
+    topic: "Learned Skills",
+    question: "What's the most useful thing you've learned outside school?",
+    category: "Personal Experience",
+    contentType: "question",
+    vocabulary: sampleVocabulary,
+    vocabRequiredCount: 3,
   });
 
-  const base64 = svgDataUri.replace("data:image/svg+xml;base64,", "");
-  const svgBuffer = Buffer.from(base64, "base64");
-
-  // Render SVG to crisp PNG buffer at standard 1.5x density
-  const pngBuffer = await sharp(svgBuffer, { density: 150 })
-    .png({ quality: 95 })
-    .toBuffer();
-
-  return pngBuffer;
+  const png = await sharp(Buffer.from(svg), { density: 150 }).png().toBuffer();
+  fs.writeFileSync("scratch/matched_poster.png", png);
+  console.log("Saved scratch/matched_poster.png, size:", png.length);
 }
 
+test();

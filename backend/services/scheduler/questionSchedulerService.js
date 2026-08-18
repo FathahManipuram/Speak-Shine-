@@ -9,6 +9,20 @@ import { generateAndInsertQuestions } from "../ai/questionGenerator.js";
 import { getDueManualQuestion, getManualQuestionForDate } from "../questions/questionsService.js";
 import { ensureTodayVocabulary } from "../ai/vocabularyGenerator.js";
 
+/**
+ * Sends today's poster to TARGET_GROUP on WhatsApp if connected.
+ */
+async function dispatchPosterToWhatsApp(details = {}) {
+  try {
+    if (process.env.TARGET_GROUP) {
+      const { sendDailyPosterToGroup } = await import("../whatsapp/whatsappService.js");
+      await sendDailyPosterToGroup(details);
+    }
+  } catch (err) {
+    console.warn("[QuestionScheduler] WhatsApp poster auto-send skipped/failed:", err.message);
+  }
+}
+
 // Monthly reflection questions — shown on the last day of every month
 export const MONTHLY_REFLECTION_QUESTIONS = [
   "How many reviews did you attend this month?",
@@ -160,6 +174,7 @@ async function publishAutoPictureDescription() {
     }, { upsert: true });
 
     console.log(`[QuestionScheduler] ✅ Picture Description published: "${challenge.title}"`);
+    dispatchPosterToWhatsApp({ topic: challenge.title, question: challenge.instructions, category: "Picture Description" });
     return { published: true, type: "picture_description", topic: challenge.title, source: "auto" };
   } catch (err) {
     console.error("[QuestionScheduler] Picture Description auto-publish failed:", err.message);
@@ -210,6 +225,7 @@ export async function publishAutoSaturdayStory() {
     }, { upsert: true });
 
     console.log(`[QuestionScheduler] ✅ Saturday story published: "${story.topic}"`);
+    dispatchPosterToWhatsApp({ topic: story.topic, question: story.question, category: STORY_SUMMARY_CATEGORY });
     return { published: true, type: "story_summary", topic: story.topic, source: "auto" };
   } catch (err) {
     console.error("[QuestionScheduler] Saturday story auto-publish failed:", err.message);
@@ -244,6 +260,12 @@ async function publishStoryQuestion(storyQuestion) {
       todayVocabulary: [],
     }
   }, { upsert: true });
+
+  dispatchPosterToWhatsApp({
+    topic: storyQuestion.topic || STORY_SUMMARY_TOPIC,
+    question: storyQuestion.question,
+    category: storyQuestion.category || STORY_SUMMARY_CATEGORY,
+  });
 
   return {
     published: true,
@@ -294,6 +316,12 @@ async function publishPictureDescriptionQuestion(q) {
       todayVocabulary: [],
     }
   }, { upsert: true });
+
+  dispatchPosterToWhatsApp({
+    topic: q.topic,
+    question: q.question,
+    category: q.category || PICTURE_DESCRIPTION_CATEGORY,
+  });
 
   return {
     published: true,
@@ -585,6 +613,12 @@ export async function publishDailyQuestion() {
     ensureTodayVocabulary().catch(err =>
       console.warn("[QuestionScheduler] Vocabulary generation failed (non-fatal):", err.message)
     );
+
+    dispatchPosterToWhatsApp({
+      topic: question.topic,
+      question: question.question,
+      category: question.category,
+    });
 
     return { 
       published: true, 

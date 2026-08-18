@@ -24,16 +24,13 @@ const activePictureTask = (status) => status?.todayContentType === "picture_desc
  * Get poster image - use bot's stored PNG if available, else generate SVG fallback
  */
 function getPosterImage(status) {
-  if (status?.todayPosterImage) {
-    const isExpired = status.posterExpiresAt && new Date() > new Date(status.posterExpiresAt);
-    if (!isExpired) return status.todayPosterImage;
-  }
-  // Fallback: generate SVG with correct category
-  if (!status?.todayQuestion) return null;
+  if (!status?.todayQuestion && !status?.todayTopic) return null;
   return generateSVGPoster({
     topic: status.todayTopic || "Speaking Practice",
-    question: status.todayQuestion,
+    question: status.todayQuestion || "",
     category: status.todayCategory || "General",
+    contentType: status.todayContentType || "question",
+    vocabulary: status.todayVocabulary || [],
   });
 }
 

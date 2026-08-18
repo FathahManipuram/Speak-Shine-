@@ -67,8 +67,9 @@ async function generateChallengeMetadata() {
       body: JSON.stringify({
         model: getTextModel(),
         messages: [{ role: "user", content: GROQ_PROMPT }],
-        temperature: 0.9,
-        max_tokens: 300,
+        temperature: 0.8,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
       }),
     });
 

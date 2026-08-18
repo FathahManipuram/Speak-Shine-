@@ -1,0 +1,492 @@
+/**
+ * backend/services/whatsapp/whatsappService.js
+ *
+ * WhatsApp bot service using @whiskeysockets/baileys.
+ * Links to the user's WhatsApp number via QR code scan and sends
+ * the daily question poster + caption to the configured TARGET_GROUP.
+ */
+
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import makeWASocket, {
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+} from "@whiskeysockets/baileys";
+import { Boom } from "@hapi/boom";
+import pino from "pino";
+import QRCode from "qrcode";
+import qrcodeTerminal from "qrcode-terminal";
+import { generatePNGPosterBuffer } from "../../../api/posterGenerator.js";
+import Status from "../../../models/statusSchema.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const AUTH_DIR = path.resolve(process.cwd(), "auth");
+
+const pinoLogger = pino({ level: "silent" });
+
+let sock = null;
+let isConnected = false;
+let isConnecting = false;
+let currentQR = null;
+let currentQRDataUrl = null;
+let userPhone = null;
+let userJid = null;
+let reconnectTimer = null;
+let socketIoInstance = null;
+
+export function setSocketIo(io) {
+  socketIoInstance = io;
+}
+
+function broadcastStatus() {
+  if (!socketIoInstance) return;
+  try {
+    socketIoInstance.emit("whatsapp:status", getStatus());
+  } catch (err) {
+    // Ignore socket broadcast errors
+  }
+}
+
+function getSavedPhone() {
+  try {
+    const credsPath = path.join(AUTH_DIR, "creds.json");
+    if (fs.existsSync(credsPath)) {
+      const data = JSON.parse(fs.readFileSync(credsPath, "utf-8"));
+      if (data?.me?.id) {
+        return data.me.id.split(":")[0]?.split("@")[0];
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function hasSavedCredentials() {
+  try {
+    const credsPath = path.join(AUTH_DIR, "creds.json");
+    if (fs.existsSync(credsPath)) {
+      const data = JSON.parse(fs.readFileSync(credsPath, "utf-8"));
+      return !!(data?.me?.id || data?.account);
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * Initializes and connects the WhatsApp client using Baileys.
+ */
+export async function initWhatsAppBot() {
+  if (isConnecting || isConnected) return sock;
+  isConnecting = true;
+
+  try {
+    if (!fs.existsSync(AUTH_DIR)) {
+      fs.mkdirSync(AUTH_DIR, { recursive: true });
+    }
+
+    if (sock) {
+      try {
+        sock.ev?.removeAllListeners();
+        sock.end?.();
+      } catch {}
+      sock = null;
+    }
+
+    console.log("[WhatsApp] 🔄 Initializing WhatsApp multi-device client...");
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    const { version, isLatest } = await fetchLatestBaileysVersion().catch(() => ({
+      version: [2, 3000, 1015901307],
+      isLatest: false,
+    }));
+
+    console.log(`[WhatsApp] Using WA version ${version.join(".")}${isLatest ? " (latest)" : ""}`);
+
+    sock = makeWASocket({
+      version,
+      logger: pinoLogger,
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pinoLogger),
+      },
+      browser: ["Speak & Shine", "Chrome", "1.0.0"],
+      generateHighQualityLinkPreview: true,
+      syncFullHistory: false,
+      markOnlineOnConnect: true,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      keepAliveIntervalMs: 25000,
+    });
+
+    sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("connection.update", async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        currentQR = qr;
+        isConnecting = false;
+        isConnected = false;
+        try {
+          currentQRDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 6 });
+        } catch (err) {
+          console.warn("[WhatsApp] Failed to generate QR data URL:", err.message);
+        }
+
+        console.log("\n=======================================================");
+        console.log("📱 [WhatsApp] Scan this QR Code with your WhatsApp app:");
+        console.log("   (WhatsApp > Settings/3 dots > Linked Devices > Link a Device)");
+        console.log("=======================================================\n");
+        qrcodeTerminal.generate(qr, { small: true });
+        broadcastStatus();
+      }
+
+      if (connection === "open") {
+        isConnected = true;
+        isConnecting = false;
+        currentQR = null;
+        currentQRDataUrl = null;
+
+        const rawJid = sock.user?.id || "";
+        userJid = rawJid;
+        userPhone = rawJid.split(":")[0]?.split("@")[0] || rawJid.split("@")[0];
+
+        console.log(`\n✅ [WhatsApp] Connected successfully as +${userPhone} (${sock.user?.name || "Speak & Shine Bot"})\n`);
+        broadcastStatus();
+      }
+
+      if (connection === "close") {
+        isConnected = false;
+        isConnecting = false;
+        
+        const statusCode = lastDisconnect?.error instanceof Boom
+          ? lastDisconnect.error.output?.statusCode
+          : lastDisconnect?.error?.statusCode;
+
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+        console.log(`[WhatsApp] ⚠️ Connection closed. Status code: ${statusCode || "unknown"}. Reconnect: ${!isLoggedOut}`);
+
+        if (isLoggedOut) {
+          console.log("[WhatsApp] 🚪 Logged out from WhatsApp. Resetting auth credentials...");
+          currentQR = null;
+          currentQRDataUrl = null;
+          userPhone = null;
+          userJid = null;
+          await clearAuthDir();
+          broadcastStatus();
+          scheduleReconnect(2000);
+        } else {
+          // Restart required (515) or temporary socket drop
+          broadcastStatus();
+          scheduleReconnect(1500);
+        }
+      }
+    });
+
+    return sock;
+  } catch (err) {
+    isConnecting = false;
+    isConnected = false;
+    console.error("[WhatsApp] ❌ Initialization error:", err.message);
+    scheduleReconnect(5000);
+    return null;
+  }
+}
+
+function scheduleReconnect(delayMs) {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    initWhatsAppBot();
+  }, delayMs);
+}
+
+async function clearAuthDir() {
+  try {
+    if (fs.existsSync(AUTH_DIR)) {
+      fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+      fs.mkdirSync(AUTH_DIR, { recursive: true });
+    }
+  } catch (err) {
+    console.warn("[WhatsApp] Could not clear auth folder:", err.message);
+  }
+}
+
+/**
+ * Returns current status of the WhatsApp bot.
+ */
+export function getStatus() {
+  const targetGroup = process.env.TARGET_GROUP || "";
+  const savedPhone = getSavedPhone();
+  const hasCreds = hasSavedCredentials();
+
+  return {
+    isConnected,
+    isConnecting,
+    isReconnecting: !isConnected && hasCreds,
+    userPhone: userPhone || savedPhone,
+    userJid: userJid || (savedPhone ? `${savedPhone}@s.whatsapp.net` : null),
+    targetGroup,
+    hasTargetGroup: !!targetGroup,
+    hasSavedCredentials: hasCreds,
+    // Only supply QR code if we do not already have an authenticated saved session
+    qrCodeDataUrl: isConnected || (hasCreds && !currentQR) ? null : currentQRDataUrl,
+    authDirExists: hasCreds,
+  };
+}
+
+/**
+ * Manually reconnect / refresh QR code.
+ */
+export async function restartWhatsAppBot() {
+  if (sock) {
+    try {
+      sock.ev?.removeAllListeners();
+      sock.end?.(new Error("Manual restart requested"));
+    } catch {}
+  }
+  sock = null;
+  isConnected = false;
+  isConnecting = false;
+  currentQR = null;
+  currentQRDataUrl = null;
+  return await initWhatsAppBot();
+}
+
+/**
+ * Log out and remove credentials.
+ */
+export async function logoutWhatsAppBot() {
+  if (sock) {
+    try {
+      await sock.logout();
+    } catch {
+      // Ignore
+    }
+    try {
+      sock.end(new Error("User logout"));
+    } catch {
+      // Ignore
+    }
+  }
+  sock = null;
+  isConnected = false;
+  isConnecting = false;
+  currentQR = null;
+  currentQRDataUrl = null;
+  userPhone = null;
+  userJid = null;
+  await clearAuthDir();
+  broadcastStatus();
+  return { success: true };
+}
+
+/**
+ * Sends the daily challenge poster, picture, or audio to the configured TARGET_GROUP.
+ * Supports:
+ * - Regular Question Challenges (HD Vector Poster)
+ * - Picture Description Challenges (Challenge Image + Instructions)
+ * - Audio Story Challenges (Story Poster + MP3 Audio file)
+ *
+ * @param {object} [options]
+ * @param {string} [options.topic]
+ * @param {string} [options.question]
+ * @param {string} [options.category]
+ * @param {string} [options.targetGroup] - override target group if needed
+ */
+export async function sendDailyPosterToGroup(options = {}) {
+  const targetGroup = options.targetGroup || process.env.TARGET_GROUP;
+
+  if (!targetGroup) {
+    throw new Error("TARGET_GROUP is not configured. Please set TARGET_GROUP in Infisical or environment.");
+  }
+
+  if (!sock || !isConnected) {
+    throw new Error("WhatsApp bot is not connected. Please scan the QR code from the Admin Dashboard first.");
+  }
+
+  // Fetch full status from DB to inspect content type and attachments
+  const status = await Status.findOne().lean();
+
+  const contentType = options.contentType || status?.todayContentType || "question";
+  let topic = options.topic || status?.todayTopic || "Speaking Practice";
+  let question = options.question || status?.todayQuestion || "";
+  let category = options.category || status?.todayCategory || "General";
+  const vocabulary = status?.todayVocabulary || [];
+  const frontendUrl = process.env.FRONTEND_URL || "https://speakandshine.com";
+
+  if (!question && !topic) {
+    throw new Error("No active daily challenge found in database.");
+  }
+
+  const isPicture = contentType === "picture_description" || status?.isPictureDescriptionDay;
+  const isStory = contentType === "story_audio" || status?.isStorySummaryDay;
+  const vocabReq = isPicture
+    ? (status?.vocabPictureRequiredCount ?? 1)
+    : isStory
+    ? (status?.vocabStoryRequiredCount ?? 3)
+    : (status?.vocabNormalRequiredCount ?? 3);
+
+  // Format vocabulary lines if present
+  let vocabSection = "";
+  if (Array.isArray(vocabulary) && vocabulary.length > 0) {
+    const vocabList = vocabulary.map(v => `• *${v.word}*: ${v.meaning}`).join("\n");
+    vocabSection = `\n🎯 *Focus Vocabulary (Use at least ${vocabReq} in your video):*\n${vocabList}\n`;
+  }
+
+  console.log(`[WhatsApp] 📦 Preparing dispatch for "${topic}" (Type: ${contentType})...`);
+
+  // ── CASE 1: PICTURE DESCRIPTION CHALLENGE ──────────────────────────────────
+  if (isPicture) {
+    let imageBuffer = null;
+    const imageUrl = status?.todayImageUrl;
+
+    if (imageUrl) {
+      try {
+        console.log(`[WhatsApp] 🖼️ Fetching challenge picture from: ${imageUrl}`);
+        const res = await fetch(imageUrl);
+        if (res.ok) {
+          const arrayBuf = await res.arrayBuffer();
+          imageBuffer = Buffer.from(arrayBuf);
+        }
+      } catch (fetchErr) {
+        console.warn("[WhatsApp] Could not fetch remote picture, falling back to generated poster:", fetchErr.message);
+      }
+    }
+
+    // If picture download failed or no URL, generate dedicated picture poster
+    if (!imageBuffer) {
+      imageBuffer = await generatePNGPosterBuffer({
+        topic,
+        question: status?.todayImageInstructions || question,
+        category: "Picture Description",
+        contentType: "picture_description",
+        vocabulary,
+        vocabRequiredCount: vocabReq,
+      });
+    }
+
+    const instructions = status?.todayImageInstructions || question || "Describe what you see in this picture in detail: people, setting, actions, emotions, and your perspective.";
+
+    const caption = [
+      `🖼️ *SPEAK & SHINE — PICTURE DESCRIPTION CHALLENGE* 🖼️`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `📸 *Challenge Theme:* ${topic}`,
+      ``,
+      `📝 *Your Speaking Task:*`,
+      `${instructions}`,
+      vocabSection,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `🎥 *TASK:* Record your 2-3 minute video describing this picture!`,
+      `🚀 *Submit your video here:* ${frontendUrl}`,
+    ].filter(Boolean).join("\n");
+
+    console.log(`[WhatsApp] 📤 Sending picture challenge to group: ${targetGroup}...`);
+    await sock.sendMessage(targetGroup, {
+      image: imageBuffer,
+      mimetype: "image/jpeg",
+      caption,
+    });
+
+    console.log(`[WhatsApp] ✅ Picture description challenge sent successfully!`);
+    return { success: true, targetGroup, topic, type: "picture_description", sentAt: new Date() };
+  }
+
+  // ── CASE 2: AUDIO STORY SUMMARY CHALLENGE ──────────────────────────────────
+  if (isStory) {
+    const posterBuffer = await generatePNGPosterBuffer({
+      topic,
+      question: question || "Listen to the audio story and record a short video summary in your own words.",
+      category: "Story Summary",
+      contentType: "story_audio",
+      vocabulary,
+      vocabRequiredCount: vocabReq,
+    });
+
+    const caption = [
+      `🎧 *SPEAK & SHINE — SATURDAY STORY SUMMARY* 🎧`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `📖 *Story Title:* ${topic}`,
+      ``,
+      `📝 *Your Assignment:*`,
+      `1. Listen to the audio story on the Speak & Shine webapp.`,
+      `2. Understand the key characters, the plot, and the resolution.`,
+      `3. Record your video summarizing the story in your own words!`,
+      vocabSection,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `🎥 *TASK:* Record your 2-3 minute story summary video!`,
+      `🚀 *Listen & submit here:* ${frontendUrl}`,
+    ].filter(Boolean).join("\n");
+
+    console.log(`[WhatsApp] 📤 Sending story poster to group: ${targetGroup}...`);
+    await sock.sendMessage(targetGroup, {
+      image: posterBuffer,
+      mimetype: "image/png",
+      caption,
+    });
+
+    // If audio URL is available, also send the audio file directly into the WhatsApp group!
+    if (status?.todayAudioUrl) {
+      try {
+        console.log(`[WhatsApp] 🎵 Sending story audio file to group: ${status.todayAudioUrl}...`);
+        await sock.sendMessage(targetGroup, {
+          audio: { url: status.todayAudioUrl },
+          mimetype: "audio/mp4",
+          ptt: false,
+          fileName: `${topic.replace(/[^a-zA-Z0-9_-]/g, "_")}.mp3`,
+        });
+        console.log(`[WhatsApp] ✅ Story audio file delivered to group!`);
+      } catch (audioErr) {
+        console.warn("[WhatsApp] Could not send audio file attachment (non-fatal):", audioErr.message);
+      }
+    }
+
+    console.log(`[WhatsApp] ✅ Story summary challenge sent successfully!`);
+    return { success: true, targetGroup, topic, type: "story_audio", sentAt: new Date() };
+  }
+
+  // ── CASE 3: REGULAR DAILY QUESTION CHALLENGE ─────────────────────────────────
+  console.log(`[WhatsApp] 🎨 Generating updated HD poster for "${topic}" (${category})...`);
+  const pngBuffer = await generatePNGPosterBuffer({
+    topic,
+    question,
+    category,
+    contentType: "question",
+    vocabulary,
+    vocabRequiredCount: vocabReq,
+  });
+
+  const caption = [
+    `🌟 *SPEAK & SHINE — DAILY SPEAKING CHALLENGE* 🌟`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `🏷️ *Topic:* ${topic}`,
+    `📂 *Category:* ${category}`,
+    ``,
+    `❓ *TODAY'S QUESTION:*`,
+    `${question}`,
+    vocabSection,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `🎥 *TASK:* Record & submit your 1-minute speaking video!`,
+    `🚀 *Submit here:* ${frontendUrl}`,
+  ].filter(Boolean).join("\n");
+
+  console.log(`[WhatsApp] 📤 Sending HD poster to group: ${targetGroup}...`);
+  await sock.sendMessage(targetGroup, {
+    image: pngBuffer,
+    mimetype: "image/png",
+    caption,
+  });
+
+  console.log(`[WhatsApp] ✅ Poster sent successfully to ${targetGroup}!`);
+
+  return {
+    success: true,
+    targetGroup,
+    topic,
+    category,
+    type: "question",
+    sentAt: new Date(),
+  };
+}

@@ -53,6 +53,8 @@ import notificationRoutes from "../backend/routes/notifications.routes.js";
 import submissionsRoutes from "../backend/routes/submissions.routes.js";
 import guestRoutes from "../backend/routes/guest.routes.js";
 import paymentRoutes from "../backend/routes/payment.routes.js";
+import whatsappRoutes from "../backend/routes/whatsapp.routes.js";
+import { initWhatsAppBot, setSocketIo as setWhatsAppSocketIo } from "../backend/services/whatsapp/whatsappService.js";
 
 console.log("[Routes] Loading MVC routes...");
 console.log("[Routes] Auth routes loaded:", !!authRoutes);
@@ -65,6 +67,7 @@ console.log("[Routes] Chat routes loaded:", !!chatRoutes);
 console.log("[Routes] Live sessions routes loaded:", !!liveSessionRoutes);
 console.log("[Routes] Submissions routes loaded:", !!submissionsRoutes);
 console.log("[Routes] Notification routes loaded:", !!notificationRoutes);
+console.log("[Routes] WhatsApp routes loaded:", !!whatsappRoutes);
 import { startScheduler } from "./scheduler.js";
 import { startDailyReset } from "./scheduler.js";
 import { setSocketIO, recoverStuckJobs } from "../backend/services/video/videoQueue.js";
@@ -371,6 +374,8 @@ app.use("/api/submissions",  submissionsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments",     paymentRoutes);
 console.log("[Routes] Payment routes mounted at /api/payments");
+app.use("/api/whatsapp",     whatsappRoutes);
+console.log("[Routes] WhatsApp routes mounted at /api/whatsapp");
 
 app.use("/api", (_, res) => res.status(404).json({ error: "API route not found" }));
 
@@ -556,6 +561,9 @@ connectDB()
     startSelfPing();
     // Catch up on any reset that was missed while server was sleeping
     checkMissedReset();
+    // Initialize WhatsApp multi-device client
+    setWhatsAppSocketIo(io);
+    initWhatsAppBot();
   })
   .catch((err) => {
     console.error("❌ Failed to start server:", err);

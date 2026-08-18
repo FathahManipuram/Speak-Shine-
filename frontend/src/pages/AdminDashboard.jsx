@@ -15,7 +15,7 @@ import StreakBadge from "../components/StreakBadge.jsx";
 const CATS = ["Daily Life","Opinion","Personal Experience","English Growth","Future Goals","Fun Topic","Free Talk"];
 const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c","#a78bfa"];
 const tt = { background:"#16162a", border:"1px solid #252545", borderRadius:10, fontSize:12 };
-const TABS = [{id:"overview",l:"📊 Overview"},{id:"today",l:"📅 Today"},{id:"users",l:"👥 Users"},{id:"registrations",l:"📋 Registrations"},{id:"reports",l:"📈 Reports"},{id:"points",l:"⭐ Points"},{id:"submissions",l:"📝 Submissions"},{id:"questions",l:"❓ Questions"},{id:"manual-questions",l:"📝 Manual Questions"},{id:"live",l:"🎥 Live Sessions"},{id:"payments",l:"💳 Payments"},{id:"monitoring",l:"🖥️ Monitor"},{id:"settings",l:"⚙️ Settings"}];
+const TABS = [{id:"overview",l:"📊 Overview"},{id:"today",l:"📅 Today"},{id:"users",l:"👥 Users"},{id:"registrations",l:"📋 Registrations"},{id:"reports",l:"📈 Reports"},{id:"points",l:"⭐ Points"},{id:"submissions",l:"📝 Submissions"},{id:"questions",l:"❓ Questions"},{id:"manual-questions",l:"📝 Manual Questions"},{id:"live",l:"🎥 Live Sessions"},{id:"payments",l:"💳 Payments"},{id:"whatsapp",l:"📱 WhatsApp"},{id:"monitoring",l:"🖥️ Monitor"},{id:"settings",l:"⚙️ Settings"}];
 
 export default function AdminDashboard() {
   const { user: currentUser } = useAuth();
@@ -37,6 +37,9 @@ export default function AdminDashboard() {
   const [modal, setModal] = useState(null);
   const [fineInput, setFineInput] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [waStatus, setWaStatus] = useState(null);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [settings, setSettings] = useState({
     posterSendTime: "08:00",
     questionGenerateTime: "07:00",
@@ -251,10 +254,69 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadWhatsAppStatus = async () => {
+    try {
+      setWaLoading(true);
+      const res = await api.get("/whatsapp/status");
+      if (res.data?.success) {
+        setWaStatus(res.data);
+      }
+    } catch (err) {
+      console.warn("Failed to load WhatsApp status:", err);
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const handleSendPosterToGroup = async () => {
+    try {
+      setWaSendingPoster(true);
+      const res = await api.post("/whatsapp/send-poster");
+      if (res.data?.success) {
+        msg("✅ Poster and caption sent to WhatsApp group successfully!", "success");
+      }
+    } catch (err) {
+      msg(err.response?.data?.error || "Failed to send poster to WhatsApp group", "danger");
+    } finally {
+      setWaSendingPoster(false);
+    }
+  };
+
+  const handleReconnectWhatsApp = async () => {
+    try {
+      await api.post("/whatsapp/reconnect");
+      msg("🔄 Generating fresh WhatsApp QR code...", "info");
+      loadWhatsAppStatus();
+    } catch (err) {
+      msg("Failed to trigger reconnect", "danger");
+    }
+  };
+
+  const handleLogoutWhatsApp = async () => {
+    if (!window.confirm("Are you sure you want to disconnect WhatsApp and clear credentials?")) return;
+    try {
+      await api.post("/whatsapp/logout");
+      msg("🚪 Disconnected from WhatsApp.", "info");
+      loadWhatsAppStatus();
+    } catch (err) {
+      msg("Failed to log out from WhatsApp", "danger");
+    }
+  };
+
   // Load initial data on mount
   useEffect(() => {
     loadInitial();
+    loadWhatsAppStatus();
   }, []);
+
+  // Poll WhatsApp status while on WhatsApp tab or if QR scan needed
+  useEffect(() => {
+    if (tab === "whatsapp" || (!waStatus?.isConnected && tab === "today")) {
+      loadWhatsAppStatus();
+      const interval = setInterval(loadWhatsAppStatus, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [tab, waStatus?.isConnected]);
 
   // Load data based on active tab
   useEffect(() => {
@@ -272,6 +334,8 @@ export default function AdminDashboard() {
       loadPayments();
     } else if (tab === "settings") {
       loadSettings();
+    } else if (tab === "whatsapp") {
+      loadWhatsAppStatus();
     }
   }, [tab]);
 
@@ -787,7 +851,23 @@ export default function AdminDashboard() {
       {tab==="today" && (
         <>
           {dash?.today?.question
-            ? <div className="today-card"><div className="today-label">📌 Today's Question</div><div className="today-q">{dash.today.question}</div>{dash.today.topic && <span className="today-topic">{dash.today.topic}</span>}</div>
+            ? <div className="today-card">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <div className="today-label">📌 Today's Question</div>
+                    <div className="today-q">{dash.today.question}</div>
+                    {dash.today.topic && <span className="today-topic">{dash.today.topic}</span>}
+                  </div>
+                  <button
+                    className="btn-sm btn-primary"
+                    style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+                    onClick={waStatus?.isConnected ? handleSendPosterToGroup : () => setTab("whatsapp")}
+                    disabled={waSendingPoster}
+                  >
+                    {waSendingPoster ? "⏳ Sending..." : waStatus?.isConnected ? "🚀 Send Poster to WhatsApp Group" : "📱 Connect WhatsApp to Send Poster"}
+                  </button>
+                </div>
+              </div>
             : <div className="warn-box"><p>⏳ No question set for today yet.</p></div>}
 
           {/* Publish question to webapp */}
@@ -1686,6 +1766,312 @@ export default function AdminDashboard() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* WHATSAPP TAB */}
+      {tab === "whatsapp" && (
+        <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+          {/* Card 1: Connection & QR Code Scanner */}
+          <div className="card" style={{ flex: "1 1 480px", maxWidth: 540, margin: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div className="section-title" style={{ margin: 0 }}>📱 WhatsApp Scanner &amp; Connection</div>
+              <button 
+                className="btn-sm btn-ghost" 
+                onClick={loadWhatsAppStatus} 
+                disabled={waLoading}
+                title="Refresh Status"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+
+            {/* Status Banner */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              padding: "0.85rem 1.1rem",
+              borderRadius: 12,
+              background: waStatus?.isConnected ? "rgba(34, 197, 94, 0.12)" : waStatus?.hasSavedCredentials ? "rgba(56, 189, 248, 0.12)" : "rgba(234, 179, 8, 0.12)",
+              border: `1px solid ${waStatus?.isConnected ? "rgba(34, 197, 94, 0.35)" : waStatus?.hasSavedCredentials ? "rgba(56, 189, 248, 0.35)" : "rgba(234, 179, 8, 0.35)"}`,
+              marginBottom: "1.5rem",
+            }}>
+              <span style={{ fontSize: "1.4rem" }}>{waStatus?.isConnected ? "🟢" : waStatus?.hasSavedCredentials ? "🔵" : "🟡"}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24" }}>
+                  {waStatus?.isConnected
+                    ? `Connected as ${waStatus.userPhone}`
+                    : waStatus?.hasSavedCredentials
+                    ? `Reconnecting Session (${waStatus.userPhone})...`
+                    : waStatus?.qrCodeDataUrl
+                    ? "QR Code Ready — Scan with WhatsApp"
+                    : "Connecting to WhatsApp..."}
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.15rem" }}>
+                  {waStatus?.isConnected
+                    ? "Linked to your WhatsApp number. Daily posters will be sent to the group from this number."
+                    : waStatus?.hasSavedCredentials
+                    ? "Saved session authenticated. Socket is establishing live connection..."
+                    : "Open WhatsApp on your phone > Linked Devices > Link a Device to scan"}
+                </div>
+              </div>
+            </div>
+
+            {/* Middle panel */}
+            {waStatus?.isConnected ? (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                background: "rgba(34, 197, 94, 0.05)",
+                padding: "2rem 1.5rem",
+                borderRadius: 16,
+                border: "1px solid rgba(34, 197, 94, 0.2)",
+                marginBottom: "1.5rem",
+                textAlign: "center"
+              }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📱✨</div>
+                <div style={{ fontWeight: 700, color: "#fff", fontSize: "1.1rem", marginBottom: "0.3rem" }}>
+                  WhatsApp Linked: {waStatus.userPhone}
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.85rem", maxWidth: 360, margin: 0 }}>
+                  Ready to send daily question posters directly to your target group.
+                </p>
+              </div>
+            ) : waStatus?.hasSavedCredentials && !waStatus?.qrCodeDataUrl ? (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                background: "rgba(56, 189, 248, 0.05)",
+                padding: "2rem 1.5rem",
+                borderRadius: 16,
+                border: "1px solid rgba(56, 189, 248, 0.2)",
+                marginBottom: "1.5rem",
+                textAlign: "center"
+              }}>
+                <div className="spinner" style={{ margin: "0 auto 1rem" }}></div>
+                <div style={{ fontWeight: 600, color: "#fff", marginBottom: "0.4rem" }}>
+                  Reconnecting to {waStatus.userPhone}...
+                </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.82rem", maxWidth: 360, margin: 0 }}>
+                  Your phone is already linked. Syncing socket with WhatsApp servers...
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                background: "rgba(15, 10, 30, 0.7)",
+                padding: "1.5rem",
+                borderRadius: 16,
+                border: "1px dashed rgba(167, 139, 250, 0.4)",
+                marginBottom: "1.5rem",
+                textAlign: "center"
+              }}>
+                {waStatus?.qrCodeDataUrl ? (
+                  <>
+                    <div style={{
+                      padding: "12px",
+                      background: "#ffffff",
+                      borderRadius: 16,
+                      boxShadow: "0 8px 32px rgba(124, 111, 255, 0.3)",
+                      display: "inline-block",
+                      marginBottom: "1rem"
+                    }}>
+                      <img
+                        src={waStatus.qrCodeDataUrl}
+                        alt="WhatsApp QR Code"
+                        style={{ width: 240, height: 240, display: "block" }}
+                      />
+                    </div>
+                    <div style={{ fontWeight: 600, color: "#fff", marginBottom: "0.4rem" }}>
+                      Scan this QR code with WhatsApp
+                    </div>
+                    <p style={{ color: "var(--muted)", fontSize: "0.82rem", maxWidth: 360, margin: 0, lineHeight: 1.5 }}>
+                      1. Open WhatsApp on your phone<br/>
+                      2. Tap <strong>Settings</strong> (iOS) or <strong>⋮ Menu</strong> (Android)<br/>
+                      3. Select <strong>Linked Devices</strong> → <strong>Link a Device</strong><br/>
+                      4. Point camera at this screen
+                    </p>
+                  </>
+                ) : (
+                  <div style={{ padding: "2rem 1rem", color: "var(--muted)" }}>
+                    <div className="spinner" style={{ margin: "0 auto 1rem" }}></div>
+                    <div>Generating fresh WhatsApp QR code...</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Connection Actions */}
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button 
+                className="btn-secondary" 
+                onClick={handleReconnectWhatsApp}
+                style={{ flex: 1 }}
+              >
+                🔄 {waStatus?.hasSavedCredentials ? "Reconnect Socket" : "Refresh QR"}
+              </button>
+              {(waStatus?.isConnected || waStatus?.hasSavedCredentials) && (
+                <button 
+                  className="btn-danger" 
+                  onClick={handleLogoutWhatsApp}
+                >
+                  🚪 Disconnect &amp; Unlink
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Card 2: Group Dispatch & Today's Question Poster */}
+          <div className="card" style={{ flex: "1 1 480px", maxWidth: 540, margin: 0 }}>
+            <div className="section-title">📤 Target WhatsApp Group &amp; Poster Dispatch</div>
+
+            {/* Target Group Info */}
+            <div style={{
+              padding: "1rem",
+              borderRadius: 12,
+              background: "rgba(124, 111, 255, 0.08)",
+              border: "1px solid rgba(124, 111, 255, 0.2)",
+              marginBottom: "1.25rem",
+            }}>
+              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.25rem" }}>
+                CONFIGURED TARGET GROUP JID
+              </div>
+              <div style={{
+                fontFamily: "monospace",
+                fontSize: "0.95rem",
+                fontWeight: 700,
+                color: waStatus?.targetGroup ? "#a78bfa" : "#ef4444",
+                wordBreak: "break-all"
+              }}>
+                {waStatus?.targetGroup || "⚠️ TARGET_GROUP not set"}
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.35rem" }}>
+                Auto-sends every morning at <strong style={{ color: "var(--accent)" }}>{settings?.posterSendTime || "08:00"} IST</strong>
+              </div>
+            </div>
+
+            {/* Today's Question / Task Preview */}
+            <div style={{
+              padding: "1rem",
+              borderRadius: 12,
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              marginBottom: "1.5rem"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem", flexWrap: "wrap", gap: "0.4rem" }}>
+                <span style={{
+                  fontSize: "0.74rem",
+                  padding: "2px 8px",
+                  borderRadius: 6,
+                  background: waStatus?.todayQuestion?.contentType === "picture_description"
+                    ? "rgba(56, 189, 248, 0.2)"
+                    : waStatus?.todayQuestion?.contentType === "story_audio"
+                    ? "rgba(167, 139, 250, 0.2)"
+                    : "rgba(124, 111, 255, 0.2)",
+                  color: waStatus?.todayQuestion?.contentType === "picture_description"
+                    ? "#38bdf8"
+                    : waStatus?.todayQuestion?.contentType === "story_audio"
+                    ? "#a78bfa"
+                    : "#c084fc",
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase"
+                }}>
+                  {waStatus?.todayQuestion?.contentType === "picture_description"
+                    ? "🖼️ Picture Description"
+                    : waStatus?.todayQuestion?.contentType === "story_audio"
+                    ? "🎧 Story Summary"
+                    : "💬 Speaking Question"}
+                </span>
+
+                {waStatus?.todayQuestion?.category && (
+                  <span style={{
+                    fontSize: "0.72rem",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: "rgba(255, 255, 255, 0.08)",
+                    color: "#e2e8f0",
+                    fontWeight: 600
+                  }}>
+                    {waStatus.todayQuestion.category}
+                  </span>
+                )}
+              </div>
+
+              {/* Picture thumbnail if picture challenge */}
+              {waStatus?.todayQuestion?.imageUrl && (
+                <div style={{ marginBottom: "0.75rem", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", maxHeight: 180 }}>
+                  <img
+                    src={waStatus.todayQuestion.imageUrl}
+                    alt="Challenge Photo"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                </div>
+              )}
+
+              {/* Audio badge if story challenge */}
+              {waStatus?.todayQuestion?.audioUrl && (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: 8,
+                  background: "rgba(167, 139, 250, 0.12)",
+                  border: "1px solid rgba(167, 139, 250, 0.3)",
+                  marginBottom: "0.75rem",
+                  fontSize: "0.8rem",
+                  color: "#c084fc",
+                  fontWeight: 600
+                }}>
+                  🎵 Audio Story Attached (will be sent as voice/audio to group)
+                </div>
+              )}
+
+              <div style={{ fontWeight: 700, color: "#fff", fontSize: "1.05rem", marginBottom: "0.35rem" }}>
+                {waStatus?.todayQuestion?.topic || dash?.today?.topic || "Speaking Practice"}
+              </div>
+              <div style={{ color: "var(--muted)", fontSize: "0.88rem", lineHeight: 1.45 }}>
+                {waStatus?.todayQuestion?.imageInstructions || waStatus?.todayQuestion?.question || dash?.today?.question || "No daily challenge published yet."}
+              </div>
+            </div>
+
+            {/* Send Button */}
+            <button
+              className="btn-primary"
+              style={{
+                width: "100%",
+                padding: "0.9rem",
+                fontSize: "1rem",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+              }}
+              disabled={!waStatus?.isConnected || waSendingPoster}
+              onClick={handleSendPosterToGroup}
+            >
+              {waSendingPoster
+                ? "⏳ Sending to WhatsApp Group..."
+                : waStatus?.todayQuestion?.contentType === "picture_description"
+                ? "🚀 Send Picture Challenge to Group Now"
+                : waStatus?.todayQuestion?.contentType === "story_audio"
+                ? "🚀 Send Story & Audio to Group Now"
+                : "🚀 Send Today's Poster to Group Now"}
+            </button>
+
+            {!waStatus?.isConnected && (
+              <div style={{ color: "#fbbf24", fontSize: "0.8rem", marginTop: "0.6rem", textAlign: "center" }}>
+                ⚠️ Connect your WhatsApp number above to enable sending.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
