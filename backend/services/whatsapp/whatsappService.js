@@ -600,8 +600,19 @@ export function buildSubmissionReportMessage({
     year: "numeric",
   });
   
+  const formatTime12h = (t) => {
+    if (!t) return "";
+    if (/^\d{1,2}:\d{2}$/.test(t)) {
+      const [h, m] = t.split(":").map(Number);
+      const period = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+    }
+    return t;
+  };
+
   // Format current IST time e.g. "04:00 PM"
-  const timeStr = timeSlot || nowIST.toLocaleTimeString("en-IN", {
+  const timeStr = timeSlot ? formatTime12h(timeSlot) : nowIST.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
