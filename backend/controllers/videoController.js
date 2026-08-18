@@ -9,6 +9,7 @@ import { COMMUNITY_ROOM } from "../services/chat/chatService.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import https from "https";
 
 function broadcastCommunity(req, event, payload) {
   const io = req.app.get("io");
@@ -655,5 +656,46 @@ export async function retryAnalysis(req, res) {
     }
     console.error("[RetryAnalysis] Error:", error.message, "Stack:", error.stack);
     res.status(500).json({ error: "Failed to retry analysis" });
+  }
+}
+
+/**
+ * GET /api/video/tts
+ * Serves native English audio pronunciation MP3 stream for vocabulary words.
+ */
+export async function getTtsAudio(req, res) {
+  try {
+    const raw = (req.query.text || req.query.word || "").trim();
+    if (!raw) {
+      return res.status(400).send("Word/text is required");
+    }
+    const clean = raw.slice(0, 100);
+
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(clean)}`;
+    
+    const upstreamReq = https.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://translate.google.com/",
+      },
+    }, (upstreamRes) => {
+      if (upstreamRes.statusCode !== 200) {
+        return res.status(502).send("TTS upstream returned " + upstreamRes.statusCode);
+      }
+      res.set({
+        "Content-Type": "audio/mpeg",
+        "Cache-Control": "public, max-age=86400",
+        "Access-Control-Allow-Origin": "*",
+      });
+      upstreamRes.pipe(res);
+    });
+
+    upstreamReq.on("error", (err) => {
+      console.error("[TTS Proxy] Upstream connection error:", err.message);
+      if (!res.headersSent) res.status(500).send("TTS audio fetch failed");
+    });
+  } catch (err) {
+    console.error("[TTS Proxy] Controller error:", err.message);
+    if (!res.headersSent) res.status(500).send("Internal server error");
   }
 }

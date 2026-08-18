@@ -122,4 +122,7 @@ router.post("/react/:reportId",                    authMiddleware, videoControll
 router.post("/comment/:reportId",                  authMiddleware, videoController.addComment);
 router.delete("/comment/:reportId/:commentId",     authMiddleware, videoController.deleteComment);
 
+// ── Vocabulary Pronunciation Audio ──────────────────────────────────────────
+router.get("/tts", videoController.getTtsAudio);
+
 export default router;

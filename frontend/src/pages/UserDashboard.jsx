@@ -610,31 +610,6 @@ function VocabularyWords({ words, requiredCount, totalCount }) {
     return { word, meaning, example };
   };
 
-  const playAudioFallback = (text, idx) => {
-    try {
-      if (audioFallbackRef.current) {
-        audioFallbackRef.current.pause();
-        audioFallbackRef.current = null;
-      }
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`;
-      const audio = new Audio(audioUrl);
-      audioFallbackRef.current = audio;
-      audio.onended = () => setSpeakingIndex(null);
-      audio.onerror = () => {
-        setSpeakingIndex(null);
-        setTtsWarning("Please check device volume / un-mute.");
-        setTimeout(() => setTtsWarning(null), 3000);
-      };
-      audio.play().catch(() => {
-        setSpeakingIndex(null);
-        setTtsWarning("Tap again to play audio.");
-        setTimeout(() => setTtsWarning(null), 3000);
-      });
-    } catch {
-      setSpeakingIndex(null);
-    }
-  };
-
   const handleSpeak = (rawWord, example, idx) => {
     if (!rawWord) return;
     const wordClean = rawWord.replace(/[^a-zA-Z0-9\s-]/g, "").trim();
@@ -642,49 +617,76 @@ function VocabularyWords({ words, requiredCount, totalCount }) {
 
     setSpeakingIndex(idx);
 
-    // Auto-safety timer to ensure button never stays permanently stuck
+    // Stop any previous playing audio
+    if (audioFallbackRef.current) {
+      audioFallbackRef.current.pause();
+      audioFallbackRef.current = null;
+    }
+
     const safetyTimer = setTimeout(() => {
       setSpeakingIndex(prev => prev === idx ? null : prev);
     }, 4500);
 
-    // 1. Try SpeechSynthesis with Chrome resume + GC fix
-    if ('speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        if (window.speechSynthesis.paused) {
+    // 1. Primary: Server-side audio stream from /api/video/tts (100% reliable MP3 stream)
+    const audioUrl = `/api/video/tts?text=${encodeURIComponent(wordClean)}`;
+    const audio = new Audio(audioUrl);
+    audioFallbackRef.current = audio;
+
+    audio.onended = () => {
+      clearTimeout(safetyTimer);
+      setSpeakingIndex(null);
+    };
+
+    audio.onerror = () => {
+      // 2. Secondary: Native Web Speech API fallback
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
           window.speechSynthesis.resume();
-        }
-        
-        const utterance = new SpeechSynthesisUtterance(wordClean);
-        utterance.rate = 0.85;
-        utterance.pitch = 1.0;
-        utterance.lang = 'en-US';
-
-        // Keep global reference so Chrome V8 doesn't garbage collect utterance prematurely
-        window._activeSpeechUtterance = utterance;
-
-        utterance.onend = () => {
-          clearTimeout(safetyTimer);
-          window._activeSpeechUtterance = null;
-          setSpeakingIndex(null);
-        };
-
-        utterance.onerror = (e) => {
-          console.warn("[TTS] SpeechSynthesis error, trying fallback:", e);
-          clearTimeout(safetyTimer);
-          window._activeSpeechUtterance = null;
-          playAudioFallback(wordClean, idx);
-        };
-
-        window.speechSynthesis.speak(utterance);
-        return;
-      } catch (err) {
-        console.warn("[TTS] Native speak failed, using fallback:", err);
+          const utterance = new SpeechSynthesisUtterance(wordClean);
+          utterance.rate = 0.85;
+          utterance.lang = 'en-US';
+          window._activeSpeechUtterance = utterance;
+          utterance.onend = () => {
+            clearTimeout(safetyTimer);
+            setSpeakingIndex(null);
+          };
+          utterance.onerror = () => {
+            clearTimeout(safetyTimer);
+            setSpeakingIndex(null);
+          };
+          window.speechSynthesis.speak(utterance);
+          return;
+        } catch {}
       }
-    }
+      clearTimeout(safetyTimer);
+      setSpeakingIndex(null);
+    };
 
-    // 2. High-reliability fallback
-    playAudioFallback(wordClean, idx);
+    audio.play().catch(() => {
+      // Autoplay / touch fallback
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.resume();
+          const utterance = new SpeechSynthesisUtterance(wordClean);
+          utterance.rate = 0.85;
+          utterance.lang = 'en-US';
+          utterance.onend = () => {
+            clearTimeout(safetyTimer);
+            setSpeakingIndex(null);
+          };
+          utterance.onerror = () => {
+            clearTimeout(safetyTimer);
+            setSpeakingIndex(null);
+          };
+          window.speechSynthesis.speak(utterance);
+          return;
+        } catch {}
+      }
+      clearTimeout(safetyTimer);
+      setSpeakingIndex(null);
+    });
   };
 
   const togglePlanned = (idx) => {
