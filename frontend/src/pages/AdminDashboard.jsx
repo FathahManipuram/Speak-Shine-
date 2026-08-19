@@ -1061,10 +1061,10 @@ export default function AdminDashboard() {
   const catPie = Object.entries(catCount).map(([name,value])=>({name,value}));
   const fineBar = [...users].filter(u=>(u.fine||0)>0).sort((a,b)=>(b.fine||0)-(a.fine||0)).slice(0,10).map(u=>({name:(u.registeredName||u.name||"?").slice(0,8),fine:u.fine||0}));
 
-  if (loading) return <Layout title="Admin Dashboard"><div className="spinner-wrap"><div className="spinner"/></div></Layout>;
+  if (loading) return <Layout><div className="spinner-wrap"><div className="spinner"/></div></Layout>;
 
   return (
-    <Layout title="Admin Dashboard">
+    <Layout>
       {modal && (
         <Modal
           type={modal.type}
