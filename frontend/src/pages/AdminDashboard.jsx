@@ -446,6 +446,7 @@ export default function AdminDashboard() {
   const [slotStatusFilter, setSlotStatusFilter] = useState("all"); // "all" | "pending" | "success" | "failed"
   const [slotTemplateFilter, setSlotTemplateFilter] = useState("all"); // "all" | "comprehensive" | "urgent" | "motivation" | "custom"
   const [slotSearchQuery, setSlotSearchQuery] = useState("");
+  const [slotSortOrder, setSlotSortOrder] = useState("asc"); // "asc" | "desc"
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -736,17 +737,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSortSlotsChronologically = () => {
+  const handleSortSlots = (order = "asc") => {
+    setSlotSortOrder(order);
     setSettings(s => {
       const list = [...(s.submissionReportSlots || [])];
-      list.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+      list.sort((a, b) => {
+        const cmp = (a.time || "00:00").localeCompare(b.time || "00:00");
+        return order === "asc" ? cmp : -cmp;
+      });
       return {
         ...s,
         submissionReportSlots: list,
         submissionReportTimes: list.map(x => x.time),
       };
     });
-    msg("⏱️ Time slots sorted chronologically (morning to night)!", "info");
+    msg(
+      order === "asc"
+        ? "⏱️ Time slots sorted: Ascending (AM ➔ PM / Morning to Night)"
+        : "⏱️ Time slots sorted: Descending (PM ➔ AM / Night to Morning)",
+      "info"
+    );
   };
 
   const handleReconnectWhatsApp = async () => {
@@ -3735,28 +3745,61 @@ export default function AdminDashboard() {
                               )}
                             </div>
 
-                            {/* Chronological Sort Button */}
-                            <button
-                              type="button"
-                              onClick={handleSortSlotsChronologically}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.3rem",
-                                background: "rgba(168, 85, 247, 0.12)",
-                                border: "1px solid rgba(168, 85, 247, 0.3)",
-                                color: "#d8b4fe",
-                                borderRadius: 8,
-                                padding: "0.32rem 0.65rem",
-                                fontSize: "0.76rem",
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                              }}
-                              title="Sort time slots chronologically from morning to night (AM to PM)"
-                            >
-                              ⏱️ Sort AM ➔ PM
-                            </button>
+                            {/* Sort Buttons: Ascending & Descending */}
+                            <div style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              borderRadius: 8,
+                              background: "rgba(255, 255, 255, 0.04)",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              padding: 2,
+                              gap: 2,
+                            }}>
+                              <button
+                                type="button"
+                                onClick={() => handleSortSlots("asc")}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.25rem",
+                                  background: slotSortOrder === "asc" ? "rgba(124, 111, 255, 0.35)" : "transparent",
+                                  border: "none",
+                                  color: slotSortOrder === "asc" ? "#fff" : "var(--muted)",
+                                  borderRadius: 6,
+                                  padding: "0.28rem 0.6rem",
+                                  fontSize: "0.74rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  transition: "all 0.15s ease",
+                                  boxShadow: slotSortOrder === "asc" ? "0 0 8px rgba(124, 111, 255, 0.3)" : "none",
+                                }}
+                                title="Sort Ascending: Morning to Night (AM ➔ PM)"
+                              >
+                                <span>↑</span> Ascending
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSortSlots("desc")}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.25rem",
+                                  background: slotSortOrder === "desc" ? "rgba(124, 111, 255, 0.35)" : "transparent",
+                                  border: "none",
+                                  color: slotSortOrder === "desc" ? "#fff" : "var(--muted)",
+                                  borderRadius: 6,
+                                  padding: "0.28rem 0.6rem",
+                                  fontSize: "0.74rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  transition: "all 0.15s ease",
+                                  boxShadow: slotSortOrder === "desc" ? "0 0 8px rgba(124, 111, 255, 0.3)" : "none",
+                                }}
+                                title="Sort Descending: Night to Morning (PM ➔ AM)"
+                              >
+                                <span>↓</span> Descending
+                              </button>
+                            </div>
                           </div>
                         </div>
 
