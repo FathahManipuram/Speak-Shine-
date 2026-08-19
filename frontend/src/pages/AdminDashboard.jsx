@@ -443,6 +443,9 @@ export default function AdminDashboard() {
   const [sendingSlotIndex, setSendingSlotIndex] = useState(null);
   const [hoveredErrorIndex, setHoveredErrorIndex] = useState(null);
   const [testAlertLoading, setTestAlertLoading] = useState(false);
+  const [slotStatusFilter, setSlotStatusFilter] = useState("all"); // "all" | "pending" | "success" | "failed"
+  const [slotTemplateFilter, setSlotTemplateFilter] = useState("all"); // "all" | "comprehensive" | "urgent" | "motivation" | "custom"
+  const [slotSearchQuery, setSlotSearchQuery] = useState("");
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -731,6 +734,19 @@ export default function AdminDashboard() {
     } finally {
       setTestAlertLoading(false);
     }
+  };
+
+  const handleSortSlotsChronologically = () => {
+    setSettings(s => {
+      const list = [...(s.submissionReportSlots || [])];
+      list.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+      return {
+        ...s,
+        submissionReportSlots: list,
+        submissionReportTimes: list.map(x => x.time),
+      };
+    });
+    msg("⏱️ Time slots sorted chronologically (morning to night)!", "info");
   };
 
   const handleReconnectWhatsApp = async () => {
@@ -3573,304 +3589,511 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Dynamic Multi-Times List with Custom Popover Template Selection */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem" }}>
-                    {(settings.submissionReportSlots || [
+                  {/* Dynamic Multi-Times List with Filters & Sorters */}
+                  {(() => {
+                    const allSlots = (settings.submissionReportSlots || [
                       { time: "18:00", templateType: "comprehensive", customTemplate: "" },
                       { time: "21:00", templateType: "urgent", customTemplate: "" }
-                    ]).map((slot, idx) => {
-                      const isSentToday = slot.completed || slot.lastStatus === "success";
-                      const isFailedToday = slot.failed || slot.lastStatus === "failed";
-                      const isPending = !isSentToday && !isFailedToday;
-                      const isSendingThis = sendingSlotIndex === idx;
+                    ]);
 
-                      return (
-                        <div
-                          key={idx}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.75rem",
-                            padding: "0.75rem 0.9rem",
-                            borderRadius: 12,
-                            background: isFailedToday
-                              ? "rgba(239, 68, 68, 0.04)"
-                              : isSentToday
-                                ? "rgba(34, 197, 94, 0.03)"
-                                : "rgba(255, 255, 255, 0.02)",
-                            border: isFailedToday
-                              ? "1px solid rgba(239, 68, 68, 0.28)"
-                              : isSentToday
-                                ? "1px solid rgba(34, 197, 94, 0.2)"
-                                : "1px solid rgba(255, 255, 255, 0.07)",
-                            flexWrap: "wrap",
-                            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
-                            transition: "all 0.2s ease",
-                          }}
-                        >
-                          {/* Slot Badge */}
-                          <div style={{
-                            fontSize: "0.72rem",
-                            fontWeight: 800,
-                            color: "#a5b4fc",
-                            background: "rgba(99, 102, 241, 0.14)",
-                            border: "1px solid rgba(99, 102, 241, 0.25)",
-                            padding: "3px 8px",
-                            borderRadius: 8,
-                            flexShrink: 0,
-                          }}>
-                            #{idx + 1}
+                    const totalCount = allSlots.length;
+                    const sentCount = allSlots.filter(s => s.completed || s.lastStatus === "success").length;
+                    const failedCount = allSlots.filter(s => s.failed || s.lastStatus === "failed").length;
+                    const pendingCount = totalCount - sentCount - failedCount;
+
+                    const filteredSlotsWithIndex = allSlots.map((slot, origIdx) => ({ slot, origIdx })).filter(({ slot }) => {
+                      const isSent = slot.completed || slot.lastStatus === "success";
+                      const isFailed = slot.failed || slot.lastStatus === "failed";
+                      const isPending = !isSent && !isFailed;
+
+                      if (slotStatusFilter === "pending" && !isPending) return false;
+                      if (slotStatusFilter === "success" && !isSent) return false;
+                      if (slotStatusFilter === "failed" && !isFailed) return false;
+
+                      if (slotTemplateFilter !== "all" && slot.templateType !== slotTemplateFilter) return false;
+
+                      if (slotSearchQuery.trim()) {
+                        const q = slotSearchQuery.toLowerCase().trim();
+                        const time12 = formatTime12h(slot.time).toLowerCase();
+                        const time24 = (slot.time || "").toLowerCase();
+                        const tpl = (slot.templateType || "").toLowerCase();
+                        const custom = (slot.customTemplate || "").toLowerCase();
+                        if (!time12.includes(q) && !time24.includes(q) && !tpl.includes(q) && !custom.includes(q)) {
+                          return false;
+                        }
+                      }
+                      return true;
+                    });
+
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem" }}>
+                        {/* ── Toolbar: Status Chips, Template Selector, Search, Sort ── */}
+                        <div style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "0.65rem",
+                          flexWrap: "wrap",
+                          background: "rgba(255, 255, 255, 0.02)",
+                          border: "1px solid rgba(255, 255, 255, 0.06)",
+                          padding: "0.6rem 0.85rem",
+                          borderRadius: 12,
+                        }}>
+                          {/* Status Filter Chips */}
+                          <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
+                            {[
+                              { id: "all", label: `All (${totalCount})`, color: "#a5b4fc" },
+                              { id: "pending", label: `⏳ Pending (${pendingCount})`, color: "#94a3b8" },
+                              { id: "success", label: `✅ Sent (${sentCount})`, color: "#4ade80" },
+                              { id: "failed", label: `❌ Failed (${failedCount})`, color: "#f87171" },
+                            ].map(chip => {
+                              const active = slotStatusFilter === chip.id;
+                              return (
+                                <button
+                                  key={chip.id}
+                                  type="button"
+                                  onClick={() => setSlotStatusFilter(chip.id)}
+                                  style={{
+                                    padding: "0.3rem 0.65rem",
+                                    borderRadius: 8,
+                                    fontSize: "0.76rem",
+                                    fontWeight: 700,
+                                    background: active ? "rgba(124, 111, 255, 0.25)" : "rgba(255, 255, 255, 0.04)",
+                                    border: active ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.08)",
+                                    color: active ? "#fff" : chip.color,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease",
+                                    boxShadow: active ? "0 0 10px rgba(124, 111, 255, 0.3)" : "none",
+                                  }}
+                                >
+                                  {chip.label}
+                                </button>
+                              );
+                            })}
                           </div>
 
-                          {/* Time Picker */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
-                            <input
-                              type="time"
-                              value={slot.time || "18:00"}
-                              onChange={e => {
-                                const newTime = e.target.value;
-                                setSettings(s => {
-                                  const list = [...(s.submissionReportSlots || [])];
-                                  list[idx] = { ...list[idx], time: newTime };
-                                  return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
-                                });
-                              }}
+                          {/* Filters & Actions */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                            {/* Template Type Dropdown Filter */}
+                            <select
+                              value={slotTemplateFilter}
+                              onChange={e => setSlotTemplateFilter(e.target.value)}
                               style={{
-                                background: "rgba(255, 255, 255, 0.04)",
-                                color: "#f8fafc",
-                                border: "1px solid rgba(255, 255, 255, 0.1)",
-                                padding: "0.45rem 0.65rem",
+                                background: "#0d0a1a",
+                                color: "#e2e8f0",
+                                border: "1px solid rgba(255, 255, 255, 0.12)",
                                 borderRadius: 8,
-                                fontSize: "0.88rem",
-                                fontWeight: 700,
-                                outline: "none",
-                              }}
-                            />
-                          </div>
-
-                          {/* Custom Template Dropdown Popover */}
-                          <TemplateDropdown
-                            value={slot.templateType || "comprehensive"}
-                            onChange={(newType) => {
-                              setSettings(s => {
-                                const list = [...(s.submissionReportSlots || [])];
-                                list[idx] = { ...list[idx], templateType: newType };
-                                return { ...s, submissionReportSlots: list };
-                              });
-                            }}
-                          />
-
-                          {/* Live Execution Status Badge with Hover Details */}
-                          <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
-                            {isSentToday ? (
-                              <div
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.35rem",
-                                  padding: "0.38rem 0.65rem",
-                                  borderRadius: 8,
-                                  fontSize: "0.74rem",
-                                  fontWeight: 700,
-                                  background: "rgba(34, 197, 94, 0.12)",
-                                  border: "1px solid rgba(34, 197, 94, 0.3)",
-                                  color: "#4ade80",
-                                }}
-                                title={`Sent successfully to WhatsApp group today at ${formatTime12h(slot.lastSentTime || slot.time)}`}
-                              >
-                                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
-                                <span>Sent {slot.lastSentTime ? `(${formatTime12h(slot.lastSentTime)})` : "Today"}</span>
-                              </div>
-                            ) : isFailedToday ? (
-                              <div
-                                style={{ position: "relative" }}
-                                onMouseEnter={() => setHoveredErrorIndex(idx)}
-                                onMouseLeave={() => setHoveredErrorIndex(null)}
-                              >
-                                <div style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.35rem",
-                                  padding: "0.38rem 0.65rem",
-                                  borderRadius: 8,
-                                  fontSize: "0.74rem",
-                                  fontWeight: 700,
-                                  background: "rgba(239, 68, 68, 0.15)",
-                                  border: "1px solid rgba(239, 68, 68, 0.4)",
-                                  color: "#f87171",
-                                  cursor: "help",
-                                }}>
-                                  <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#f87171", boxShadow: "0 0 6px #f87171" }} />
-                                  <span>Failed ⚠️</span>
-                                </div>
-
-                                {/* Floating Hover Tooltip with Full Failure Reason */}
-                                {hoveredErrorIndex === idx && (
-                                  <div style={{
-                                    position: "absolute",
-                                    bottom: "calc(100% + 8px)",
-                                    left: "50%",
-                                    transform: "translateX(-50%)",
-                                    background: "#18182f",
-                                    border: "1px solid rgba(239, 68, 68, 0.4)",
-                                    borderRadius: 10,
-                                    padding: "0.6rem 0.85rem",
-                                    minWidth: 230,
-                                    maxWidth: 320,
-                                    zIndex: 9999,
-                                    boxShadow: "0 10px 25px rgba(0,0,0,0.6)",
-                                    pointerEvents: "none",
-                                  }}>
-                                    <div style={{ fontSize: "0.74rem", fontWeight: 800, color: "#fca5a5", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                                      <span>❌ Auto-Send Failed</span>
-                                    </div>
-                                    <div style={{ fontSize: "0.74rem", color: "#e2e8f0", lineHeight: 1.4, wordBreak: "break-word" }}>
-                                      {slot.lastError || "WhatsApp bot was not connected or group was unreachable."}
-                                    </div>
-                                    {slot.lastSentTime && (
-                                      <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.35rem" }}>
-                                        Attempted: {formatTime12h(slot.lastSentTime)}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.35rem",
-                                padding: "0.38rem 0.65rem",
-                                borderRadius: 8,
-                                fontSize: "0.74rem",
+                                padding: "0.32rem 0.65rem",
+                                fontSize: "0.76rem",
                                 fontWeight: 600,
-                                background: "rgba(148, 163, 184, 0.08)",
-                                border: "1px solid rgba(148, 163, 184, 0.18)",
-                                color: "#94a3b8",
-                              }}>
-                                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#94a3b8" }} />
-                                <span>Pending</span>
-                              </div>
-                            )}
-                          </div>
+                                cursor: "pointer",
+                              }}
+                            >
+                              <option value="all">📁 All Templates</option>
+                              <option value="comprehensive">📊 Comprehensive</option>
+                              <option value="urgent">⚡ Urgent Final Call</option>
+                              <option value="motivation">🌟 Motivation &amp; Streaks</option>
+                              <option value="custom">✏️ Custom Template</option>
+                            </select>
 
-                          {/* Action Buttons: Instant Send/Retry, Edit, Delete */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0, marginLeft: "auto" }}>
-                            {/* Instant Send / Retry Button */}
+                            {/* Search Box */}
+                            <div style={{ position: "relative" }}>
+                              <input
+                                type="text"
+                                placeholder="🔍 Search slot time..."
+                                value={slotSearchQuery}
+                                onChange={e => setSlotSearchQuery(e.target.value)}
+                                style={{
+                                  background: "#0d0a1a",
+                                  color: "#e2e8f0",
+                                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                                  borderRadius: 8,
+                                  padding: "0.32rem 0.65rem",
+                                  fontSize: "0.76rem",
+                                  width: 155,
+                                }}
+                              />
+                              {slotSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSlotSearchQuery("")}
+                                  style={{
+                                    position: "absolute",
+                                    right: 6,
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    background: "none",
+                                    border: "none",
+                                    color: "var(--muted)",
+                                    cursor: "pointer",
+                                    fontSize: "0.75rem",
+                                    padding: 2,
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Chronological Sort Button */}
                             <button
                               type="button"
-                              disabled={isSendingThis}
-                              onClick={() => handleSendSlotNow(slot, idx)}
+                              onClick={handleSortSlotsChronologically}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: "0.35rem",
-                                background: isFailedToday
-                                  ? "rgba(239, 68, 68, 0.18)"
-                                  : isSentToday
-                                    ? "rgba(34, 197, 94, 0.14)"
-                                    : "rgba(168, 85, 247, 0.16)",
-                                border: isFailedToday
-                                  ? "1px solid rgba(239, 68, 68, 0.45)"
-                                  : isSentToday
-                                    ? "1px solid rgba(34, 197, 94, 0.35)"
-                                    : "1px solid rgba(168, 85, 247, 0.35)",
-                                color: isFailedToday
-                                  ? "#fca5a5"
-                                  : isSentToday
-                                    ? "#86efac"
-                                    : "#d8b4fe",
+                                gap: "0.3rem",
+                                background: "rgba(168, 85, 247, 0.12)",
+                                border: "1px solid rgba(168, 85, 247, 0.3)",
+                                color: "#d8b4fe",
                                 borderRadius: 8,
-                                padding: "0.45rem 0.75rem",
-                                cursor: isSendingThis ? "not-allowed" : "pointer",
-                                fontSize: "0.78rem",
+                                padding: "0.32rem 0.65rem",
+                                fontSize: "0.76rem",
                                 fontWeight: 700,
+                                cursor: "pointer",
                                 transition: "all 0.15s ease",
-                                opacity: isSendingThis ? 0.7 : 1,
                               }}
-                              title={isFailedToday ? "Retry sending this message now" : "Send this slot message immediately"}
+                              title="Sort time slots chronologically from morning to night (AM to PM)"
                             >
-                              {isSendingThis ? (
-                                <>
-                                  <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                                  Sending...
-                                </>
-                              ) : isFailedToday ? (
-                                <>🔄 Retry Now</>
-                              ) : isSentToday ? (
-                                <>✓ Re-send</>
-                              ) : (
-                                <>⚡ Send Now</>
-                              )}
+                              ⏱️ Sort AM ➔ PM
                             </button>
+                          </div>
+                        </div>
 
+                        {/* ── Empty Filtered Results State ── */}
+                        {filteredSlotsWithIndex.length === 0 ? (
+                          <div style={{
+                            textAlign: "center",
+                            padding: "2rem 1rem",
+                            borderRadius: 12,
+                            background: "rgba(255, 255, 255, 0.02)",
+                            border: "1px dashed rgba(255, 255, 255, 0.1)",
+                          }}>
+                            <div style={{ fontSize: "1.8rem", marginBottom: "0.4rem" }}>🔍</div>
+                            <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#e2e8f0", marginBottom: "0.2rem" }}>
+                              No Matching Time Slots Found
+                            </div>
+                            <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "0 0 0.85rem" }}>
+                              No auto-send slots match your current filter settings.
+                            </p>
                             <button
                               type="button"
                               onClick={() => {
-                                setEditingTemplateType(slot.templateType || "comprehensive");
-                                document.getElementById("submissionReportTemplateTextarea")?.focus();
+                                setSlotStatusFilter("all");
+                                setSlotTemplateFilter("all");
+                                setSlotSearchQuery("");
                               }}
                               style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.35rem",
-                                background: "rgba(99, 102, 241, 0.14)",
-                                border: "1px solid rgba(99, 102, 241, 0.28)",
-                                color: "#c4b5fd",
+                                padding: "0.4rem 0.85rem",
                                 borderRadius: 8,
-                                padding: "0.45rem 0.75rem",
-                                cursor: "pointer",
+                                background: "rgba(124, 111, 255, 0.2)",
+                                border: "1px solid rgba(124, 111, 255, 0.4)",
+                                color: "#fff",
                                 fontSize: "0.78rem",
                                 fontWeight: 700,
-                                transition: "all 0.15s ease",
+                                cursor: "pointer",
                               }}
-                              title="Edit template text below"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                              </svg>
-                              Edit
+                              🔄 Reset Filters
                             </button>
-
-                            {(settings.submissionReportSlots || []).length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSettings(s => {
-                                    const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
-                                    const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
-                                    return {
-                                      ...s,
-                                      submissionReportSlots: finalList,
-                                      submissionReportTimes: finalList.map(x => x.time),
-                                    };
-                                  });
-                                }}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  width: 30,
-                                  height: 30,
-                                  background: "rgba(239, 68, 68, 0.12)",
-                                  border: "1px solid rgba(239, 68, 68, 0.25)",
-                                  color: "#f87171",
-                                  borderRadius: 8,
-                                  cursor: "pointer",
-                                  transition: "all 0.15s ease",
-                                }}
-                                title="Delete this time slot"
-                              >
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                </svg>
-                              </button>
-                            )}
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        ) : (
+                          filteredSlotsWithIndex.map(({ slot, origIdx }) => {
+                            const isSentToday = slot.completed || slot.lastStatus === "success";
+                            const isFailedToday = slot.failed || slot.lastStatus === "failed";
+                            const isPending = !isSentToday && !isFailedToday;
+                            const isSendingThis = sendingSlotIndex === origIdx;
+
+                            return (
+                              <div
+                                key={origIdx}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.75rem",
+                                  padding: "0.75rem 0.9rem",
+                                  borderRadius: 12,
+                                  background: isFailedToday
+                                    ? "rgba(239, 68, 68, 0.04)"
+                                    : isSentToday
+                                      ? "rgba(34, 197, 94, 0.03)"
+                                      : "rgba(255, 255, 255, 0.02)",
+                                  border: isFailedToday
+                                    ? "1px solid rgba(239, 68, 68, 0.28)"
+                                    : isSentToday
+                                      ? "1px solid rgba(34, 197, 94, 0.2)"
+                                      : "1px solid rgba(255, 255, 255, 0.07)",
+                                  flexWrap: "wrap",
+                                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                {/* Slot Badge */}
+                                <div style={{
+                                  fontSize: "0.72rem",
+                                  fontWeight: 800,
+                                  color: "#a5b4fc",
+                                  background: "rgba(99, 102, 241, 0.14)",
+                                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                                  padding: "3px 8px",
+                                  borderRadius: 8,
+                                  flexShrink: 0,
+                                }}>
+                                  #{origIdx + 1}
+                                </div>
+
+                                {/* Time Picker */}
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
+                                  <input
+                                    type="time"
+                                    value={slot.time || "18:00"}
+                                    onChange={e => {
+                                      const newTime = e.target.value;
+                                      setSettings(s => {
+                                        const list = [...(s.submissionReportSlots || [])];
+                                        list[origIdx] = { ...list[origIdx], time: newTime };
+                                        return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
+                                      });
+                                    }}
+                                    style={{
+                                      background: "rgba(255, 255, 255, 0.04)",
+                                      color: "#f8fafc",
+                                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                                      padding: "0.45rem 0.65rem",
+                                      borderRadius: 8,
+                                      fontSize: "0.88rem",
+                                      fontWeight: 700,
+                                      outline: "none",
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Custom Template Dropdown Popover */}
+                                <TemplateDropdown
+                                  value={slot.templateType || "comprehensive"}
+                                  onChange={(newType) => {
+                                    setSettings(s => {
+                                      const list = [...(s.submissionReportSlots || [])];
+                                      list[origIdx] = { ...list[origIdx], templateType: newType };
+                                      return { ...s, submissionReportSlots: list };
+                                    });
+                                  }}
+                                />
+
+                                {/* Live Execution Status Badge with Hover Details */}
+                                <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+                                  {isSentToday ? (
+                                    <div
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.35rem",
+                                        padding: "0.38rem 0.65rem",
+                                        borderRadius: 8,
+                                        fontSize: "0.74rem",
+                                        fontWeight: 700,
+                                        background: "rgba(34, 197, 94, 0.12)",
+                                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                                        color: "#4ade80",
+                                      }}
+                                      title={`Sent successfully to WhatsApp group today at ${formatTime12h(slot.lastSentTime || slot.time)}`}
+                                    >
+                                      <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
+                                      <span>Sent {slot.lastSentTime ? `(${formatTime12h(slot.lastSentTime)})` : "Today"}</span>
+                                    </div>
+                                  ) : isFailedToday ? (
+                                    <div
+                                      style={{ position: "relative" }}
+                                      onMouseEnter={() => setHoveredErrorIndex(origIdx)}
+                                      onMouseLeave={() => setHoveredErrorIndex(null)}
+                                    >
+                                      <div style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.35rem",
+                                        padding: "0.38rem 0.65rem",
+                                        borderRadius: 8,
+                                        fontSize: "0.74rem",
+                                        fontWeight: 700,
+                                        background: "rgba(239, 68, 68, 0.15)",
+                                        border: "1px solid rgba(239, 68, 68, 0.4)",
+                                        color: "#f87171",
+                                        cursor: "help",
+                                      }}>
+                                        <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#f87171", boxShadow: "0 0 6px #f87171" }} />
+                                        <span>Failed ⚠️</span>
+                                      </div>
+
+                                      {/* Floating Hover Tooltip with Full Failure Reason */}
+                                      {hoveredErrorIndex === origIdx && (
+                                        <div style={{
+                                          position: "absolute",
+                                          bottom: "calc(100% + 8px)",
+                                          left: "50%",
+                                          transform: "translateX(-50%)",
+                                          background: "#18182f",
+                                          border: "1px solid rgba(239, 68, 68, 0.4)",
+                                          borderRadius: 10,
+                                          padding: "0.6rem 0.85rem",
+                                          minWidth: 230,
+                                          maxWidth: 320,
+                                          zIndex: 9999,
+                                          boxShadow: "0 10px 25px rgba(0,0,0,0.6)",
+                                          pointerEvents: "none",
+                                        }}>
+                                          <div style={{ fontSize: "0.74rem", fontWeight: 800, color: "#fca5a5", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                            <span>❌ Auto-Send Failed</span>
+                                          </div>
+                                          <div style={{ fontSize: "0.74rem", color: "#e2e8f0", lineHeight: 1.4, wordBreak: "break-word" }}>
+                                            {slot.lastError || "WhatsApp bot was not connected or group was unreachable."}
+                                          </div>
+                                          {slot.lastSentTime && (
+                                            <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.35rem" }}>
+                                              Attempted: {formatTime12h(slot.lastSentTime)}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.35rem",
+                                      padding: "0.38rem 0.65rem",
+                                      borderRadius: 8,
+                                      fontSize: "0.74rem",
+                                      fontWeight: 600,
+                                      background: "rgba(148, 163, 184, 0.08)",
+                                      border: "1px solid rgba(148, 163, 184, 0.18)",
+                                      color: "#94a3b8",
+                                    }}>
+                                      <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#94a3b8" }} />
+                                      <span>Pending</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Action Buttons: Instant Send/Retry, Edit, Delete */}
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0, marginLeft: "auto" }}>
+                                  {/* Instant Send / Retry Button */}
+                                  <button
+                                    type="button"
+                                    disabled={isSendingThis}
+                                    onClick={() => handleSendSlotNow(slot, origIdx)}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.35rem",
+                                      background: isFailedToday
+                                        ? "rgba(239, 68, 68, 0.18)"
+                                        : isSentToday
+                                          ? "rgba(34, 197, 94, 0.14)"
+                                          : "rgba(168, 85, 247, 0.16)",
+                                      border: isFailedToday
+                                        ? "1px solid rgba(239, 68, 68, 0.45)"
+                                        : isSentToday
+                                          ? "1px solid rgba(34, 197, 94, 0.35)"
+                                          : "1px solid rgba(168, 85, 247, 0.35)",
+                                      color: isFailedToday
+                                        ? "#fca5a5"
+                                        : isSentToday
+                                          ? "#86efac"
+                                          : "#d8b4fe",
+                                      borderRadius: 8,
+                                      padding: "0.45rem 0.75rem",
+                                      cursor: isSendingThis ? "not-allowed" : "pointer",
+                                      fontSize: "0.78rem",
+                                      fontWeight: 700,
+                                      transition: "all 0.15s ease",
+                                      opacity: isSendingThis ? 0.7 : 1,
+                                    }}
+                                    title={isFailedToday ? "Retry sending this message now" : "Send this slot message immediately"}
+                                  >
+                                    {isSendingThis ? (
+                                      <>
+                                        <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                                        Sending...
+                                      </>
+                                    ) : isFailedToday ? (
+                                      <>🔄 Retry Now</>
+                                    ) : isSentToday ? (
+                                      <>✓ Re-send</>
+                                    ) : (
+                                      <>⚡ Send Now</>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingTemplateType(slot.templateType || "comprehensive");
+                                      document.getElementById("submissionReportTemplateTextarea")?.focus();
+                                    }}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.35rem",
+                                      background: "rgba(99, 102, 241, 0.14)",
+                                      border: "1px solid rgba(99, 102, 241, 0.28)",
+                                      color: "#c4b5fd",
+                                      borderRadius: 8,
+                                      padding: "0.45rem 0.75rem",
+                                      cursor: "pointer",
+                                      fontSize: "0.78rem",
+                                      fontWeight: 700,
+                                      transition: "all 0.15s ease",
+                                    }}
+                                    title="Edit template text below"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                    </svg>
+                                    Edit
+                                  </button>
+
+                                  {(settings.submissionReportSlots || []).length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSettings(s => {
+                                          const list = (s.submissionReportSlots || []).filter((_, i) => i !== origIdx);
+                                          const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
+                                          return {
+                                            ...s,
+                                            submissionReportSlots: finalList,
+                                            submissionReportTimes: finalList.map(x => x.time),
+                                          };
+                                        });
+                                      }}
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        width: 30,
+                                        height: 30,
+                                        background: "rgba(239, 68, 68, 0.12)",
+                                        border: "1px solid rgba(239, 68, 68, 0.25)",
+                                        color: "#f87171",
+                                        borderRadius: 8,
+                                        cursor: "pointer",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                      title="Delete this time slot"
+                                    >
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <button
                     type="button"
