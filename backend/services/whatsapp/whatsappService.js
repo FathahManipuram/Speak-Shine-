@@ -865,3 +865,107 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
     sentAt: new Date(),
   };
 }
+
+/**
+ * Sends a direct WhatsApp message to the admin's personal phone number.
+ */
+export async function sendAdminDirectMessage(text, options = {}) {
+  const Status = (await import("../../../models/statusSchema.js")).default;
+  const status = await Status.findOne().lean().catch(() => null);
+
+  const targetPhone = options.phone || status?.adminNotifyPhone || process.env.ADMIN_NOTIFY_PHONE || getSavedPhone();
+  if (!targetPhone) {
+    console.log("[WhatsApp] ℹ️ No admin phone configured for direct notification.");
+    return { success: false, message: "No admin phone number configured." };
+  }
+
+  const cleanPhone = String(targetPhone).replace(/[^0-9]/g, "");
+  if (!cleanPhone || cleanPhone.length < 7) {
+    return { success: false, message: "Invalid admin phone number format." };
+  }
+
+  const recipientJid = `${cleanPhone}@s.whatsapp.net`;
+
+  // Ensure WhatsApp socket is connected
+  await ensureWhatsAppConnected(15000);
+
+  console.log(`[WhatsApp] 📲 Sending personal admin message to ${cleanPhone}...`);
+  await sock.sendMessage(recipientJid, { text });
+  console.log(`[WhatsApp] ✅ Personal admin message sent successfully to ${cleanPhone}!`);
+
+  return { success: true, recipient: cleanPhone, sentAt: new Date() };
+}
+
+/**
+ * Sends automated deployment success or startup failure notifications to the admin's personal number.
+ */
+export async function sendDeploymentNotification({ status = "success", error = null, extra = {} } = {}) {
+  try {
+    const Status = (await import("../../../models/statusSchema.js")).default;
+    const dbStatus = await Status.findOne().lean().catch(() => null);
+
+    const isEnabled = dbStatus?.deploymentNotifyEnabled !== false && process.env.DEPLOYMENT_NOTIFY_ENABLED !== "false";
+    if (!isEnabled) {
+      console.log("[WhatsApp] ℹ️ Deployment notifications are disabled in settings.");
+      return { success: false, message: "Deployment notifications disabled." };
+    }
+
+    const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const dateStr = nowIST.toLocaleDateString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    const timeStr = nowIST.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const env = process.env.NODE_ENV || "production";
+    const appUrl = process.env.FRONTEND_URL || "https://speak-shine.sidhartht.online";
+    const slotCount = Array.isArray(dbStatus?.submissionReportSlots) ? dbStatus.submissionReportSlots.length : 0;
+    const botPhone = userPhone || getSavedPhone() || "Active";
+
+    let message = "";
+    if (status === "success") {
+      message = [
+        `🚀 *SPEAK & SHINE — DEPLOYMENT SUCCESSFUL* ✅`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `📅 *Date:* ${dateStr}`,
+        `⏰ *Time:* ${timeStr} (IST)`,
+        `🌐 *Environment:* ${env}`,
+        `🟢 *API Server:* Online & Healthy`,
+        `📱 *WhatsApp Gateway:* Connected (+${botPhone})`,
+        `🤖 *Auto-Send Schedule:* ${slotCount} active time slots configured`,
+        `🚀 *App URL:* ${appUrl}`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `✨ All automated student reminders and background services are running smoothly!`,
+      ].join("\n");
+    } else {
+      const errorMsg = typeof error === "string" ? error : (error?.message || "Unknown critical error");
+      const errorStack = error?.stack ? error.stack.split("\n").slice(0, 4).join("\n") : "";
+
+      message = [
+        `🚨 *SPEAK & SHINE — DEPLOYMENT / SERVER FAILURE ALERT* ⚠️`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `📅 *Date:* ${dateStr}`,
+        `⏰ *Time:* ${timeStr} (IST)`,
+        `🌐 *Environment:* ${env}`,
+        `🔴 *Status:* Server Boot / Runtime Failure`,
+        ``,
+        `❌ *Error Reason:*`,
+        `${errorMsg}`,
+        errorStack ? `\n📋 *Trace:* \n\`\`\`${errorStack}\`\`\`` : "",
+        `━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `⚠️ Please check server logs and restart if needed.`,
+      ].filter(Boolean).join("\n");
+    }
+
+    return await sendAdminDirectMessage(message);
+  } catch (err) {
+    console.warn("[WhatsApp] Could not send deployment notification:", err.message);
+    return { success: false, error: err.message };
+  }
+}

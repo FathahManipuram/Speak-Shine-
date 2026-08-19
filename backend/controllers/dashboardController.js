@@ -145,10 +145,11 @@ export async function updateSettings(req, res) {
       submissionReportTime1,
       submissionReportTime2,
       submissionReportTimes,
-      submissionReportTemplate,
       submissionReportSlotTemplates,
       submissionReportSlots,
       submissionReportTemplates,
+      adminNotifyPhone,
+      deploymentNotifyEnabled,
     } = req.body;
     const result = await dashboardService.updateSettings(
       posterSendTime,
@@ -187,7 +188,9 @@ export async function updateSettings(req, res) {
       submissionReportTemplate,
       submissionReportSlotTemplates,
       submissionReportSlots,
-      submissionReportTemplates
+      submissionReportTemplates,
+      adminNotifyPhone,
+      deploymentNotifyEnabled
     );
     res.json(result);
   } catch (error) {

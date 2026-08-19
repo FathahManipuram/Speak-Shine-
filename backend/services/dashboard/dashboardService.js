@@ -480,6 +480,8 @@ export async function getSettings() {
     durationMonthlyGoalsFull: status.durationMonthlyGoalsFull ?? 420,
     durationPictureMax: status.durationPictureMax ?? 180,
     durationPictureFull: status.durationPictureFull ?? 180,
+    adminNotifyPhone: status.adminNotifyPhone || process.env.ADMIN_NOTIFY_PHONE || null,
+    deploymentNotifyEnabled: status.deploymentNotifyEnabled !== false,
   };
 }
 
@@ -507,10 +509,20 @@ export async function updateSettings(
   submissionReportTemplate,
   submissionReportSlotTemplates,
   submissionReportSlots,
-  submissionReportTemplates
+  submissionReportTemplates,
+  adminNotifyPhone,
+  deploymentNotifyEnabled
 ) {
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
+
+  if (adminNotifyPhone !== undefined) {
+    updates.adminNotifyPhone = typeof adminNotifyPhone === "string" ? adminNotifyPhone.trim() : null;
+  }
+
+  if (deploymentNotifyEnabled !== undefined) {
+    updates.deploymentNotifyEnabled = deploymentNotifyEnabled === true || deploymentNotifyEnabled === "true";
+  }
   
   if (submissionReportSlots !== undefined) {
     if (Array.isArray(submissionReportSlots)) {

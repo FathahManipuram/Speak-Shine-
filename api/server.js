@@ -54,7 +54,7 @@ import submissionsRoutes from "../backend/routes/submissions.routes.js";
 import guestRoutes from "../backend/routes/guest.routes.js";
 import paymentRoutes from "../backend/routes/payment.routes.js";
 import whatsappRoutes from "../backend/routes/whatsapp.routes.js";
-import { initWhatsAppBot, setSocketIo as setWhatsAppSocketIo } from "../backend/services/whatsapp/whatsappService.js";
+import { initWhatsAppBot, setSocketIo as setWhatsAppSocketIo, sendDeploymentNotification } from "../backend/services/whatsapp/whatsappService.js";
 
 console.log("[Routes] Loading MVC routes...");
 console.log("[Routes] Auth routes loaded:", !!authRoutes);
@@ -564,10 +564,31 @@ connectDB()
     // Initialize WhatsApp multi-device client
     setWhatsAppSocketIo(io);
     initWhatsAppBot();
+
+    // Send deployment success notification to personal admin WhatsApp
+    setTimeout(async () => {
+      try {
+        console.log("[Startup] 📲 Dispatching deployment success alert to admin WhatsApp...");
+        await sendDeploymentNotification({ status: "success" });
+      } catch (err) {
+        console.warn("[Startup] Non-fatal deployment alert error:", err.message);
+      }
+    }, 12000); // 12s buffer for WhatsApp socket handshake
   })
-  .catch((err) => {
+  .catch(async (err) => {
     console.error("❌ Failed to start server:", err);
+    try {
+      await sendDeploymentNotification({ status: "failure", error: err });
+    } catch {}
     process.exit(1);
   });
+
+process.on("uncaughtException", async (err) => {
+  console.error("🚨 [Fatal] Uncaught Exception:", err);
+  try {
+    await sendDeploymentNotification({ status: "failure", error: err });
+  } catch {}
+  process.exit(1);
+});
 
 export default app;

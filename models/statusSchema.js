@@ -109,6 +109,9 @@ const statusSchema = new mongoose.Schema({
   submissionReportSlotTemplates: { type: Map, of: String, default: {} },
   lastSubmissionReportDate: { type: String, default: null },
   lastSubmissionReportTime: { type: String, default: null },
+  // Personal notification settings for admin
+  adminNotifyPhone: { type: String, default: null }, // e.g. "919048336746"
+  deploymentNotifyEnabled: { type: Boolean, default: true },
   // Track last successful daily reset (YYYY-MM-DD in IST) to detect missed resets
   lastResetDate: { type: String, default: null },
 }, { timestamps: true });

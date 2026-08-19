@@ -164,3 +164,28 @@ export async function logoutWhatsApp(req, res) {
     return res.status(500).json({ success: false, error: err.message });
   }
 }
+
+export async function sendTestAdminAlert(req, res) {
+  try {
+    const { phone } = req.body || {};
+    const { sendDeploymentNotification, sendAdminDirectMessage } = await import("../services/whatsapp/whatsappService.js");
+    
+    if (phone) {
+      const Status = (await import("../../../models/statusSchema.js")).default;
+      await Status.updateOne({}, { $set: { adminNotifyPhone: phone } }, { upsert: true });
+    }
+
+    const result = await sendDeploymentNotification({
+      status: "success",
+      extra: { test: true },
+    });
+
+    if (!result || result.success === false) {
+      return res.status(400).json({ success: false, error: result?.message || result?.error || "Failed to send WhatsApp alert" });
+    }
+    return res.json({ success: true, message: "Test alert dispatched to your WhatsApp number!" });
+  } catch (err) {
+    console.error("[WhatsAppController] sendTestAdminAlert error:", err.message);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+}

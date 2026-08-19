@@ -419,6 +419,8 @@ export default function AdminDashboard() {
     durationMonthlyGoalsFull: 420,
     durationPictureMax: 180,
     durationPictureFull: 180,
+    adminNotifyPhone: "",
+    deploymentNotifyEnabled: true,
   });
   const [savingSection, setSavingSection] = useState(null); // null, "schedule", "vocab", "duration"
   const [resetting, setResetting] = useState("");
@@ -440,6 +442,7 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false); // command bar sync spinner
   const [sendingSlotIndex, setSendingSlotIndex] = useState(null);
   const [hoveredErrorIndex, setHoveredErrorIndex] = useState(null);
+  const [testAlertLoading, setTestAlertLoading] = useState(false);
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -613,6 +616,8 @@ export default function AdminDashboard() {
         durationMonthlyGoalsFull: s.data.durationMonthlyGoalsFull ?? 420,
         durationPictureMax:  s.data.durationPictureMax  ?? 180,
         durationPictureFull: s.data.durationPictureFull ?? 180,
+        adminNotifyPhone: s.data.adminNotifyPhone || "",
+        deploymentNotifyEnabled: s.data.deploymentNotifyEnabled !== false,
       });
       setDataLoaded(prev => ({ ...prev, settings: true }));
     } catch (err) {
@@ -709,6 +714,22 @@ export default function AdminDashboard() {
       });
     } finally {
       setSendingSlotIndex(null);
+    }
+  };
+
+  const handleSendTestAdminAlert = async () => {
+    try {
+      setTestAlertLoading(true);
+      const res = await api.post("/whatsapp/send-test-admin-alert", {
+        phone: settings.adminNotifyPhone,
+      });
+      if (res.data?.success) {
+        msg("✅ Test deployment alert sent to your personal WhatsApp!", "success");
+      }
+    } catch (err) {
+      msg(err.response?.data?.error || "Failed to send test WhatsApp message", "danger");
+    } finally {
+      setTestAlertLoading(false);
     }
   };
 
@@ -945,6 +966,8 @@ export default function AdminDashboard() {
         durationMonthlyGoalsFull: fresh.data.durationMonthlyGoalsFull ?? 420,
         durationPictureMax:  fresh.data.durationPictureMax  ?? 180,
         durationPictureFull: fresh.data.durationPictureFull ?? 180,
+        adminNotifyPhone: fresh.data.adminNotifyPhone || "",
+        deploymentNotifyEnabled: fresh.data.deploymentNotifyEnabled !== false,
       }));
       msg("Settings saved!");
     } catch (err) {
@@ -4143,6 +4166,89 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Personal WhatsApp Notifications & Deployment Alerts Card ── */}
+                <div style={{
+                  padding: "1.25rem 1.4rem",
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(168, 85, 247, 0.04))",
+                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                  marginBottom: "1.5rem",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.85rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: "0.98rem", color: "#fff", display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                        🚀 Personal WhatsApp Deployment &amp; Crash Alerts
+                      </div>
+                      <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0.2rem 0 0" }}>
+                        Automatically receive a private WhatsApp notification on your personal phone whenever a deployment succeeds or if a server boot error occurs.
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <input
+                        type="checkbox"
+                        id="deploymentNotifyToggle"
+                        checked={settings.deploymentNotifyEnabled !== false}
+                        onChange={e => setSettings(s => ({ ...s, deploymentNotifyEnabled: e.target.checked }))}
+                        style={{ cursor: "pointer", width: 18, height: 18, accentColor: "#7c6fff" }}
+                      />
+                      <label htmlFor="deploymentNotifyToggle" style={{ fontSize: "0.82rem", fontWeight: 700, color: settings.deploymentNotifyEnabled !== false ? "#4ade80" : "var(--muted)", cursor: "pointer", margin: 0 }}>
+                        {settings.deploymentNotifyEnabled !== false ? "🟢 Alerts Active" : "⚪ Alerts Disabled"}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 260 }}>
+                      <label className="form-label" style={{ fontSize: "0.75rem", marginBottom: "0.3rem" }}>
+                        📱 Your Personal WhatsApp Number (with Country Code)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="e.g. 919048336746 (or +91 90483 36746)"
+                        value={settings.adminNotifyPhone || ""}
+                        onChange={e => setSettings(s => ({ ...s, adminNotifyPhone: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          fontSize: "0.88rem",
+                          fontWeight: 600,
+                          background: "#0d0a1a",
+                          border: "1px solid rgba(255, 255, 255, 0.12)",
+                          padding: "0.55rem 0.85rem",
+                          borderRadius: 9,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ marginTop: "1.45rem" }}>
+                      <button
+                        type="button"
+                        disabled={testAlertLoading}
+                        onClick={handleSendTestAdminAlert}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.45rem",
+                          background: "rgba(168, 85, 247, 0.16)",
+                          border: "1px solid rgba(168, 85, 247, 0.4)",
+                          color: "#d8b4fe",
+                          borderRadius: 9,
+                          padding: "0.55rem 1rem",
+                          cursor: testAlertLoading ? "not-allowed" : "pointer",
+                          fontSize: "0.84rem",
+                          fontWeight: 700,
+                          transition: "all 0.15s ease",
+                        }}
+                        title="Send a sample deployment success message to your WhatsApp right now"
+                      >
+                        {testAlertLoading ? "⏳ Sending Test..." : "⚡ Send Test Alert to My WhatsApp"}
+                      </button>
                     </div>
                   </div>
                 </div>
