@@ -85,7 +85,6 @@ export async function sendSubmissionReport(req, res) {
 }
 
 export async function sendSlotReport(req, res) {
-  const Status = (await import("../../../models/statusSchema.js")).default;
   const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const y = nowIST.getFullYear();
   const mo = String(nowIST.getMonth() + 1).padStart(2, "0");

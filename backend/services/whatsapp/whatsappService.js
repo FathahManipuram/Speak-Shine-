@@ -22,6 +22,8 @@ import qrcodeTerminal from "qrcode-terminal";
 import { generatePNGPosterBuffer } from "../../../api/posterGenerator.js";
 import Status from "../../../models/statusSchema.js";
 import WhatsAppAuth from "../../../models/whatsAppAuthSchema.js";
+import User from "../../../models/userSchema.js";
+import Auth from "../../../models/authSchema.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -777,8 +779,6 @@ export function buildSubmissionReportMessage({
  */
 export async function getSubmissionReportSummary() {
   try {
-    const User = (await import("../../../models/userSchema.js")).default;
-    const Status = (await import("../../../models/statusSchema.js")).default;
     const paidUsers = await User.find({ paid: true }).sort({ name: 1 }).lean();
     const status = await Status.findOne().lean();
     const submittedUsers = paidUsers.filter(u => u.completed);
@@ -818,8 +818,6 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
   await ensureWhatsAppConnected(15000);
 
   // 1. Fetch all PAID users only
-  const User = (await import("../../../models/userSchema.js")).default;
-  const Status = (await import("../../../models/statusSchema.js")).default;
   const [paidUsers, status] = await Promise.all([
     User.find({ paid: true }).sort({ name: 1 }).lean(),
     Status.findOne().lean(),
