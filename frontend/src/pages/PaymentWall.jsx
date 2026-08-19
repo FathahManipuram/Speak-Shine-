@@ -62,7 +62,7 @@ export default function PaymentWall({ onSuccess }) {
       // 2. Create order on backend
       const { data: order } = await api.post("/payments/create-order");
 
-      // 3. Open Razorpay modal
+      // 3. Open Razorpay modal (Restricted strictly to UPI & QR Code only)
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
@@ -71,6 +71,34 @@ export default function PaymentWall({ onSuccess }) {
         description: "Premium Membership",
         image: "/icons/icon-192.png",
         order_id: order.order_id,
+        // ── Restrict payment methods strictly to UPI (Google Pay, PhonePe, Paytm, QR Code) ──
+        // ── Completely removes Cards, Netbanking, Wallets, EMI, PayLater ────────────────────
+        config: {
+          display: {
+            blocks: {
+              upiBlock: {
+                name: "Pay via UPI / QR Code",
+                instruments: [
+                  {
+                    method: "upi",
+                  },
+                ],
+              },
+            },
+            sequence: ["block.upiBlock"],
+            preferences: {
+              show_default_blocks: false,
+            },
+          },
+        },
+        method: {
+          upi: true,
+          card: false,
+          netbanking: false,
+          wallet: false,
+          emi: false,
+          paylater: false,
+        },
         handler: async (response) => {
           // 4. Verify payment on backend
           try {
@@ -458,7 +486,7 @@ export default function PaymentWall({ onSuccess }) {
           marginTop: "1rem",
           lineHeight: 1.6,
         }}>
-          Secured by Razorpay · UPI, cards, netbanking accepted<br />
+          Secured by Razorpay · Instant UPI &amp; QR Code payment accepted<br />
           Contact your trainer if you believe this is a mistake.
         </p>
       </div>
