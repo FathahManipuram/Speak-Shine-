@@ -38,6 +38,7 @@ let userPhone = null;
 let userJid = null;
 let reconnectTimer = null;
 let socketIoInstance = null;
+let isFirstBootConnection = true;
 
 export function setSocketIo(io) {
   socketIoInstance = io;
@@ -308,6 +309,19 @@ export async function initWhatsAppBot() {
         console.log(`\n✅ [WhatsApp] Connected successfully as +${userPhone} (${sock.user?.name || "Speak & Shine Bot"})\n`);
         await syncAuthDirToMongo();
         broadcastStatus();
+
+        // 🚀 Automatically send Deployment Success notification on server startup
+        if (isFirstBootConnection) {
+          isFirstBootConnection = false;
+          setTimeout(async () => {
+            try {
+              console.log("[WhatsApp] 🚀 Dispatching automated deployment notification to personal phone...");
+              await sendDeploymentNotification({ status: "success" });
+            } catch (err) {
+              console.warn("[WhatsApp] ⚠️ Deployment notification error:", err.message);
+            }
+          }, 3000);
+        }
       }
 
       if (connection === "close") {
@@ -871,15 +885,22 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
  */
 export async function sendAdminDirectMessage(text, options = {}) {
   const Status = (await import("../../../models/statusSchema.js")).default;
+  const Auth = (await import("../../../models/authSchema.js")).default;
   const status = await Status.findOne().lean().catch(() => null);
+  const adminAuth = await Auth.findOne({ role: { $in: ["admin", "admins"] } }).lean().catch(() => null);
 
-  const targetPhone = options.phone || status?.adminNotifyPhone || process.env.ADMIN_NOTIFY_PHONE || getSavedPhone();
-  if (!targetPhone) {
+  const rawPhone = options.phone || status?.adminNotifyPhone || process.env.ADMIN_NOTIFY_PHONE || adminAuth?.phone || userPhone || getSavedPhone();
+  if (!rawPhone) {
     console.log("[WhatsApp] ℹ️ No admin phone configured for direct notification.");
     return { success: false, message: "No admin phone number configured." };
   }
 
-  const cleanPhone = String(targetPhone).replace(/[^0-9]/g, "");
+  let cleanPhone = String(rawPhone).replace(/[^0-9]/g, "");
+  // If Indian phone entered without country code (10 digits starting with 6-9), prepend 91
+  if (cleanPhone.length === 10 && /^[6-9]/.test(cleanPhone)) {
+    cleanPhone = `91${cleanPhone}`;
+  }
+
   if (!cleanPhone || cleanPhone.length < 7) {
     return { success: false, message: "Invalid admin phone number format." };
   }
@@ -887,7 +908,7 @@ export async function sendAdminDirectMessage(text, options = {}) {
   const recipientJid = `${cleanPhone}@s.whatsapp.net`;
 
   // Ensure WhatsApp socket is connected
-  await ensureWhatsAppConnected(15000);
+  await ensureWhatsAppConnected(20000);
 
   console.log(`[WhatsApp] 📲 Sending personal admin message to ${cleanPhone}...`);
   await sock.sendMessage(recipientJid, { text });

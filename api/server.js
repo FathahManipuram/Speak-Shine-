@@ -561,19 +561,9 @@ connectDB()
     startSelfPing();
     // Catch up on any reset that was missed while server was sleeping
     checkMissedReset();
-    // Initialize WhatsApp multi-device client
+    // Initialize WhatsApp multi-device client (triggers automated deployment notification once socket is open)
     setWhatsAppSocketIo(io);
     initWhatsAppBot();
-
-    // Send deployment success notification to personal admin WhatsApp
-    setTimeout(async () => {
-      try {
-        console.log("[Startup] 📲 Dispatching deployment success alert to admin WhatsApp...");
-        await sendDeploymentNotification({ status: "success" });
-      } catch (err) {
-        console.warn("[Startup] Non-fatal deployment alert error:", err.message);
-      }
-    }, 12000); // 12s buffer for WhatsApp socket handshake
   })
   .catch(async (err) => {
     console.error("❌ Failed to start server:", err);
