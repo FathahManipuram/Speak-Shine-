@@ -521,31 +521,89 @@ export async function getSettings() {
 /**
  * Update bot schedule settings (admin only)
  */
-export async function updateSettings(
-  posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
-  paymentAmount,
-  durationDefaultMax, durationDefaultFull,
-  durationStoryMax, durationStoryFull,
-  durationWeeklyMax, durationWeeklyFull,
-  durationMonthlyReflectionMax, durationMonthlyReflectionFull,
-  durationMonthlyGoalsMax, durationMonthlyGoalsFull,
-  allowPrivateVideos,
-  pictureDescriptionDay,
-  durationPictureMax, durationPictureFull,
-  vocabNormalWordCount, vocabNormalRequiredCount,
-  vocabStoryWordCount, vocabStoryRequiredCount,
-  vocabPictureWordCount, vocabPictureRequiredCount,
-  submissionReportEnabled,
-  submissionReportTime1,
-  submissionReportTime2,
-  submissionReportTimes,
-  submissionReportTemplate,
-  submissionReportSlotTemplates,
-  submissionReportSlots,
-  submissionReportTemplates,
-  adminNotifyPhone,
-  deploymentNotifyEnabled
-) {
+export async function updateSettings(input, ...rest) {
+  let params = {};
+  if (typeof input === "object" && input !== null && !Array.isArray(input)) {
+    params = input;
+  } else {
+    const [
+      posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+      paymentAmount,
+      durationDefaultMax, durationDefaultFull,
+      durationStoryMax, durationStoryFull,
+      durationWeeklyMax, durationWeeklyFull,
+      durationMonthlyReflectionMax, durationMonthlyReflectionFull,
+      durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+      allowPrivateVideos,
+      pictureDescriptionDay,
+      durationPictureMax, durationPictureFull,
+      vocabNormalWordCount, vocabNormalRequiredCount,
+      vocabStoryWordCount, vocabStoryRequiredCount,
+      vocabPictureWordCount, vocabPictureRequiredCount,
+      submissionReportEnabled,
+      submissionReportTime1,
+      submissionReportTime2,
+      submissionReportTimes,
+      submissionReportTemplate,
+      submissionReportSlotTemplates,
+      submissionReportSlots,
+      submissionReportTemplates,
+      adminNotifyPhone,
+      deploymentNotifyEnabled
+    ] = [input, ...rest];
+    params = {
+      posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+      paymentAmount,
+      durationDefaultMax, durationDefaultFull,
+      durationStoryMax, durationStoryFull,
+      durationWeeklyMax, durationWeeklyFull,
+      durationMonthlyReflectionMax, durationMonthlyReflectionFull,
+      durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+      allowPrivateVideos,
+      pictureDescriptionDay,
+      durationPictureMax, durationPictureFull,
+      vocabNormalWordCount, vocabNormalRequiredCount,
+      vocabStoryWordCount, vocabStoryRequiredCount,
+      vocabPictureWordCount, vocabPictureRequiredCount,
+      submissionReportEnabled,
+      submissionReportTime1,
+      submissionReportTime2,
+      submissionReportTimes,
+      submissionReportTemplate,
+      submissionReportSlotTemplates,
+      submissionReportSlots,
+      submissionReportTemplates,
+      adminNotifyPhone,
+      deploymentNotifyEnabled
+    };
+  }
+
+  const {
+    posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+    paymentAmount,
+    durationDefaultMax, durationDefaultFull,
+    durationStoryMax, durationStoryFull,
+    durationWeeklyMax, durationWeeklyFull,
+    durationMonthlyReflectionMax, durationMonthlyReflectionFull,
+    durationMonthlyGoalsMax, durationMonthlyGoalsFull,
+    allowPrivateVideos,
+    pictureDescriptionDay,
+    durationPictureMax, durationPictureFull,
+    vocabNormalWordCount, vocabNormalRequiredCount,
+    vocabStoryWordCount, vocabStoryRequiredCount,
+    vocabPictureWordCount, vocabPictureRequiredCount,
+    submissionReportEnabled,
+    submissionReportTime1,
+    submissionReportTime2,
+    submissionReportTimes,
+    submissionReportTemplate,
+    submissionReportSlotTemplates,
+    submissionReportSlots,
+    submissionReportTemplates,
+    adminNotifyPhone,
+    deploymentNotifyEnabled
+  } = params;
+
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const updates = {};
 

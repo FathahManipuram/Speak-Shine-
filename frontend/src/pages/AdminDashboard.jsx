@@ -3917,7 +3917,7 @@ export default function AdminDashboard() {
 
       {/* SETTINGS */}
       {tab==="settings" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", width: "100%", maxWidth: 1100, margin: "0 auto", boxSizing: "border-box" }}>
           
           {/* Settings Header & Category Nav */}
           <div style={{
