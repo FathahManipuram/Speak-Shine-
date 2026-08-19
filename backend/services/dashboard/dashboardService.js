@@ -403,56 +403,89 @@ export async function setTodayQuestion(topic, question, category) {
  * Get bot schedule settings (admin only)
  */
 export async function getSettings() {
-  let status = await Status.findOne().lean();
-  if (!status) {
-    status = await Status.create({});
+  let status = null;
+  try {
+    status = await Status.findOne().lean();
+    if (!status) {
+      const created = await Status.create({});
+      status = created?.toObject ? created.toObject() : created;
+    }
+  } catch (dbErr) {
+    console.error("[Dashboard] Error fetching Status doc from DB:", dbErr.message);
+    status = {};
   }
   
+  if (!status) status = {};
+
   const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const todayDate = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, "0")}-${String(nowIST.getDate()).padStart(2, "0")}`;
+
+  // Safe extraction of times
+  const rawTimes = Array.isArray(status.submissionReportTimes) && status.submissionReportTimes.length > 0
+    ? status.submissionReportTimes
+    : [status.submissionReportTime1 || "18:00", status.submissionReportTime2 || "21:00"].filter(Boolean);
+
+  // Safe extraction of slots
+  let slots = [];
+  if (Array.isArray(status.submissionReportSlots) && status.submissionReportSlots.length > 0) {
+    slots = status.submissionReportSlots.map((slot, idx) => {
+      if (!slot) return null;
+      const isString = typeof slot === "string";
+      const timeVal = isString ? slot : (slot.time || rawTimes[idx] || "18:00");
+      const isToday = !isString && slot.lastSentDate === todayDate;
+      const statusVal = isToday ? (slot.lastStatus || "pending") : "pending";
+      const errorVal = isToday ? (slot.lastError || null) : null;
+      return {
+        time: timeVal,
+        templateType: (!isString && slot.templateType) ? slot.templateType : (idx === 1 ? "urgent" : "comprehensive"),
+        customTemplate: (!isString && slot.customTemplate) ? slot.customTemplate : "",
+        lastSentDate: (!isString && slot.lastSentDate) ? slot.lastSentDate : null,
+        lastSentTime: (!isString && slot.lastSentTime) ? slot.lastSentTime : null,
+        lastStatus: statusVal,
+        lastError: errorVal,
+        lastSentAt: (!isString && slot.lastSentAt) ? slot.lastSentAt : null,
+        completed: statusVal === "success",
+        failed: statusVal === "failed",
+      };
+    }).filter(Boolean);
+  }
+
+  if (slots.length === 0) {
+    slots = (rawTimes.length > 0 ? rawTimes : ["18:00", "21:00"]).map((t, idx) => ({
+      time: typeof t === "string" ? t : (t?.time || "18:00"),
+      templateType: idx === 1 ? "urgent" : "comprehensive",
+      customTemplate: "",
+      lastSentDate: null,
+      lastSentTime: null,
+      lastStatus: "pending",
+      lastError: null,
+      lastSentAt: null,
+      completed: false,
+      failed: false,
+    }));
+  }
+
+  // Safe slot templates
+  let slotTemplates = {};
+  if (status.submissionReportSlotTemplates) {
+    if (status.submissionReportSlotTemplates instanceof Map) {
+      slotTemplates = Object.fromEntries(status.submissionReportSlotTemplates);
+    } else if (typeof status.submissionReportSlotTemplates === "object") {
+      slotTemplates = { ...status.submissionReportSlotTemplates };
+    }
+  }
 
   return {
     posterSendTime: status.posterSendTime || "08:00",
     questionGenerateTime: status.questionGenerateTime || "07:00",
     submissionReportEnabled: status.submissionReportEnabled !== false,
-    submissionReportTimes: Array.isArray(status.submissionReportTimes) && status.submissionReportTimes.length > 0
-      ? status.submissionReportTimes
-      : [status.submissionReportTime1 || "18:00", status.submissionReportTime2 || "21:00"].filter(Boolean),
-    submissionReportSlots: Array.isArray(status.submissionReportSlots) && status.submissionReportSlots.length > 0
-      ? status.submissionReportSlots.map(slot => {
-          const isToday = slot.lastSentDate === todayDate;
-          const statusVal = isToday ? (slot.lastStatus || "pending") : "pending";
-          const errorVal = isToday ? (slot.lastError || null) : null;
-          return {
-            time: slot.time,
-            templateType: slot.templateType || "comprehensive",
-            customTemplate: slot.customTemplate || "",
-            lastSentDate: slot.lastSentDate || null,
-            lastSentTime: slot.lastSentTime || null,
-            lastStatus: statusVal,
-            lastError: errorVal,
-            lastSentAt: slot.lastSentAt || null,
-            completed: statusVal === "success",
-            failed: statusVal === "failed",
-          };
-        })
-      : (Array.isArray(status.submissionReportTimes) ? status.submissionReportTimes : ["18:00", "21:00"]).map((t, idx) => ({
-          time: t,
-          templateType: idx === 1 ? "urgent" : "comprehensive",
-          customTemplate: "",
-          lastSentDate: null,
-          lastSentTime: null,
-          lastStatus: "pending",
-          lastError: null,
-          lastSentAt: null,
-          completed: false,
-          failed: false,
-        })),
-    submissionReportTemplates: status.submissionReportTemplates || {},
+    submissionReportTimes: rawTimes.map(t => (typeof t === "string" ? t : (t?.time || "18:00"))),
+    submissionReportSlots: slots,
+    submissionReportTemplates: status.submissionReportTemplates && typeof status.submissionReportTemplates === "object" ? status.submissionReportTemplates : {},
     submissionReportTime1: status.submissionReportTime1 || "18:00",
     submissionReportTime2: status.submissionReportTime2 || "21:00",
     submissionReportTemplate: status.submissionReportTemplate || null,
-    submissionReportSlotTemplates: status.submissionReportSlotTemplates || {},
+    submissionReportSlotTemplates: slotTemplates,
     vocabWordCount: status.vocabWordCount ?? 5,
     vocabRequiredCount: status.vocabRequiredCount ?? 3,
     vocabNormalWordCount: status.vocabNormalWordCount ?? status.vocabWordCount ?? 5,
