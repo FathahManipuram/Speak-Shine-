@@ -149,12 +149,82 @@ function hasSavedCredentials() {
   return false;
 }
 
+let watchdogInterval = null;
+let connectingStartedAt = null;
+
+/**
+ * Robust background watchdog: checks every 20 seconds.
+ * If server restarted, network blipped, or cloud container woke up,
+ * automatically re-establishes WhatsApp connection without any admin clicks!
+ */
+export function startWhatsAppWatchdog() {
+  if (watchdogInterval) return;
+  watchdogInterval = setInterval(async () => {
+    try {
+      const hasCreds = hasSavedCredentials();
+      const mongoDocs = hasCreds ? 1 : await WhatsAppAuth.countDocuments().catch(() => 0);
+
+      // 1. Silent Auto-Heal: credentials exist, but not connected and not currently connecting
+      if (!isConnected && !isConnecting && (hasCreds || mongoDocs > 0)) {
+        console.log("[WhatsApp Watchdog] 🩺 WhatsApp disconnected with saved session — auto-healing connection now...");
+        await initWhatsAppBot();
+      }
+      // 2. Anti-Stuck: if connection attempt is hung for >45s, reset state and reconnect
+      else if (isConnecting && connectingStartedAt && Date.now() - connectingStartedAt > 45000) {
+        console.warn("[WhatsApp Watchdog] ⚠️ WhatsApp connection attempt stuck for >45s — resetting socket and retrying...");
+        isConnecting = false;
+        connectingStartedAt = null;
+        await initWhatsAppBot();
+      }
+    } catch (err) {
+      // Non-fatal watchdog catch
+    }
+  }, 20000);
+}
+
+/**
+ * Ensures the WhatsApp bot is connected before dispatching messages.
+ * If disconnected but credentials exist in MongoDB or local disk, it automatically initializes and waits for connection.
+ */
+export async function ensureWhatsAppConnected(timeoutMs = 15000) {
+  if (isConnected && sock) return sock;
+
+  const hasCreds = hasSavedCredentials();
+  const mongoDocs = hasCreds ? 1 : await WhatsAppAuth.countDocuments().catch(() => 0);
+
+  if (!hasCreds && mongoDocs === 0) {
+    throw new Error("WhatsApp bot is not connected and no saved credentials found. Please scan the QR code from the Admin Dashboard first.");
+  }
+
+  console.log("[WhatsApp] ⏳ Socket disconnected prior to auto-dispatch — performing instant silent reconnect...");
+  if (!sock || !isConnecting) {
+    await initWhatsAppBot();
+  }
+
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    if (isConnected && sock) {
+      console.log("[WhatsApp] ⚡ Instant silent reconnect succeeded!");
+      return sock;
+    }
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  if (!isConnected || !sock) {
+    throw new Error("WhatsApp bot is still connecting or network timed out. Please check WhatsApp Gateway in Admin Dashboard.");
+  }
+  return sock;
+}
+
 /**
  * Initializes and connects the WhatsApp client using Baileys.
  */
 export async function initWhatsAppBot() {
+  startWhatsAppWatchdog();
+
   if (isConnecting || isConnected) return sock;
   isConnecting = true;
+  connectingStartedAt = Date.now();
 
   try {
     if (!fs.existsSync(AUTH_DIR)) {
@@ -208,6 +278,7 @@ export async function initWhatsAppBot() {
       if (qr) {
         currentQR = qr;
         isConnecting = false;
+        connectingStartedAt = null;
         isConnected = false;
         try {
           currentQRDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 6 });
@@ -226,6 +297,7 @@ export async function initWhatsAppBot() {
       if (connection === "open") {
         isConnected = true;
         isConnecting = false;
+        connectingStartedAt = null;
         currentQR = null;
         currentQRDataUrl = null;
 
@@ -241,6 +313,7 @@ export async function initWhatsAppBot() {
       if (connection === "close") {
         isConnected = false;
         isConnecting = false;
+        connectingStartedAt = null;
         
         const statusCode = lastDisconnect?.error instanceof Boom
           ? lastDisconnect.error.output?.statusCode
@@ -269,6 +342,7 @@ export async function initWhatsAppBot() {
     return sock;
   } catch (err) {
     isConnecting = false;
+    connectingStartedAt = null;
     isConnected = false;
     console.error("[WhatsApp] ❌ Initialization error:", err.message);
     scheduleReconnect(5000);
@@ -385,9 +459,8 @@ export async function sendDailyPosterToGroup(options = {}) {
     throw new Error("TARGET_GROUP is not configured. Please set TARGET_GROUP in Infisical or environment.");
   }
 
-  if (!sock || !isConnected) {
-    throw new Error("WhatsApp bot is not connected. Please scan the QR code from the Admin Dashboard first.");
-  }
+  // Ensure WhatsApp socket is connected (auto-connects from MongoDB if needed)
+  await ensureWhatsAppConnected(15000);
 
   // Fetch full status from DB to inspect content type and attachments
   const status = await Status.findOne().lean();
@@ -727,9 +800,8 @@ export async function sendDailySubmissionReportToGroup(options = {}) {
     throw new Error("TARGET_GROUP is not configured in .env");
   }
 
-  if (!sock || !isConnected) {
-    throw new Error("WhatsApp bot is not connected. Please connect WhatsApp from the Admin Dashboard first.");
-  }
+  // Ensure WhatsApp socket is connected (auto-connects from MongoDB if needed)
+  await ensureWhatsAppConnected(15000);
 
   // 1. Fetch all PAID users only
   const User = (await import("../../../models/userSchema.js")).default;
