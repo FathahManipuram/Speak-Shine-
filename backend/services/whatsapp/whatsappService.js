@@ -905,16 +905,25 @@ export async function sendAdminDirectMessage(text, options = {}) {
     return { success: false, message: "Invalid admin phone number format." };
   }
 
-  const recipientJid = `${cleanPhone}@s.whatsapp.net`;
-
   // Ensure WhatsApp socket is connected
-  await ensureWhatsAppConnected(20000);
+  await ensureWhatsAppConnected(25000);
 
-  console.log(`[WhatsApp] 📲 Sending personal admin message to ${cleanPhone}...`);
+  // Look up exact JID using onWhatsApp to ensure delivery across devices
+  let recipientJid = `${cleanPhone}@s.whatsapp.net`;
+  try {
+    const lookup = await sock.onWhatsApp(cleanPhone).catch(() => []);
+    if (Array.isArray(lookup) && lookup.length > 0 && lookup[0]?.exists && lookup[0]?.jid) {
+      recipientJid = lookup[0].jid;
+    }
+  } catch (err) {
+    console.warn("[WhatsApp] JID lookup failed, using standard format:", err.message);
+  }
+
+  console.log(`[WhatsApp] 📲 Sending personal admin message to ${recipientJid} (${cleanPhone})...`);
   await sock.sendMessage(recipientJid, { text });
-  console.log(`[WhatsApp] ✅ Personal admin message sent successfully to ${cleanPhone}!`);
+  console.log(`[WhatsApp] ✅ Personal admin message sent successfully to ${recipientJid}!`);
 
-  return { success: true, recipient: cleanPhone, sentAt: new Date() };
+  return { success: true, recipient: cleanPhone, jid: recipientJid, sentAt: new Date() };
 }
 
 /**
@@ -984,7 +993,7 @@ export async function sendDeploymentNotification({ status = "success", error = n
       ].filter(Boolean).join("\n");
     }
 
-    return await sendAdminDirectMessage(message);
+    return await sendAdminDirectMessage(message, { phone: extra?.phone || extra?.customPhone });
   } catch (err) {
     console.warn("[WhatsApp] Could not send deployment notification:", err.message);
     return { success: false, error: err.message };

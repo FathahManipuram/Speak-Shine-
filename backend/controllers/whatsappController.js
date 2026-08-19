@@ -177,13 +177,13 @@ export async function sendTestAdminAlert(req, res) {
 
     const result = await sendDeploymentNotification({
       status: "success",
-      extra: { test: true },
+      extra: { test: true, phone },
     });
 
     if (!result || result.success === false) {
       return res.status(400).json({ success: false, error: result?.message || result?.error || "Failed to send WhatsApp alert" });
     }
-    return res.json({ success: true, message: "Test alert dispatched to your WhatsApp number!" });
+    return res.json({ success: true, message: `Test alert dispatched to ${result.recipient || "your WhatsApp number"}!`, recipient: result.recipient });
   } catch (err) {
     console.error("[WhatsAppController] sendTestAdminAlert error:", err.message);
     return res.status(400).json({ success: false, error: err.message });
