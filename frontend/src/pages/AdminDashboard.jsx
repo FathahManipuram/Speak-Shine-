@@ -450,6 +450,13 @@ export default function AdminDashboard() {
   const [slotSortOrder, setSlotSortOrder] = useState("asc"); // "asc" | "desc"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedAdminInvoiceTx, setSelectedAdminInvoiceTx] = useState(null);
+
+  // Advanced Payments Filters (Default: "paid")
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState("paid"); // "paid" (default) | "all" | "manual" | "failed"
+  const [paymentDateFilter, setPaymentDateFilter] = useState("all"); // "all" | "today" | "week" | "this_month" | "prev_month" | "this_year"
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
+  const [paymentSortOrder, setPaymentSortOrder] = useState("desc"); // "desc" | "asc" | "amount_desc" | "amount_asc"
+
   const ribbonRef = useRef(null);
   const sidebarNavRef = useRef(null);
 
@@ -611,13 +618,118 @@ export default function AdminDashboard() {
   const loadPayments = async () => {
     setPaymentLoading(true);
     try {
-      const r = await api.get("/payments/admin/all?limit=100");
+      const r = await api.get("/payments/admin/all?limit=500");
       setPaymentData(r.data);
     } catch (err) {
       msg("Failed to load payment data", "danger");
     } finally {
       setPaymentLoading(false);
     }
+  };
+
+  // Filtered payments memo with time range, search, and type (Default: "paid")
+  const filteredPayments = useMemo(() => {
+    const list = paymentData?.transactions || [];
+    const now = new Date();
+
+    return list.filter((tx) => {
+      // 1. Payment Type / Source Filter
+      if (paymentTypeFilter === "paid") {
+        const isPaid = (tx.status === "success" && tx.amount > 0) || (tx.source === "razorpay" && tx.status === "success");
+        if (!isPaid) return false;
+      } else if (paymentTypeFilter === "manual") {
+        const isManual = tx.source === "admin" || tx.status === "manual";
+        if (!isManual) return false;
+      } else if (paymentTypeFilter === "failed") {
+        if (tx.status !== "failed" && tx.status !== "refunded") return false;
+      }
+
+      // 2. Date Filter
+      if (paymentDateFilter !== "all" && tx.createdAt) {
+        const d = new Date(tx.createdAt);
+        if (paymentDateFilter === "today") {
+          const isToday = d.toDateString() === now.toDateString();
+          if (!isToday) return false;
+        } else if (paymentDateFilter === "week") {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (d < weekAgo) return false;
+        } else if (paymentDateFilter === "this_month") {
+          const isThisMonth = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+          if (!isThisMonth) return false;
+        } else if (paymentDateFilter === "prev_month") {
+          const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+          const prevMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          const isPrevMonth = d.getFullYear() === prevMonthYear && d.getMonth() === prevMonth;
+          if (!isPrevMonth) return false;
+        } else if (paymentDateFilter === "this_year") {
+          const isThisYear = d.getFullYear() === now.getFullYear();
+          if (!isThisYear) return false;
+        }
+      }
+
+      // 3. Search Query
+      if (paymentSearchQuery.trim()) {
+        const q = paymentSearchQuery.toLowerCase().trim();
+        const name = (tx.name || "").toLowerCase();
+        const phone = (tx.phone || "").toLowerCase();
+        const pid = (tx.razorpayPaymentId || "").toLowerCase();
+        const oid = (tx.razorpayOrderId || "").toLowerCase();
+        const note = (tx.note || "").toLowerCase();
+        if (!name.includes(q) && !phone.includes(q) && !pid.includes(q) && !oid.includes(q) && !note.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (paymentSortOrder === "asc") {
+        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      } else if (paymentSortOrder === "amount_desc") {
+        return (b.amount || 0) - (a.amount || 0);
+      } else if (paymentSortOrder === "amount_asc") {
+        return (a.amount || 0) - (b.amount || 0);
+      }
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); // "desc" default
+    });
+  }, [paymentData, paymentTypeFilter, paymentDateFilter, paymentSearchQuery, paymentSortOrder]);
+
+  // Dynamic calculated KPI metrics based on active filters
+  const filteredPaymentMetrics = useMemo(() => {
+    const list = filteredPayments;
+    const totalRev = list.reduce((sum, tx) => (tx.status === "success" ? sum + (tx.amount || 0) : sum), 0);
+    const paidCount = list.filter((tx) => tx.status === "success" && tx.amount > 0).length;
+    const manualCount = list.filter((tx) => tx.source === "admin" || tx.status === "manual").length;
+    const aov = paidCount > 0 ? Math.round(totalRev / paidCount) : 0;
+    return { totalRev, paidCount, manualCount, aov };
+  }, [filteredPayments]);
+
+  // 1-Click CSV Export
+  const handleExportPaymentsCSV = () => {
+    if (!filteredPayments.length) {
+      msg("No records to export", "warn");
+      return;
+    }
+    const headers = ["Date (IST)", "Student Name", "Phone", "Amount (INR)", "Status", "Source", "Payment ID", "Order ID", "Notes"];
+    const rows = filteredPayments.map(tx => [
+      new Date(tx.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+      `"${(tx.name || "").replace(/"/g, '""')}"`,
+      `"${tx.phone || ""}"`,
+      tx.amount || 0,
+      tx.status || "",
+      tx.source || "",
+      `"${tx.razorpayPaymentId || ""}"`,
+      `"${tx.razorpayOrderId || ""}"`,
+      `"${(tx.note || "").replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `speak-shine-payments-${paymentDateFilter}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    msg("Payments CSV downloaded!");
   };
 
   // Load settings data (for Settings tab)
@@ -2863,76 +2975,265 @@ export default function AdminDashboard() {
             <div className="spinner-wrap"><div className="spinner"/></div>
           ) : paymentData ? (
             <>
-              {/* Payment KPI Row */}
+              {/* Payment KPI Row (Dynamically calculated based on active filters) */}
               <div className="admin-kpi-row" style={{ marginBottom: "1rem" }}>
                 <div className="admin-kpi-card" style={{ "--kpi-accent": "#4ade80" }}>
                   <div className="admin-kpi-top">
-                    <span className="admin-kpi-label">TOTAL REVENUE</span>
+                    <span className="admin-kpi-label">FILTERED REVENUE</span>
                     <span className="admin-kpi-trend up">₹ INR</span>
                   </div>
                   <div className="admin-kpi-value" style={{ color: "#4ade80" }}>
-                    ₹{(paymentData.stats?.totalRevenue || 0).toLocaleString("en-IN")}
+                    ₹{filteredPaymentMetrics.totalRev.toLocaleString("en-IN")}
                   </div>
-                  <div className="admin-kpi-sub">Total verified collections</div>
+                  <div className="admin-kpi-sub">
+                    {paymentDateFilter === "all" ? "Total verified collections" : `Filtered: ${paymentDateFilter.replace("_", " ").toUpperCase()}`}
+                  </div>
                 </div>
 
                 <div className="admin-kpi-card" style={{ "--kpi-accent": "#818cf8" }}>
                   <div className="admin-kpi-top">
-                    <span className="admin-kpi-label">PAID STUDENTS</span>
-                    <span className="admin-kpi-trend up">👥 Active</span>
+                    <span className="admin-kpi-label">VERIFIED PAID ORDERS</span>
+                    <span className="admin-kpi-trend up">💳 Gateway</span>
                   </div>
                   <div className="admin-kpi-value" style={{ color: "#a5b4fc" }}>
-                    {paymentData.stats?.totalPaid || 0}
+                    {filteredPaymentMetrics.paidCount}
                   </div>
-                  <div className="admin-kpi-sub">Active course subscriptions</div>
+                  <div className="admin-kpi-sub">Online checkout subscriptions</div>
                 </div>
 
                 <div className="admin-kpi-card" style={{ "--kpi-accent": "#fbbf24" }}>
                   <div className="admin-kpi-top">
-                    <span className="admin-kpi-label">MANUAL ACTIVATIONS</span>
-                    <span className="admin-kpi-trend neu">🔧 Admin</span>
+                    <span className="admin-kpi-label">AVG ORDER VALUE (AOV)</span>
+                    <span className="admin-kpi-trend neu">📈 Ticket</span>
                   </div>
                   <div className="admin-kpi-value" style={{ color: "#fbbf24" }}>
-                    {paymentData.stats?.totalManual || 0}
+                    ₹{filteredPaymentMetrics.aov.toLocaleString("en-IN")}
                   </div>
-                  <div className="admin-kpi-sub">Directly activated by admin</div>
+                  <div className="admin-kpi-sub">Average per paid student</div>
                 </div>
 
                 <div className="admin-kpi-card" style={{ "--kpi-accent": "#38bdf8" }}>
                   <div className="admin-kpi-top">
-                    <span className="admin-kpi-label">TOTAL TRANSACTIONS</span>
-                    <span className="admin-kpi-trend up">💳 Logs</span>
+                    <span className="admin-kpi-label">SHOWING TRANSACTIONS</span>
+                    <span className="admin-kpi-trend up">📋 Filtered</span>
                   </div>
                   <div className="admin-kpi-value" style={{ color: "#38bdf8" }}>
-                    {paymentData.pagination?.total || 0}
+                    {filteredPayments.length} <span style={{ fontSize: "0.9rem", color: "var(--muted)", fontWeight: 500 }}>/ {paymentData.transactions?.length || 0}</span>
                   </div>
-                  <div className="admin-kpi-sub">Total gateway &amp; manual orders</div>
+                  <div className="admin-kpi-sub">Matching current filter rules</div>
                 </div>
               </div>
 
-              {/* Transactions table */}
+              {/* Advanced Filter Toolbar & Transactions Card */}
               <div className="card" style={{ padding: "1.25rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.1rem", flexWrap: "wrap", gap: "0.75rem" }}>
                   <div>
-                    <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em" }}>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em" }}>
                       Transaction History &amp; Orders
                     </div>
                     <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
-                      Live audit log of all payment gateway checkouts and manual admin tier overrides.
+                      Filter by payment source, date range, or search directly for students.
                     </div>
                   </div>
-                  <button
-                    className="cmd-refresh-btn"
-                    onClick={loadPayments}
-                    style={{ fontSize: "0.78rem" }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                    </svg>
-                    Refresh Logs
-                  </button>
+                  
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <button
+                      className="btn-ghost"
+                      onClick={handleExportPaymentsCSV}
+                      style={{
+                        fontSize: "0.78rem",
+                        padding: "0.4rem 0.85rem",
+                        borderRadius: 8,
+                        border: "1px solid rgba(74, 222, 128, 0.3)",
+                        color: "#4ade80",
+                        background: "rgba(74, 222, 128, 0.08)",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                      }}
+                      title="Export filtered records to CSV"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      Export CSV
+                    </button>
+                    <button
+                      className="cmd-refresh-btn"
+                      onClick={loadPayments}
+                      style={{ fontSize: "0.78rem" }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                      </svg>
+                      Refresh
+                    </button>
+                  </div>
                 </div>
 
+                {/* Filter Controls Row 1: Source Filter Chips */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  padding: "0.75rem 0.85rem",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  borderRadius: 12,
+                  marginBottom: "0.85rem",
+                }}>
+                  {/* Payment Type Selection (Default: Paid) */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, marginRight: 4 }}>
+                      TYPE:
+                    </span>
+                    {[
+                      { id: "paid", label: "💳 Online Paid (Default)" },
+                      { id: "all", label: "👥 All Transactions" },
+                      { id: "manual", label: "👤 Manual Activations" },
+                      { id: "failed", label: "❌ Failed / Refunded" },
+                    ].map(type => {
+                      const active = paymentTypeFilter === type.id;
+                      return (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setPaymentTypeFilter(type.id)}
+                          style={{
+                            background: active ? "rgba(124, 111, 255, 0.22)" : "rgba(255, 255, 255, 0.04)",
+                            border: `1px solid ${active ? "rgba(124, 111, 255, 0.55)" : "rgba(255, 255, 255, 0.08)"}`,
+                            color: active ? "#ffffff" : "#94a3b8",
+                            borderRadius: 8,
+                            padding: "0.32rem 0.72rem",
+                            fontSize: "0.76rem",
+                            fontWeight: active ? 700 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {type.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Sort Order Selector */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                      SORT:
+                    </span>
+                    <select
+                      value={paymentSortOrder}
+                      onChange={(e) => setPaymentSortOrder(e.target.value)}
+                      style={{
+                        background: "#161828",
+                        border: "1px solid rgba(255, 255, 255, 0.12)",
+                        color: "#e2e8f0",
+                        borderRadius: 8,
+                        padding: "0.32rem 0.65rem",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        outline: "none",
+                      }}
+                    >
+                      <option value="desc">🕒 Newest Date First</option>
+                      <option value="asc">⏳ Oldest Date First</option>
+                      <option value="amount_desc">💰 Highest Amount First</option>
+                      <option value="amount_asc">🪙 Lowest Amount First</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Filter Controls Row 2: Date Filters & Search */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  marginBottom: "1.1rem",
+                }}>
+                  {/* Date Filter Pills */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, marginRight: 4 }}>
+                      TIME:
+                    </span>
+                    {[
+                      { id: "all", label: "📅 All Time" },
+                      { id: "today", label: "⚡ Today" },
+                      { id: "week", label: "📆 This Week" },
+                      { id: "this_month", label: "🗓️ This Month" },
+                      { id: "prev_month", label: "⏮️ Previous Month" },
+                      { id: "this_year", label: "⭐ This Year" },
+                    ].map(d => {
+                      const active = paymentDateFilter === d.id;
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setPaymentDateFilter(d.id)}
+                          style={{
+                            background: active ? "rgba(56, 189, 248, 0.2)" : "rgba(255, 255, 255, 0.03)",
+                            border: `1px solid ${active ? "rgba(56, 189, 248, 0.5)" : "rgba(255, 255, 255, 0.08)"}`,
+                            color: active ? "#38bdf8" : "#94a3b8",
+                            borderRadius: 8,
+                            padding: "0.3rem 0.65rem",
+                            fontSize: "0.75rem",
+                            fontWeight: active ? 700 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Search Input */}
+                  <div style={{ position: "relative", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="🔍 Search name, phone, Razorpay ID..."
+                      value={paymentSearchQuery}
+                      onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                      style={{
+                        padding: "0.38rem 2rem 0.38rem 0.75rem",
+                        fontSize: "0.78rem",
+                        borderRadius: 8,
+                        width: "100%",
+                      }}
+                    />
+                    {paymentSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentSearchQuery("")}
+                        style={{
+                          position: "absolute",
+                          right: 8,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "transparent",
+                          border: "none",
+                          color: "var(--muted)",
+                          cursor: "pointer",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Table Container */}
                 <div className="admin-table-wrap">
                   <table className="admin-table">
                     <thead>
@@ -2948,14 +3249,28 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(paymentData.transactions || []).length === 0 ? (
+                      {filteredPayments.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", color: "var(--muted)", padding: "2.5rem 1rem" }}>
-                            No transactions recorded yet
+                          <td colSpan={8} style={{ textAlign: "center", color: "var(--muted)", padding: "3rem 1rem" }}>
+                            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📭</div>
+                            No transactions found for the selected filters.
+                            <div style={{ marginTop: "0.5rem" }}>
+                              <button
+                                className="btn-ghost"
+                                onClick={() => {
+                                  setPaymentTypeFilter("all");
+                                  setPaymentDateFilter("all");
+                                  setPaymentSearchQuery("");
+                                }}
+                                style={{ fontSize: "0.75rem", color: "#a5b4fc" }}
+                              >
+                                Reset All Filters
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ) : (
-                        (paymentData.transactions || []).map((tx, i) => (
+                        filteredPayments.map((tx, i) => (
                           <tr key={tx._id || i}>
                             <td style={{ color: "var(--muted)", whiteSpace: "nowrap", fontSize: "0.78rem" }}>
                               {new Date(tx.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -2965,7 +3280,7 @@ export default function AdminDashboard() {
                               <div className="admin-user-phone">{tx.phone}</div>
                             </td>
                             <td>
-                              <span style={{ fontWeight: 800, color: "#4ade80", fontSize: "0.9rem" }}>
+                              <span style={{ fontWeight: 800, color: tx.amount > 0 ? "#4ade80" : "var(--muted)", fontSize: "0.9rem" }}>
                                 {tx.amount > 0 ? `₹${tx.amount.toLocaleString("en-IN")}` : "—"}
                               </span>
                             </td>

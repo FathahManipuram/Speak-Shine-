@@ -339,7 +339,7 @@ export async function getMyTransactions(req, res) {
 export async function adminGetAllTransactions(req, res) {
   try {
     const page  = Math.max(1, parseInt(req.query.page  || "1"));
-    const limit = Math.min(100, parseInt(req.query.limit || "50"));
+    const limit = Math.min(500, parseInt(req.query.limit || "200"));
     const skip  = (page - 1) * limit;
     const status = req.query.status; // filter by status
 
