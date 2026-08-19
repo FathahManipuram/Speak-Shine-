@@ -449,6 +449,7 @@ export default function AdminDashboard() {
   const [slotSortOrder, setSlotSortOrder] = useState("asc"); // "asc" | "desc"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const ribbonRef = useRef(null);
+  const sidebarNavRef = useRef(null);
 
   const scrollRibbon = (offset) => {
     if (ribbonRef.current) {
@@ -456,6 +457,35 @@ export default function AdminDashboard() {
     }
   };
 
+  // 1. Mouse wheel horizontal scrolling for mobile tab ribbon
+  useEffect(() => {
+    const el = ribbonRef.current;
+    if (!el) return;
+    const handleRibbonWheel = (e) => {
+      if (e.deltaY !== 0 || e.deltaX !== 0) {
+        e.preventDefault();
+        el.scrollLeft += (e.deltaY || e.deltaX) * 1.5;
+      }
+    };
+    el.addEventListener("wheel", handleRibbonWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleRibbonWheel);
+  }, []);
+
+  // 2. Mouse wheel vertical scrolling for sidebar drawer
+  useEffect(() => {
+    const el = sidebarNavRef.current;
+    if (!el) return;
+    const handleNavWheel = (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollTop += e.deltaY;
+      }
+    };
+    el.addEventListener("wheel", handleNavWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleNavWheel);
+  }, []);
+
+  // 3. Auto-scroll active tab into view
   useEffect(() => {
     if (ribbonRef.current) {
       const activeEl = ribbonRef.current.querySelector(".admin-mobile-tab-pill.active");
@@ -1161,7 +1191,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Middle Nav - Scrollable */}
-          <div className="admin-sidebar-nav">
+          <div className="admin-sidebar-nav" ref={sidebarNavRef}>
             {/* Group 1: Analytics & Performance */}
             <div className="admin-sidebar-section">
               <div className="admin-sidebar-title">Analytics &amp; Activity</div>
