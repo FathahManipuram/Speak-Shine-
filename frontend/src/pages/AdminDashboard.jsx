@@ -448,6 +448,22 @@ export default function AdminDashboard() {
   const [slotSearchQuery, setSlotSearchQuery] = useState("");
   const [slotSortOrder, setSlotSortOrder] = useState("asc"); // "asc" | "desc"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const ribbonRef = useRef(null);
+
+  const scrollRibbon = (offset) => {
+    if (ribbonRef.current) {
+      ribbonRef.current.scrollBy({ left: offset, behavior: "smooth" });
+    }
+  };
+
+  useEffect(() => {
+    if (ribbonRef.current) {
+      const activeEl = ribbonRef.current.querySelector(".admin-mobile-tab-pill.active");
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
+    }
+  }, [tab]);
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -1371,37 +1387,67 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Single-row horizontal scroll ribbon on mobile/tablet */}
-                <div className="admin-mobile-tab-ribbon">
-                  {[
-                    { id: "overview", label: "Overview" },
-                    { id: "today", label: "Today's Challenge" },
-                    { id: "reports", label: "Reports" },
-                    { id: "points", label: "Points & Streaks" },
-                    { id: "monitoring", label: "Live Monitor" },
-                    { id: "users", label: "Users & Members", badge: users.length || null },
-                    { id: "registrations", label: "Registrations", badge: pendingRegs.length > 0 ? `${pendingRegs.length}` : null },
-                    { id: "submissions", label: "Submissions" },
-                    { id: "live", label: "Live Sessions" },
-                    { id: "payments", label: "Payments" },
-                    { id: "questions", label: "Question Bank" },
-                    { id: "manual-questions", label: "Manual Questions" },
-                    { id: "whatsapp", label: "WhatsApp Bot" },
-                    { id: "settings", label: "Settings" },
-                  ].map(t => {
-                    const active = tab === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className={`admin-mobile-tab-pill${active ? " active" : ""}`}
-                        onClick={() => setTab(t.id)}
-                      >
-                        <AdminSidebarIcon id={t.id} active={active} />
-                        <span>{t.label}</span>
-                        {t.badge && <span className="admin-mobile-tab-badge">{t.badge}</span>}
-                      </button>
-                    );
-                  })}
+                <div className="admin-mobile-tab-ribbon-wrap">
+                  <button
+                    type="button"
+                    className="ribbon-arrow-btn left"
+                    onClick={() => scrollRibbon(-180)}
+                    title="Scroll left"
+                    aria-label="Scroll left"
+                  >
+                    ‹
+                  </button>
+
+                  <div
+                    ref={ribbonRef}
+                    className="admin-mobile-tab-ribbon"
+                    onWheel={(e) => {
+                      if (e.deltaY) {
+                        e.currentTarget.scrollLeft += e.deltaY * 1.2;
+                      }
+                    }}
+                  >
+                    {[
+                      { id: "overview", label: "Overview" },
+                      { id: "today", label: "Today's Challenge" },
+                      { id: "reports", label: "Reports" },
+                      { id: "points", label: "Points & Streaks" },
+                      { id: "monitoring", label: "Live Monitor" },
+                      { id: "users", label: "Users & Members", badge: users.length || null },
+                      { id: "registrations", label: "Registrations", badge: pendingRegs.length > 0 ? `${pendingRegs.length}` : null },
+                      { id: "submissions", label: "Submissions" },
+                      { id: "live", label: "Live Sessions" },
+                      { id: "payments", label: "Payments" },
+                      { id: "questions", label: "Question Bank" },
+                      { id: "manual-questions", label: "Manual Questions" },
+                      { id: "whatsapp", label: "WhatsApp Bot" },
+                      { id: "settings", label: "Settings" },
+                    ].map(t => {
+                      const active = tab === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className={`admin-mobile-tab-pill${active ? " active" : ""}`}
+                          onClick={() => setTab(t.id)}
+                        >
+                          <AdminSidebarIcon id={t.id} active={active} />
+                          <span>{t.label}</span>
+                          {t.badge && <span className="admin-mobile-tab-badge">{t.badge}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="ribbon-arrow-btn right"
+                    onClick={() => scrollRibbon(180)}
+                    title="Scroll right"
+                    aria-label="Scroll right"
+                  >
+                    ›
+                  </button>
                 </div>
               </>
             );
