@@ -127,10 +127,29 @@ export default function PaymentWall({ onSuccess }) {
               login({ ...user, paid: true });
             }
           } catch (verifyErr) {
-            setError(
-              verifyErr?.response?.data?.error ||
-              "Payment verification failed. Please contact support."
-            );
+            const errStatus = verifyErr?.response?.status;
+            const errMsg = verifyErr?.response?.data?.error || "";
+            if (errStatus === 409 || errMsg.includes("already been processed")) {
+              // Webhook or concurrent request already verified this order
+              const txObj = {
+                name: user?.name || user?.registeredName || "Student Member",
+                phone: user?.phone,
+                amount: planAmount,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                status: "success",
+                source: "razorpay",
+                createdAt: new Date().toISOString(),
+              };
+              setSuccessTx(txObj);
+              setPaid(true);
+              if (user) login({ ...user, paid: true });
+            } else {
+              setError(
+                errMsg ||
+                "Payment verification failed. Please contact support."
+              );
+            }
           } finally {
             setLoading(false);
           }

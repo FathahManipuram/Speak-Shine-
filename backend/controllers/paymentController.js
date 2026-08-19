@@ -209,15 +209,22 @@ export async function verifyPayment(req, res) {
       return res.status(404).json({ error: "User record not found. Please contact support." });
     }
 
-    // ── Replay / double-spend guard ──────────────────────────────────────────
-    // Reject if this Razorpay order ID was already successfully processed.
+    // ── Idempotent guard ──────────────────────────────────────────
+    // If webhook already processed this exact Razorpay order ID, ensure user is marked paid and return success.
     const existing = await Transaction.findOne({
       razorpayOrderId: razorpay_order_id,
       status: "success",
     }).lean();
     if (existing) {
-      console.warn(`[Payment] Duplicate order rejected: ${razorpay_order_id}`);
-      return res.status(409).json({ error: "This payment order has already been processed." });
+      console.log(`[Payment] Order ${razorpay_order_id} was already recorded as success (e.g. via webhook)`);
+      if (!user.paid) {
+        user.paid = true;
+        user.razorpayOrderId = razorpay_order_id;
+        user.razorpayPaymentId = razorpay_payment_id;
+        user.paidAt = user.paidAt || new Date();
+        await user.save();
+      }
+      return res.json({ success: true, message: "Payment verified successfully!", alreadyProcessed: true });
     }
 
     // Fetch amount from Razorpay for accurate logging
