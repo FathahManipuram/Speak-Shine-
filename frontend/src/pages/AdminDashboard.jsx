@@ -447,6 +447,7 @@ export default function AdminDashboard() {
   const [slotTemplateFilter, setSlotTemplateFilter] = useState("all"); // "all" | "comprehensive" | "urgent" | "motivation" | "custom"
   const [slotSearchQuery, setSlotSearchQuery] = useState("");
   const [slotSortOrder, setSlotSortOrder] = useState("asc"); // "asc" | "desc"
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -1097,9 +1098,15 @@ export default function AdminDashboard() {
       )}
       {flash && <div className={`flash ${flash.type}`}>{flash.text}</div>}
 
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`admin-sidebar-backdrop${mobileSidebarOpen ? " open" : ""}`}
+        onClick={() => setMobileSidebarOpen(false)}
+      />
+
       <div className="admin-dashboard-container">
-        {/* Modern Left Sidebar */}
-        <aside className="admin-sidebar">
+        {/* Modern Left Sidebar / Mobile Slide-Out Drawer */}
+        <aside className={`admin-sidebar${mobileSidebarOpen ? " open" : ""}`}>
           {/* Brand Header */}
           <div className="admin-sidebar-header">
             <div className="admin-sidebar-brand">
@@ -1113,15 +1120,28 @@ export default function AdminDashboard() {
                 <div className="admin-brand-tag">Control Center</div>
               </div>
             </div>
-            {waStatus?.isConnected ? (
-              <span title="WhatsApp Connected" style={{ fontSize: "0.66rem", padding: "3px 7px", borderRadius: 12, background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.25)", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
-                <span className="live-dot" /> Live
-              </span>
-            ) : (
-              <span title="WhatsApp Offline" style={{ fontSize: "0.66rem", padding: "3px 7px", borderRadius: 12, background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
-                <span className="live-dot red" /> Off
-              </span>
-            )}
+            
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              {waStatus?.isConnected ? (
+                <span title="WhatsApp Connected" style={{ fontSize: "0.66rem", padding: "3px 7px", borderRadius: 12, background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.25)", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+                  <span className="live-dot" /> Live
+                </span>
+              ) : (
+                <span title="WhatsApp Offline" style={{ fontSize: "0.66rem", padding: "3px 7px", borderRadius: 12, background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+                  <span className="live-dot red" /> Off
+                </span>
+              )}
+              {/* Close Button on Mobile Drawer */}
+              <button
+                type="button"
+                className="admin-sidebar-close-btn"
+                onClick={() => setMobileSidebarOpen(false)}
+                aria-label="Close sidebar"
+                title="Close Menu"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Middle Nav - Scrollable */}
@@ -1142,7 +1162,10 @@ export default function AdminDashboard() {
                     key={t.id}
                     type="button"
                     className={`admin-sidebar-item${active ? " active" : ""}`}
-                    onClick={() => setTab(t.id)}
+                    onClick={() => {
+                      setTab(t.id);
+                      setMobileSidebarOpen(false);
+                    }}
                   >
                     <div className="admin-sidebar-icon-box">
                       <AdminSidebarIcon id={t.id} active={active} />
@@ -1174,7 +1197,10 @@ export default function AdminDashboard() {
                     key={t.id}
                     type="button"
                     className={`admin-sidebar-item${active ? " active" : ""}`}
-                    onClick={() => setTab(t.id)}
+                    onClick={() => {
+                      setTab(t.id);
+                      setMobileSidebarOpen(false);
+                    }}
                   >
                     <div className="admin-sidebar-icon-box">
                       <AdminSidebarIcon id={t.id} active={active} />
@@ -1210,7 +1236,10 @@ export default function AdminDashboard() {
                     key={t.id}
                     type="button"
                     className={`admin-sidebar-item${active ? " active" : ""}`}
-                    onClick={() => setTab(t.id)}
+                    onClick={() => {
+                      setTab(t.id);
+                      setMobileSidebarOpen(false);
+                    }}
                   >
                     <div className="admin-sidebar-icon-box">
                       <AdminSidebarIcon id={t.id} active={active} />
@@ -1233,7 +1262,10 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   className={`admin-sidebar-item${tab === "student-detail" ? " active" : ""}`}
-                  onClick={() => setTab("student-detail")}
+                  onClick={() => {
+                    setTab("student-detail");
+                    setMobileSidebarOpen(false);
+                  }}
                 >
                   <div className="admin-sidebar-icon-box">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1288,38 +1320,90 @@ export default function AdminDashboard() {
               "student-detail": "Student Profile",
             };
             return (
-              <div className="admin-command-bar fade-in-up">
-                <div className="admin-breadcrumb">
-                  <span>⚡ Admin</span>
-                  <span className="admin-breadcrumb-sep">/</span>
-                  <span className="admin-breadcrumb-active">{tabLabels[tab] || tab}</span>
+              <>
+                <div className="admin-command-bar fade-in-up">
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+                    {/* Mobile Drawer Trigger */}
+                    <button
+                      type="button"
+                      className="admin-mobile-menu-btn"
+                      onClick={() => setMobileSidebarOpen(o => !o)}
+                      title="Open All Tabs Menu"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                      </svg>
+                      <span>Tabs</span>
+                    </button>
+                    <div className="admin-breadcrumb">
+                      <span>⚡ Admin</span>
+                      <span className="admin-breadcrumb-sep">/</span>
+                      <span className="admin-breadcrumb-active">{tabLabels[tab] || tab}</span>
+                    </div>
+                  </div>
+                  <div className="admin-cmd-right">
+                    <span className={`status-pill${waStatus?.isConnected ? "" : " offline"}`}>
+                      <span className={`live-dot${waStatus?.isConnected ? "" : " red"}`} />
+                      {waStatus?.isConnected ? "WA Live" : "WA Offline"}
+                    </span>
+                    <span className="status-pill">
+                      <span className="live-dot" />
+                      API Synced
+                    </span>
+                    <button
+                      className={`cmd-refresh-btn${refreshing ? " spinning" : ""}`}
+                      onClick={async () => {
+                        setRefreshing(true);
+                        await reload(['dashboard', 'users']);
+                        setTimeout(() => setRefreshing(false), 600);
+                      }}
+                      title="Sync data"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                      </svg>
+                      Sync
+                    </button>
+                  </div>
                 </div>
-                <div className="admin-cmd-right">
-                  <span className={`status-pill${waStatus?.isConnected ? "" : " offline"}`}>
-                    <span className={`live-dot${waStatus?.isConnected ? "" : " red"}`} />
-                    {waStatus?.isConnected ? "WA Live" : "WA Offline"}
-                  </span>
-                  <span className="status-pill">
-                    <span className="live-dot" />
-                    API Synced
-                  </span>
-                  <button
-                    className={`cmd-refresh-btn${refreshing ? " spinning" : ""}`}
-                    onClick={async () => {
-                      setRefreshing(true);
-                      await reload(['dashboard', 'users']);
-                      setTimeout(() => setRefreshing(false), 600);
-                    }}
-                    title="Sync data"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                    </svg>
-                    Sync
-                  </button>
+
+                {/* Single-row horizontal scroll ribbon on mobile/tablet */}
+                <div className="admin-mobile-tab-ribbon">
+                  {[
+                    { id: "overview", label: "Overview" },
+                    { id: "today", label: "Today's Challenge" },
+                    { id: "reports", label: "Reports" },
+                    { id: "points", label: "Points & Streaks" },
+                    { id: "monitoring", label: "Live Monitor" },
+                    { id: "users", label: "Users & Members", badge: users.length || null },
+                    { id: "registrations", label: "Registrations", badge: pendingRegs.length > 0 ? `${pendingRegs.length}` : null },
+                    { id: "submissions", label: "Submissions" },
+                    { id: "live", label: "Live Sessions" },
+                    { id: "payments", label: "Payments" },
+                    { id: "questions", label: "Question Bank" },
+                    { id: "manual-questions", label: "Manual Questions" },
+                    { id: "whatsapp", label: "WhatsApp Bot" },
+                    { id: "settings", label: "Settings" },
+                  ].map(t => {
+                    const active = tab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`admin-mobile-tab-pill${active ? " active" : ""}`}
+                        onClick={() => setTab(t.id)}
+                      >
+                        <AdminSidebarIcon id={t.id} active={active} />
+                        <span>{t.label}</span>
+                        {t.badge && <span className="admin-mobile-tab-badge">{t.badge}</span>}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
+              </>
             );
           })()}
 

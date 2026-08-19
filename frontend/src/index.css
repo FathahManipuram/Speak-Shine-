@@ -2829,6 +2829,116 @@ button[aria-label="Toggle Chat"] {
   transform: scale(1.05);
 }
 
+/* Sidebar close button on mobile */
+.admin-sidebar-close-btn {
+  display: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+.admin-sidebar-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Mobile drawer backdrop */
+.admin-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 9998;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.admin-sidebar-backdrop.open {
+  display: block;
+  opacity: 1;
+}
+
+/* Mobile menu toggle in command bar */
+.admin-mobile-menu-btn {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(124, 111, 255, 0.12);
+  border: 1px solid rgba(124, 111, 255, 0.3);
+  color: #c4b5fd;
+  border-radius: 8px;
+  padding: 0.32rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.admin-mobile-menu-btn:hover {
+  background: rgba(124, 111, 255, 0.22);
+  color: #fff;
+}
+
+/* Single-row horizontal quick tab ribbon for mobile */
+.admin-mobile-tab-ribbon {
+  display: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  gap: 0.4rem;
+  padding: 0.1rem 0.1rem 0.55rem 0.1rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+.admin-mobile-tab-ribbon::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-mobile-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border-radius: 10px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.admin-mobile-tab-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+.admin-mobile-tab-pill.active {
+  background: linear-gradient(135deg, rgba(124, 111, 255, 0.25), rgba(99, 102, 241, 0.35));
+  border-color: rgba(124, 111, 255, 0.5);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(124, 111, 255, 0.25);
+}
+
+.admin-mobile-tab-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
 /* ─────────────────────────────────
    TOP COMMAND BAR
 ───────────────────────────────── */
@@ -3422,16 +3532,74 @@ button[aria-label="Toggle Chat"] {
    RESPONSIVE OVERRIDES
 ───────────────────────────────── */
 @media (max-width: 1024px) {
-  .admin-dashboard-container { flex-direction: column; gap: 1rem; }
-  .admin-sidebar {
-    width: 100%; position: static; max-height: none;
-    padding: 0.75rem; border-radius: 16px; gap: 0;
+  .admin-dashboard-container {
+    flex-direction: column;
+    gap: 0;
   }
-  .admin-sidebar-section { flex-direction: row; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 4px; gap: 0.35rem; margin-bottom: 0; }
-  .admin-sidebar-section::-webkit-scrollbar { display: none; }
-  .admin-sidebar-title { display: none; }
-  .admin-sidebar-item { width: auto; white-space: nowrap; flex-shrink: 0; padding: 0.42rem 0.82rem; }
-  .admin-sidebar-footer { display: none; }
+
+  /* Slide-out Drawer mode on tablets / mobile / narrow split windows */
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 290px;
+    height: 100vh;
+    z-index: 9999;
+    border-radius: 0 20px 20px 0;
+    transform: translateX(-105%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 12px 0 45px rgba(0, 0, 0, 0.85);
+    padding: 1.25rem 1rem;
+    overflow-y: auto;
+    background: linear-gradient(180deg, rgba(14, 15, 25, 0.98) 0%, rgba(9, 10, 18, 0.99) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: none;
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .admin-sidebar-close-btn {
+    display: flex;
+  }
+
+  .admin-mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .admin-mobile-tab-ribbon {
+    display: flex;
+  }
+
+  .admin-sidebar-section {
+    flex-direction: column;
+    overflow-x: visible;
+    padding-bottom: 0;
+    gap: 0.25rem;
+    margin-bottom: 1.1rem;
+  }
+  .admin-sidebar-title {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+  }
+  .admin-sidebar-item {
+    width: 100%;
+    white-space: normal;
+    padding: 0.55rem 0.85rem;
+  }
+  .admin-sidebar-footer {
+    display: block;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
 }
 @media (max-width: 768px) {
   .admin-command-bar { flex-direction: column; align-items: flex-start; }
