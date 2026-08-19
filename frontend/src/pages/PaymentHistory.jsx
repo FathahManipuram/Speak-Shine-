@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout.jsx";
 import api from "../api/client.js";
+import InvoiceModal from "../components/InvoiceModal.jsx";
 
 function statusBadge(status) {
   const map = {
@@ -37,6 +38,7 @@ export default function PaymentHistory() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedInvoiceTx, setSelectedInvoiceTx] = useState(null);
 
   useEffect(() => {
     api.get("/payments/my-transactions")
@@ -48,11 +50,20 @@ export default function PaymentHistory() {
   if (loading) return <Layout title="Payment History"><div className="spinner-wrap"><div className="spinner" /></div></Layout>;
   if (error)   return <Layout title="Payment History"><div className="error-box"><p>{error}</p></div></Layout>;
 
-  const { transactions = [], paid, paidAt, paymentId } = data;
+  const { transactions = [], paid, paidAt, paymentId, user } = data;
 
   return (
     <Layout title="Payment History">
-      <div style={{ maxWidth: 680, margin: "1.5rem auto", padding: "0 1rem" }}>
+      {/* Invoice / Receipt Modal */}
+      {selectedInvoiceTx && (
+        <InvoiceModal
+          transaction={selectedInvoiceTx}
+          user={user}
+          onClose={() => setSelectedInvoiceTx(null)}
+        />
+      )}
+
+      <div style={{ maxWidth: 760, margin: "1.5rem auto", padding: "0 1rem" }}>
 
         {/* Access Status Card */}
         <div style={{
@@ -98,7 +109,7 @@ export default function PaymentHistory() {
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}>
             <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text)" }}>
-              💳 Transaction History
+              💳 Transaction History &amp; Invoices
             </div>
             <div style={{
               fontSize: "0.72rem", color: "var(--muted)",
@@ -119,9 +130,10 @@ export default function PaymentHistory() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border, #1e1e3a)" }}>
-                    {["Date", "Amount", "Status", "Payment ID"].map(h => (
+                    {["Date", "Amount", "Status", "Payment ID", "Action"].map(h => (
                       <th key={h} style={{
-                        textAlign: "left", padding: "0.7rem 1rem",
+                        textAlign: h === "Action" ? "center" : "left",
+                        padding: "0.7rem 1rem",
                         color: "var(--muted)", fontWeight: 600,
                         fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.06em",
                       }}>{h}</th>
@@ -151,7 +163,37 @@ export default function PaymentHistory() {
                       <td style={{ padding: "0.75rem 1rem", color: "var(--muted)", fontFamily: "monospace", fontSize: "0.75rem" }}>
                         {tx.razorpayPaymentId
                           ? <span title={tx.razorpayPaymentId}>{tx.razorpayPaymentId.slice(-12)}</span>
-                          : tx.source === "admin" ? "Admin" : "—"}
+                          : tx.source === "admin" ? "Admin Override" : "—"}
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem", textAlign: "center", whiteSpace: "nowrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvoiceTx(tx)}
+                          style={{
+                            background: "rgba(124, 111, 255, 0.12)",
+                            border: "1px solid rgba(124, 111, 255, 0.35)",
+                            color: "#c4b5fd",
+                            borderRadius: 8,
+                            padding: "0.3rem 0.75rem",
+                            fontSize: "0.76rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            transition: "all 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(124, 111, 255, 0.25)";
+                            e.currentTarget.style.color = "#fff";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(124, 111, 255, 0.12)";
+                            e.currentTarget.style.color = "#c4b5fd";
+                          }}
+                        >
+                          <span>📄</span> Invoice
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -162,7 +204,7 @@ export default function PaymentHistory() {
         </div>
 
         <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--muted)", marginTop: "1.25rem" }}>
-          For refunds or issues, contact your trainer or admin.
+          Need custom billing assistance? Contact your trainer or admin support.
         </p>
       </div>
     </Layout>

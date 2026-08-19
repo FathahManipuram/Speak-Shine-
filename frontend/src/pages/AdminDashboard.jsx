@@ -11,6 +11,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client.js";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import StreakBadge from "../components/StreakBadge.jsx";
+import InvoiceModal from "../components/InvoiceModal.jsx";
 
 const CATS = ["Daily Life","Opinion","Personal Experience","English Growth","Future Goals","Fun Topic","Free Talk"];
 const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c","#a78bfa"];
@@ -448,6 +449,7 @@ export default function AdminDashboard() {
   const [slotSearchQuery, setSlotSearchQuery] = useState("");
   const [slotSortOrder, setSlotSortOrder] = useState("asc"); // "asc" | "desc"
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [selectedAdminInvoiceTx, setSelectedAdminInvoiceTx] = useState(null);
   const ribbonRef = useRef(null);
   const sidebarNavRef = useRef(null);
 
@@ -1143,6 +1145,14 @@ export default function AdminDashboard() {
         />
       )}
       {flash && <div className={`flash ${flash.type}`}>{flash.text}</div>}
+      
+      {/* Official Invoice / Receipt Modal */}
+      {selectedAdminInvoiceTx && (
+        <InvoiceModal
+          transaction={selectedAdminInvoiceTx}
+          onClose={() => setSelectedAdminInvoiceTx(null)}
+        />
+      )}
 
       {/* Mobile Drawer Backdrop */}
       <div
@@ -2934,12 +2944,13 @@ export default function AdminDashboard() {
                         <th>Gateway / Source</th>
                         <th>Payment ID</th>
                         <th>Remarks / Note</th>
+                        <th style={{ textAlign: "center" }}>Invoice</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(paymentData.transactions || []).length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{ textAlign: "center", color: "var(--muted)", padding: "2.5rem 1rem" }}>
+                          <td colSpan={8} style={{ textAlign: "center", color: "var(--muted)", padding: "2.5rem 1rem" }}>
                             No transactions recorded yet
                           </td>
                         </tr>
@@ -2998,6 +3009,29 @@ export default function AdminDashboard() {
                             </td>
                             <td style={{ fontSize: "0.78rem", color: "var(--muted)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {tx.note || "—"}
+                            </td>
+                            <td style={{ textAlign: "center", whiteSpace: "nowrap" }}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAdminInvoiceTx(tx)}
+                                style={{
+                                  background: "rgba(124, 111, 255, 0.12)",
+                                  border: "1px solid rgba(124, 111, 255, 0.35)",
+                                  color: "#c4b5fd",
+                                  borderRadius: 7,
+                                  padding: "0.25rem 0.65rem",
+                                  fontSize: "0.74rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.3rem",
+                                  transition: "all 0.15s ease",
+                                }}
+                                title="View & Print Official Invoice"
+                              >
+                                <span>📄</span> Invoice
+                              </button>
                             </td>
                           </tr>
                         ))
