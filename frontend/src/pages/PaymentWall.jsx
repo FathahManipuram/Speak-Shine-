@@ -2,6 +2,7 @@
  * PaymentWall
  * Shown to unpaid users when they try to access a gated feature.
  * Handles Razorpay Standard Checkout flow end-to-end.
+ * Features instant verification, success confirmation, and 1-click invoice download.
  */
 
 import { useState, useEffect } from "react";
@@ -9,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/client.js";
 import Layout from "../components/Layout.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import InvoiceModal from "../components/InvoiceModal.jsx";
 
 // ── Load Razorpay checkout.js script once ────────────────────────────────────
 function loadRazorpayScript() {
@@ -28,6 +30,8 @@ export default function PaymentWall({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [paid, setPaid] = useState(false);
+  const [successTx, setSuccessTx] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [failed, setFailed] = useState(false);
   const [planAmount, setPlanAmount] = useState(DEFAULT_PLAN_AMOUNT);
   const navigate = useNavigate();
@@ -41,26 +45,6 @@ export default function PaymentWall({ onSuccess }) {
       })
       .catch(() => {});
   }, []);
-
-  // After successful payment — update auth context then hard-reload
-  // so PaidRoute re-evaluates with paid=true from the fresh session
-  useEffect(() => {
-    if (paid) {
-      setTimeout(() => {
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          // Update user in memory so PaidRoute unblocks immediately,
-          // then hard-navigate to flush any cached state
-          if (user) {
-            login({ ...user, paid: true });
-          }
-          // Hard reload to /video-analysis — forces fresh AuthContext boot
-          window.location.href = "/video-analysis";
-        }
-      }, 1800);
-    }
-  }, [paid, navigate, onSuccess, login, user]);
 
   const handlePay = async () => {
     setError(null);
@@ -95,7 +79,25 @@ export default function PaymentWall({ onSuccess }) {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature:  response.razorpay_signature,
             });
+
+            const txObj = {
+              name: user?.name || user?.registeredName || "Student Member",
+              phone: user?.phone,
+              amount: planAmount,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              status: "success",
+              source: "razorpay",
+              createdAt: new Date().toISOString(),
+            };
+
+            setSuccessTx(txObj);
             setPaid(true);
+
+            // Update user in memory so PaidRoute unblocks immediately
+            if (user) {
+              login({ ...user, paid: true });
+            }
           } catch (verifyErr) {
             setError(
               verifyErr?.response?.data?.error ||
@@ -112,8 +114,8 @@ export default function PaymentWall({ onSuccess }) {
           },
         },
         prefill: {
-          name: "",
-          contact: "",
+          name: user?.name || "",
+          contact: user?.phone || "",
         },
         theme: { color: "#7c6fff" },
       };
@@ -134,6 +136,14 @@ export default function PaymentWall({ onSuccess }) {
         "Could not initiate payment. Please try again."
       );
       setLoading(false);
+    }
+  };
+
+  const handleContinueToDashboard = () => {
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      window.location.href = "/video-analysis";
     }
   };
 
@@ -178,19 +188,136 @@ export default function PaymentWall({ onSuccess }) {
   if (paid) {
     return (
       <Layout title="Payment Successful">
-        <div style={{
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: "center", minHeight: "60vh", textAlign: "center",
-          padding: "2rem",
-        }}>
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
-          <h2 style={{ color: "#4ade80", fontSize: "1.5rem", fontWeight: 800, marginBottom: "0.5rem" }}>
-            Payment Successful!
-          </h2>
-          <p style={{ color: "var(--muted)", fontSize: "0.95rem" }}>
-            Your account is now active. Redirecting you…
+        {/* Printable Official Invoice Modal */}
+        {showInvoiceModal && (
+          <InvoiceModal
+            transaction={successTx}
+            user={user}
+            onClose={() => setShowInvoiceModal(false)}
+          />
+        )}
+
+        <div style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
+          {/* Main Celebration Card */}
+          <div style={{
+            background: "linear-gradient(135deg, #0d1e16 0%, #0a1711 100%)",
+            border: "1px solid rgba(74, 222, 128, 0.35)",
+            borderRadius: 24,
+            padding: "2.25rem 1.75rem",
+            textAlign: "center",
+            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(74, 222, 128, 0.12)",
+            position: "relative",
+            overflow: "hidden",
+            marginBottom: "1.25rem",
+          }}>
+            <div style={{ fontSize: "3.75rem", marginBottom: "0.85rem" }}>🎉</div>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              background: "rgba(74, 222, 128, 0.15)",
+              border: "1px solid rgba(74, 222, 128, 0.35)",
+              color: "#4ade80",
+              padding: "0.3rem 0.85rem",
+              borderRadius: 20,
+              fontSize: "0.82rem",
+              fontWeight: 800,
+              letterSpacing: "0.04em",
+              marginBottom: "0.75rem",
+            }}>
+              <span>✓</span> PAYMENT VERIFIED &amp; UNLOCKED
+            </div>
+
+            <h1 style={{ fontSize: "1.6rem", fontWeight: 900, color: "#ffffff", marginBottom: "0.5rem" }}>
+              Welcome to Speak &amp; Shine!
+            </h1>
+            <p style={{ color: "#94a3b8", fontSize: "0.92rem", lineHeight: 1.6, maxWidth: 440, margin: "0 auto 1.5rem" }}>
+              Your payment has been verified. Daily speaking challenges, AI speech analysis, and full mentorship are now active on your account!
+            </p>
+
+            {/* Quick Receipt Summary Box */}
+            <div style={{
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 16,
+              padding: "1.1rem 1.25rem",
+              textAlign: "left",
+              marginBottom: "1.75rem",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", paddingBottom: "0.6rem", marginBottom: "0.6rem" }}>
+                <span style={{ fontSize: "0.76rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>AMOUNT PAID:</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "#4ade80" }}>₹{planAmount}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                <span style={{ color: "var(--muted)" }}>Plan:</span>
+                <span style={{ fontWeight: 600 }}>Speak &amp; Shine Full Membership</span>
+              </div>
+              {successTx?.razorpayPaymentId && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.76rem", color: "#cbd5e1", marginBottom: "0.4rem" }}>
+                  <span style={{ color: "var(--muted)" }}>Payment ID:</span>
+                  <span style={{ fontFamily: "monospace", color: "#a5b4fc" }}>{successTx.razorpayPaymentId}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.76rem", color: "#cbd5e1" }}>
+                <span style={{ color: "var(--muted)" }}>Date &amp; Time:</span>
+                <span>{new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <button
+                type="button"
+                onClick={handleContinueToDashboard}
+                style={{
+                  width: "100%",
+                  background: "linear-gradient(135deg, #7c6fff 0%, #4f46e5 100%)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: 14,
+                  padding: "0.95rem 1.5rem",
+                  fontSize: "1rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  boxShadow: "0 6px 20px rgba(124, 111, 255, 0.4)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>🚀</span> Start Speaking Challenges Now
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(true)}
+                style={{
+                  width: "100%",
+                  background: "rgba(124, 111, 255, 0.12)",
+                  color: "#c4b5fd",
+                  border: "1px solid rgba(124, 111, 255, 0.35)",
+                  borderRadius: 14,
+                  padding: "0.85rem 1.5rem",
+                  fontSize: "0.92rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>📄</span> View &amp; Download Official Invoice (PDF)
+              </button>
+            </div>
+          </div>
+
+          <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--muted)" }}>
+            A receipt has been saved to your account. You can view all past invoices anytime in <a href="/payment-history" style={{ color: "#a5b4fc", textDecoration: "underline" }}>Payment History</a>.
           </p>
-          <div className="spinner" style={{ marginTop: "1.5rem" }} />
         </div>
       </Layout>
     );
