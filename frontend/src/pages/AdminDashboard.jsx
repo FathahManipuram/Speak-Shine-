@@ -12,6 +12,7 @@ import api from "../api/client.js";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import StreakBadge from "../components/StreakBadge.jsx";
 import InvoiceModal from "../components/InvoiceModal.jsx";
+import { getSharedSocket } from "../hooks/useSocket.js";
 
 const CATS = ["Daily Life","Opinion","Personal Experience","English Growth","Future Goals","Fun Topic","Free Talk"];
 const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c","#a78bfa"];
@@ -502,6 +503,62 @@ export default function AdminDashboard() {
         activeEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
       }
     }
+  }, [tab]);
+
+  // Real-time WebSocket listener for live payment updates across the admin dashboard
+  useEffect(() => {
+    const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
+    if (!token) return;
+    const socket = getSharedSocket(token);
+
+    const onUserPaidStatus = (data) => {
+      if (!data?.phone) return;
+      const strippedPhone = String(data.phone).replace(/^(\+91|91)/, "");
+      setUsers(prev => prev.map(u => {
+        const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+        if (uPhone === strippedPhone || u.phone === data.phone) {
+          return { ...u, paid: data.paid, paidAt: data.paidAt || new Date() };
+        }
+        return u;
+      }));
+
+      // Update selected student if open in modal / drawer
+      setSelectedStudent(s => {
+        if (!s) return null;
+        const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+        if (sPhone === strippedPhone || s.phone === data.phone) {
+          return { ...s, paid: data.paid, paidAt: data.paidAt || new Date() };
+        }
+        return s;
+      });
+
+      // Update dashboard KPI counts
+      setDash(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          stats: {
+            ...prev.stats,
+            totalPaid: data.paid ? (prev.stats?.totalPaid || 0) + 1 : Math.max(0, (prev.stats?.totalPaid || 1) - 1),
+          },
+        };
+      });
+
+      // Reload payments table if already loaded or active
+      loadPayments();
+    };
+
+    const onPaymentRecorded = () => {
+      loadPayments();
+    };
+
+    socket.on("user:paid_status", onUserPaidStatus);
+    socket.on("payment:recorded", onPaymentRecorded);
+
+    return () => {
+      socket.off("user:paid_status", onUserPaidStatus);
+      socket.off("payment:recorded", onPaymentRecorded);
+    };
   }, [tab]);
 
   // Lazy loading flags to track what's been loaded

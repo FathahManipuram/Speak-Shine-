@@ -111,6 +111,11 @@ export async function createOrder(req, res) {
       amount: amountPaise,
       currency: "INR",
       receipt,
+      notes: {
+        userId: String(req.user.id || ""),
+        phone: String(req.user.phone || ""),
+        name: String(req.user.name || ""),
+      },
     });
 
     res.json({
@@ -242,6 +247,24 @@ export async function verifyPayment(req, res) {
       source: "razorpay",
     });
 
+    // Real-time socket broadcast to live admin dashboards
+    const io = req.app?.get("io");
+    if (io) {
+      io.emit("user:paid_status", {
+        phone: user.phone || phone,
+        paid: true,
+        paidAt: user.paidAt,
+        name: user.name || req.user?.name,
+      });
+      io.emit("payment:recorded", {
+        phone: user.phone || phone,
+        name: user.name || req.user?.name,
+        amount: amountINR,
+        razorpayPaymentId: razorpay_payment_id,
+        createdAt: new Date(),
+      });
+    }
+
     console.log(`[Payment] ✅ Payment verified & logged: ${phone} ₹${amountINR}`);
     res.json({ success: true, message: "Payment successful! Access granted." });
   } catch (err) {
@@ -285,6 +308,26 @@ export async function adminTogglePaid(req, res) {
         });
       } catch (logErr) {
         console.warn("[Payment] manual transaction log failed:", logErr.message);
+      }
+    }
+
+    // Real-time socket broadcast to live admin dashboards
+    const io = req.app?.get("io");
+    if (io) {
+      io.emit("user:paid_status", {
+        phone: user.phone || phone,
+        paid: user.paid,
+        paidAt: user.paidAt,
+        name: user.name,
+      });
+      if (user.paid) {
+        io.emit("payment:recorded", {
+          phone: user.phone || phone,
+          name: user.name,
+          amount: 0,
+          source: "admin",
+          createdAt: new Date(),
+        });
       }
     }
 
@@ -465,17 +508,33 @@ export async function handleWebhook(req, res) {
     console.warn("[Webhook] Idempotency check failed:", err.message);
   }
 
-  // ── 6. Resolve user from contact phone ────────────────────────────────────
-  // Razorpay sends payment.contact = the phone the user typed in the modal.
-  // We try raw contact and normalized (stripped country code) variants.
-  const user = await findUserByContact(contact);
+  // ── 6. Resolve user from notes or contact phone ──────────────────────────
+  // Razorpay sends payment.contact = phone the user entered in modal, plus any
+  // order notes attached during create-order.
+  const notes = payment?.notes || event?.payload?.order?.entity?.notes || {};
+  const notePhone = notes?.phone;
+  const noteUserId = notes?.userId;
+
+  let user = null;
+  if (notePhone) {
+    user = await findUserByContact(notePhone);
+  }
+  if (!user && contact) {
+    user = await findUserByContact(contact);
+  }
+  if (!user && noteUserId) {
+    try {
+      const auth = await Auth.findById(noteUserId).select("phone").lean();
+      if (auth?.phone) {
+        user = await findUserByContact(auth.phone);
+      }
+    } catch {}
+  }
 
   if (!user) {
     // Return 200 so Razorpay doesn't retry — but log for manual follow-up.
-    // A user not found means either they didn't enter their phone in the modal
-    // or the number format didn't match any record.
     console.error(
-      `[Webhook] ❌ User not found for contact: ${contact} — orderId: ${orderId}` +
+      `[Webhook] ❌ User not found for contact: ${contact} / notePhone: ${notePhone} — orderId: ${orderId}` +
       " — manual resolution needed in admin panel"
     );
     return res.status(200).json({ received: true, note: "user not found" });
@@ -504,6 +563,25 @@ export async function handleWebhook(req, res) {
   } catch (logErr) {
     // Log failure is non-critical — user is already marked paid
     console.warn("[Webhook] Transaction log failed:", logErr.message);
+  }
+
+  // Real-time socket broadcast to live admin dashboards
+  const io = req.app?.get("io");
+  if (io) {
+    io.emit("user:paid_status", {
+      phone: user.phone || contact,
+      paid: true,
+      paidAt: user.paidAt,
+      name: user.name,
+    });
+    io.emit("payment:recorded", {
+      phone: user.phone || contact,
+      name: user.name,
+      amount: amountINR,
+      razorpayPaymentId: paymentId,
+      createdAt: new Date(),
+      source: "webhook",
+    });
   }
 
   console.log(`[Webhook] ✅ Payment captured: ${user.phone} ₹${amountINR} (order: ${orderId})`);
