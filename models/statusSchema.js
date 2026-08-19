@@ -90,10 +90,15 @@ const statusSchema = new mongoose.Schema({
       time: { type: String, required: true },
       templateType: { type: String, enum: ["comprehensive", "urgent", "motivation", "custom"], default: "comprehensive" },
       customTemplate: { type: String, default: "" },
+      lastSentDate: { type: String, default: null }, // "YYYY-MM-DD" in IST
+      lastSentTime: { type: String, default: null }, // "HH:MM"
+      lastStatus: { type: String, enum: ["pending", "success", "failed"], default: "pending" },
+      lastError: { type: String, default: null },
+      lastSentAt: { type: Date, default: null },
     }],
     default: [
-      { time: "18:00", templateType: "comprehensive", customTemplate: "" },
-      { time: "21:00", templateType: "urgent", customTemplate: "" },
+      { time: "18:00", templateType: "comprehensive", customTemplate: "", lastSentDate: null, lastStatus: "pending", lastError: null },
+      { time: "21:00", templateType: "urgent", customTemplate: "", lastSentDate: null, lastStatus: "pending", lastError: null },
     ],
   },
   submissionReportTemplates: {

@@ -408,6 +408,9 @@ export async function getSettings() {
     status = await Status.create({});
   }
   
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayDate = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, "0")}-${String(nowIST.getDate()).padStart(2, "0")}`;
+
   return {
     posterSendTime: status.posterSendTime || "08:00",
     questionGenerateTime: status.questionGenerateTime || "07:00",
@@ -416,11 +419,34 @@ export async function getSettings() {
       ? status.submissionReportTimes
       : [status.submissionReportTime1 || "18:00", status.submissionReportTime2 || "21:00"].filter(Boolean),
     submissionReportSlots: Array.isArray(status.submissionReportSlots) && status.submissionReportSlots.length > 0
-      ? status.submissionReportSlots
+      ? status.submissionReportSlots.map(slot => {
+          const isToday = slot.lastSentDate === todayDate;
+          const statusVal = isToday ? (slot.lastStatus || "pending") : "pending";
+          const errorVal = isToday ? (slot.lastError || null) : null;
+          return {
+            time: slot.time,
+            templateType: slot.templateType || "comprehensive",
+            customTemplate: slot.customTemplate || "",
+            lastSentDate: slot.lastSentDate || null,
+            lastSentTime: slot.lastSentTime || null,
+            lastStatus: statusVal,
+            lastError: errorVal,
+            lastSentAt: slot.lastSentAt || null,
+            completed: statusVal === "success",
+            failed: statusVal === "failed",
+          };
+        })
       : (Array.isArray(status.submissionReportTimes) ? status.submissionReportTimes : ["18:00", "21:00"]).map((t, idx) => ({
           time: t,
           templateType: idx === 1 ? "urgent" : "comprehensive",
           customTemplate: "",
+          lastSentDate: null,
+          lastSentTime: null,
+          lastStatus: "pending",
+          lastError: null,
+          lastSentAt: null,
+          completed: false,
+          failed: false,
         })),
     submissionReportTemplates: status.submissionReportTemplates || {},
     submissionReportTime1: status.submissionReportTime1 || "18:00",
@@ -488,13 +514,24 @@ export async function updateSettings(
   
   if (submissionReportSlots !== undefined) {
     if (Array.isArray(submissionReportSlots)) {
+      const existingStatus = await Status.findOne().lean();
+      const existingSlots = Array.isArray(existingStatus?.submissionReportSlots) ? existingStatus.submissionReportSlots : [];
+
       const validSlots = submissionReportSlots
         .filter(s => s && s.time && timeRegex.test(s.time))
-        .map(s => ({
-          time: s.time,
-          templateType: ["comprehensive", "urgent", "motivation", "custom"].includes(s.templateType) ? s.templateType : "comprehensive",
-          customTemplate: typeof s.customTemplate === "string" ? s.customTemplate : "",
-        }));
+        .map(s => {
+          const matchedOld = existingSlots.find(old => old.time === s.time);
+          return {
+            time: s.time,
+            templateType: ["comprehensive", "urgent", "motivation", "custom"].includes(s.templateType) ? s.templateType : "comprehensive",
+            customTemplate: typeof s.customTemplate === "string" ? s.customTemplate : "",
+            lastSentDate: s.lastSentDate !== undefined ? s.lastSentDate : (matchedOld?.lastSentDate || null),
+            lastSentTime: s.lastSentTime !== undefined ? s.lastSentTime : (matchedOld?.lastSentTime || null),
+            lastStatus: s.lastStatus || matchedOld?.lastStatus || "pending",
+            lastError: s.lastError !== undefined ? s.lastError : (matchedOld?.lastError || null),
+            lastSentAt: s.lastSentAt || matchedOld?.lastSentAt || null,
+          };
+        });
       if (validSlots.length > 0) {
         updates.submissionReportSlots = validSlots;
         updates.submissionReportTimes = validSlots.map(s => s.time);

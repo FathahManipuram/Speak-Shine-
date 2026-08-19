@@ -84,6 +84,69 @@ export async function sendSubmissionReport(req, res) {
   }
 }
 
+export async function sendSlotReport(req, res) {
+  const Status = (await import("../../../models/statusSchema.js")).default;
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const y = nowIST.getFullYear();
+  const mo = String(nowIST.getMonth() + 1).padStart(2, "0");
+  const d = String(nowIST.getDate()).padStart(2, "0");
+  const todayDate = `${y}-${mo}-${d}`;
+
+  const { slotIndex, time, templateType, customTemplate, targetGroup } = req.body || {};
+  try {
+    const result = await sendDailySubmissionReportToGroup({
+      targetGroup,
+      timeSlot: time,
+      templateType: templateType || "comprehensive",
+      customTemplate: customTemplate || null,
+    });
+
+    // Update status for this slot in DB
+    const status = await Status.findOne();
+    if (status && Array.isArray(status.submissionReportSlots)) {
+      const idx = (typeof slotIndex === "number" && slotIndex >= 0 && slotIndex < status.submissionReportSlots.length)
+        ? slotIndex
+        : status.submissionReportSlots.findIndex(s => s.time === time);
+      
+      if (idx !== -1) {
+        status.submissionReportSlots[idx].lastSentDate = todayDate;
+        status.submissionReportSlots[idx].lastSentTime = time || `${String(nowIST.getHours()).padStart(2, "0")}:${String(nowIST.getMinutes()).padStart(2, "0")}`;
+        status.submissionReportSlots[idx].lastStatus = "success";
+        status.submissionReportSlots[idx].lastError = null;
+        status.submissionReportSlots[idx].lastSentAt = new Date();
+        status.markModified("submissionReportSlots");
+        await status.save();
+      }
+    }
+
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("[WhatsAppController] sendSlotReport error:", err.message);
+
+    // Record failure in DB
+    try {
+      const status = await Status.findOne();
+      if (status && Array.isArray(status.submissionReportSlots)) {
+        const idx = (typeof slotIndex === "number" && slotIndex >= 0 && slotIndex < status.submissionReportSlots.length)
+          ? slotIndex
+          : status.submissionReportSlots.findIndex(s => s.time === time);
+        
+        if (idx !== -1) {
+          status.submissionReportSlots[idx].lastSentDate = todayDate;
+          status.submissionReportSlots[idx].lastSentTime = time || `${String(nowIST.getHours()).padStart(2, "0")}:${String(nowIST.getMinutes()).padStart(2, "0")}`;
+          status.submissionReportSlots[idx].lastStatus = "failed";
+          status.submissionReportSlots[idx].lastError = err.message || "Failed to dispatch WhatsApp report";
+          status.submissionReportSlots[idx].lastSentAt = new Date();
+          status.markModified("submissionReportSlots");
+          await status.save();
+        }
+      }
+    } catch {}
+
+    return res.status(400).json({ success: false, error: err.message });
+  }
+}
+
 export async function reconnectWhatsApp(req, res) {
   try {
     await restartWhatsAppBot();

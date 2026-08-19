@@ -22,6 +22,17 @@ const DEFAULT_SUBMISSION_TEMPLATES = {
   custom: `🔔 *SPEAK & SHINE — DAILY UPDATE*\n📅 *Date:* {date} | ⏰ *Time:* {time}\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n⏳ *Pending Students ({pending_count} left):*\n{pending_list}\n\n🚀 *Submit your video here:* {app_url}`,
 };
 
+const formatTime12h = (t) => {
+  if (!t) return "";
+  if (/^\d{1,2}:\d{2}$/.test(t)) {
+    const [h, m] = t.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+  }
+  return t;
+};
+
 function AdminSidebarIcon({ id, active }) {
   const props = {
     width: "15",
@@ -427,6 +438,8 @@ export default function AdminDashboard() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [userFilter, setUserFilter] = useState("all"); // filter chip for users tab
   const [refreshing, setRefreshing] = useState(false); // command bar sync spinner
+  const [sendingSlotIndex, setSendingSlotIndex] = useState(null);
+  const [hoveredErrorIndex, setHoveredErrorIndex] = useState(null);
 
   // Lazy loading flags to track what's been loaded
   const [dataLoaded, setDataLoaded] = useState({
@@ -648,6 +661,54 @@ export default function AdminDashboard() {
       msg(err.response?.data?.error || "Failed to send submission report to WhatsApp group", "danger");
     } finally {
       setWaSendingReport(false);
+    }
+  };
+
+  const handleSendSlotNow = async (slot, idx) => {
+    try {
+      setSendingSlotIndex(idx);
+      const res = await api.post("/whatsapp/send-slot-report", {
+        slotIndex: idx,
+        time: slot.time,
+        templateType: slot.templateType || "comprehensive",
+        customTemplate: slot.customTemplate || "",
+      });
+      if (res.data?.success) {
+        msg(`✅ Slot #${idx + 1} (${slot.time}) sent to WhatsApp group! (${res.data.submittedCount || 0}/${res.data.totalPaid || 0} submitted)`, "success");
+        setSettings(prev => {
+          const list = [...(prev.submissionReportSlots || [])];
+          if (list[idx]) {
+            list[idx] = {
+              ...list[idx],
+              lastStatus: "success",
+              lastError: null,
+              completed: true,
+              failed: false,
+              lastSentTime: slot.time,
+            };
+          }
+          return { ...prev, submissionReportSlots: list };
+        });
+        loadWhatsAppStatus();
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.error || "Failed to send slot message to WhatsApp group";
+      msg(errMsg, "danger");
+      setSettings(prev => {
+        const list = [...(prev.submissionReportSlots || [])];
+        if (list[idx]) {
+          list[idx] = {
+            ...list[idx],
+            lastStatus: "failed",
+            lastError: errMsg,
+            completed: false,
+            failed: true,
+          };
+        }
+        return { ...prev, submissionReportSlots: list };
+      });
+    } finally {
+      setSendingSlotIndex(null);
     }
   };
 
@@ -3494,140 +3555,298 @@ export default function AdminDashboard() {
                     {(settings.submissionReportSlots || [
                       { time: "18:00", templateType: "comprehensive", customTemplate: "" },
                       { time: "21:00", templateType: "urgent", customTemplate: "" }
-                    ]).map((slot, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.75rem",
-                          padding: "0.75rem 0.9rem",
-                          borderRadius: 12,
-                          background: "rgba(255, 255, 255, 0.02)",
-                          border: "1px solid rgba(255, 255, 255, 0.07)",
-                          flexWrap: "wrap",
-                          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
-                        }}
-                      >
-                        {/* Slot Badge */}
-                        <div style={{
-                          fontSize: "0.72rem",
-                          fontWeight: 800,
-                          color: "#a5b4fc",
-                          background: "rgba(99, 102, 241, 0.14)",
-                          border: "1px solid rgba(99, 102, 241, 0.25)",
-                          padding: "3px 8px",
-                          borderRadius: 8,
-                          flexShrink: 0,
-                        }}>
-                          #{idx + 1}
-                        </div>
+                    ]).map((slot, idx) => {
+                      const isSentToday = slot.completed || slot.lastStatus === "success";
+                      const isFailedToday = slot.failed || slot.lastStatus === "failed";
+                      const isPending = !isSentToday && !isFailedToday;
+                      const isSendingThis = sendingSlotIndex === idx;
 
-                        {/* Time Picker */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
-                          <input
-                            type="time"
-                            value={slot.time || "18:00"}
-                            onChange={e => {
-                              const newTime = e.target.value;
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.75rem",
+                            padding: "0.75rem 0.9rem",
+                            borderRadius: 12,
+                            background: isFailedToday
+                              ? "rgba(239, 68, 68, 0.04)"
+                              : isSentToday
+                                ? "rgba(34, 197, 94, 0.03)"
+                                : "rgba(255, 255, 255, 0.02)",
+                            border: isFailedToday
+                              ? "1px solid rgba(239, 68, 68, 0.28)"
+                              : isSentToday
+                                ? "1px solid rgba(34, 197, 94, 0.2)"
+                                : "1px solid rgba(255, 255, 255, 0.07)",
+                            flexWrap: "wrap",
+                            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          {/* Slot Badge */}
+                          <div style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 800,
+                            color: "#a5b4fc",
+                            background: "rgba(99, 102, 241, 0.14)",
+                            border: "1px solid rgba(99, 102, 241, 0.25)",
+                            padding: "3px 8px",
+                            borderRadius: 8,
+                            flexShrink: 0,
+                          }}>
+                            #{idx + 1}
+                          </div>
+
+                          {/* Time Picker */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
+                            <input
+                              type="time"
+                              value={slot.time || "18:00"}
+                              onChange={e => {
+                                const newTime = e.target.value;
+                                setSettings(s => {
+                                  const list = [...(s.submissionReportSlots || [])];
+                                  list[idx] = { ...list[idx], time: newTime };
+                                  return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
+                                });
+                              }}
+                              style={{
+                                background: "rgba(255, 255, 255, 0.04)",
+                                color: "#f8fafc",
+                                border: "1px solid rgba(255, 255, 255, 0.1)",
+                                padding: "0.45rem 0.65rem",
+                                borderRadius: 8,
+                                fontSize: "0.88rem",
+                                fontWeight: 700,
+                                outline: "none",
+                              }}
+                            />
+                          </div>
+
+                          {/* Custom Template Dropdown Popover */}
+                          <TemplateDropdown
+                            value={slot.templateType || "comprehensive"}
+                            onChange={(newType) => {
                               setSettings(s => {
                                 const list = [...(s.submissionReportSlots || [])];
-                                list[idx] = { ...list[idx], time: newTime };
-                                return { ...s, submissionReportSlots: list, submissionReportTimes: list.map(x => x.time) };
+                                list[idx] = { ...list[idx], templateType: newType };
+                                return { ...s, submissionReportSlots: list };
                               });
                             }}
-                            style={{
-                              background: "rgba(255, 255, 255, 0.04)",
-                              color: "#f8fafc",
-                              border: "1px solid rgba(255, 255, 255, 0.1)",
-                              padding: "0.45rem 0.65rem",
-                              borderRadius: 8,
-                              fontSize: "0.88rem",
-                              fontWeight: 700,
-                              outline: "none",
-                            }}
                           />
-                        </div>
 
-                        {/* Custom Template Dropdown Popover */}
-                        <TemplateDropdown
-                          value={slot.templateType || "comprehensive"}
-                          onChange={(newType) => {
-                            setSettings(s => {
-                              const list = [...(s.submissionReportSlots || [])];
-                              list[idx] = { ...list[idx], templateType: newType };
-                              return { ...s, submissionReportSlots: list };
-                            });
-                          }}
-                        />
+                          {/* Live Execution Status Badge with Hover Details */}
+                          <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+                            {isSentToday ? (
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.35rem",
+                                  padding: "0.38rem 0.65rem",
+                                  borderRadius: 8,
+                                  fontSize: "0.74rem",
+                                  fontWeight: 700,
+                                  background: "rgba(34, 197, 94, 0.12)",
+                                  border: "1px solid rgba(34, 197, 94, 0.3)",
+                                  color: "#4ade80",
+                                }}
+                                title={`Sent successfully to WhatsApp group today at ${formatTime12h(slot.lastSentTime || slot.time)}`}
+                              >
+                                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
+                                <span>Sent {slot.lastSentTime ? `(${formatTime12h(slot.lastSentTime)})` : "Today"}</span>
+                              </div>
+                            ) : isFailedToday ? (
+                              <div
+                                style={{ position: "relative" }}
+                                onMouseEnter={() => setHoveredErrorIndex(idx)}
+                                onMouseLeave={() => setHoveredErrorIndex(null)}
+                              >
+                                <div style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.35rem",
+                                  padding: "0.38rem 0.65rem",
+                                  borderRadius: 8,
+                                  fontSize: "0.74rem",
+                                  fontWeight: 700,
+                                  background: "rgba(239, 68, 68, 0.15)",
+                                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                                  color: "#f87171",
+                                  cursor: "help",
+                                }}>
+                                  <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#f87171", boxShadow: "0 0 6px #f87171" }} />
+                                  <span>Failed ⚠️</span>
+                                </div>
 
-                        {/* Edit & Delete Action Buttons */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingTemplateType(slot.templateType || "comprehensive");
-                              document.getElementById("submissionReportTemplateTextarea")?.focus();
-                            }}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.35rem",
-                              background: "rgba(99, 102, 241, 0.14)",
-                              border: "1px solid rgba(99, 102, 241, 0.28)",
-                              color: "#c4b5fd",
-                              borderRadius: 8,
-                              padding: "0.45rem 0.75rem",
-                              cursor: "pointer",
-                              fontSize: "0.78rem",
-                              fontWeight: 700,
-                              transition: "all 0.15s ease",
-                            }}
-                            title="Edit template text below"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                            </svg>
-                            Edit
-                          </button>
+                                {/* Floating Hover Tooltip with Full Failure Reason */}
+                                {hoveredErrorIndex === idx && (
+                                  <div style={{
+                                    position: "absolute",
+                                    bottom: "calc(100% + 8px)",
+                                    left: "50%",
+                                    transform: "translateX(-50%)",
+                                    background: "#18182f",
+                                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                                    borderRadius: 10,
+                                    padding: "0.6rem 0.85rem",
+                                    minWidth: 230,
+                                    maxWidth: 320,
+                                    zIndex: 9999,
+                                    boxShadow: "0 10px 25px rgba(0,0,0,0.6)",
+                                    pointerEvents: "none",
+                                  }}>
+                                    <div style={{ fontSize: "0.74rem", fontWeight: 800, color: "#fca5a5", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                      <span>❌ Auto-Send Failed</span>
+                                    </div>
+                                    <div style={{ fontSize: "0.74rem", color: "#e2e8f0", lineHeight: 1.4, wordBreak: "break-word" }}>
+                                      {slot.lastError || "WhatsApp bot was not connected or group was unreachable."}
+                                    </div>
+                                    {slot.lastSentTime && (
+                                      <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.35rem" }}>
+                                        Attempted: {formatTime12h(slot.lastSentTime)}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.35rem",
+                                padding: "0.38rem 0.65rem",
+                                borderRadius: 8,
+                                fontSize: "0.74rem",
+                                fontWeight: 600,
+                                background: "rgba(148, 163, 184, 0.08)",
+                                border: "1px solid rgba(148, 163, 184, 0.18)",
+                                color: "#94a3b8",
+                              }}>
+                                <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#94a3b8" }} />
+                                <span>Pending</span>
+                              </div>
+                            )}
+                          </div>
 
-                          {(settings.submissionReportSlots || []).length > 1 && (
+                          {/* Action Buttons: Instant Send/Retry, Edit, Delete */}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0, marginLeft: "auto" }}>
+                            {/* Instant Send / Retry Button */}
+                            <button
+                              type="button"
+                              disabled={isSendingThis}
+                              onClick={() => handleSendSlotNow(slot, idx)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.35rem",
+                                background: isFailedToday
+                                  ? "rgba(239, 68, 68, 0.18)"
+                                  : isSentToday
+                                    ? "rgba(34, 197, 94, 0.14)"
+                                    : "rgba(168, 85, 247, 0.16)",
+                                border: isFailedToday
+                                  ? "1px solid rgba(239, 68, 68, 0.45)"
+                                  : isSentToday
+                                    ? "1px solid rgba(34, 197, 94, 0.35)"
+                                    : "1px solid rgba(168, 85, 247, 0.35)",
+                                color: isFailedToday
+                                  ? "#fca5a5"
+                                  : isSentToday
+                                    ? "#86efac"
+                                    : "#d8b4fe",
+                                borderRadius: 8,
+                                padding: "0.45rem 0.75rem",
+                                cursor: isSendingThis ? "not-allowed" : "pointer",
+                                fontSize: "0.78rem",
+                                fontWeight: 700,
+                                transition: "all 0.15s ease",
+                                opacity: isSendingThis ? 0.7 : 1,
+                              }}
+                              title={isFailedToday ? "Retry sending this message now" : "Send this slot message immediately"}
+                            >
+                              {isSendingThis ? (
+                                <>
+                                  <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                                  Sending...
+                                </>
+                              ) : isFailedToday ? (
+                                <>🔄 Retry Now</>
+                              ) : isSentToday ? (
+                                <>✓ Re-send</>
+                              ) : (
+                                <>⚡ Send Now</>
+                              )}
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => {
-                                setSettings(s => {
-                                  const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
-                                  const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
-                                  return {
-                                    ...s,
-                                    submissionReportSlots: finalList,
-                                    submissionReportTimes: finalList.map(x => x.time),
-                                  };
-                                });
+                                setEditingTemplateType(slot.templateType || "comprehensive");
+                                document.getElementById("submissionReportTemplateTextarea")?.focus();
                               }}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                width: 30,
-                                height: 30,
-                                background: "rgba(239, 68, 68, 0.12)",
-                                border: "1px solid rgba(239, 68, 68, 0.25)",
-                                color: "#f87171",
+                                gap: "0.35rem",
+                                background: "rgba(99, 102, 241, 0.14)",
+                                border: "1px solid rgba(99, 102, 241, 0.28)",
+                                color: "#c4b5fd",
                                 borderRadius: 8,
+                                padding: "0.45rem 0.75rem",
                                 cursor: "pointer",
+                                fontSize: "0.78rem",
+                                fontWeight: 700,
                                 transition: "all 0.15s ease",
                               }}
-                              title="Delete this time slot"
+                              title="Edit template text below"
                             >
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                               </svg>
+                              Edit
                             </button>
-                          )}
+
+                            {(settings.submissionReportSlots || []).length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSettings(s => {
+                                    const list = (s.submissionReportSlots || []).filter((_, i) => i !== idx);
+                                    const finalList = list.length > 0 ? list : [{ time: "18:00", templateType: "comprehensive", customTemplate: "" }];
+                                    return {
+                                      ...s,
+                                      submissionReportSlots: finalList,
+                                      submissionReportTimes: finalList.map(x => x.time),
+                                    };
+                                  });
+                                }}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 30,
+                                  height: 30,
+                                  background: "rgba(239, 68, 68, 0.12)",
+                                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                                  color: "#f87171",
+                                  borderRadius: 8,
+                                  cursor: "pointer",
+                                  transition: "all 0.15s ease",
+                                }}
+                                title="Delete this time slot"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <button

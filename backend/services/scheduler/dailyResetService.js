@@ -311,9 +311,28 @@ export async function performDailyReset() {
         todayPosterImage: null,
         todayVocabulary: [],
         lastResetDate: todayIST,
+        lastSubmissionReportDate: null,
+        lastSubmissionReportTime: null,
       }
     }, { upsert: true });
-    console.log("[DailyReset] ✅ Status flags + vocabulary reset");
+
+    // Reset auto-send slot statuses for the new day
+    const statusDoc = await Status.findOne();
+    if (statusDoc && Array.isArray(statusDoc.submissionReportSlots)) {
+      statusDoc.submissionReportSlots = statusDoc.submissionReportSlots.map(slot => ({
+        time: slot.time,
+        templateType: slot.templateType || "comprehensive",
+        customTemplate: slot.customTemplate || "",
+        lastSentDate: null,
+        lastSentTime: null,
+        lastStatus: "pending",
+        lastError: null,
+        lastSentAt: null,
+      }));
+      statusDoc.markModified("submissionReportSlots");
+      await statusDoc.save();
+    }
+    console.log("[DailyReset] ✅ Status flags + vocabulary + submission slot statuses reset");
 
     console.log("[DailyReset] 🔄 Daily reset complete");
 

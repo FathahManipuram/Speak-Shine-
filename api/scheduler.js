@@ -285,14 +285,51 @@ export function startScheduler() {
             console.log(`[Scheduler] ⏰ Submission report time matched (${nowTime}) — dispatching to WhatsApp group...`);
             const { sendDailySubmissionReportToGroup } = await import("../backend/services/whatsapp/whatsappService.js");
             const matchedSlot = Array.isArray(s.submissionReportSlots) ? s.submissionReportSlots.find(slot => slot.time === nowTime) : null;
-            await sendDailySubmissionReportToGroup({
-              timeSlot: nowTime,
-              templateType: matchedSlot?.templateType || "comprehensive",
-              customTemplate: matchedSlot?.customTemplate || null,
-            }).catch(err =>
-              console.warn("[Scheduler] Auto submission report failed (non-fatal):", err.message)
-            );
-            await Status.updateOne({}, { $set: { lastSubmissionReportDate: todayDate, lastSubmissionReportTime: nowTime } });
+            const slotIdx = Array.isArray(s.submissionReportSlots) ? s.submissionReportSlots.findIndex(slot => slot.time === nowTime) : -1;
+
+            try {
+              await sendDailySubmissionReportToGroup({
+                timeSlot: nowTime,
+                templateType: matchedSlot?.templateType || "comprehensive",
+                customTemplate: matchedSlot?.customTemplate || null,
+              });
+
+              // Mark slot as success
+              const statusDoc = await Status.findOne();
+              if (statusDoc && Array.isArray(statusDoc.submissionReportSlots) && slotIdx !== -1) {
+                statusDoc.submissionReportSlots[slotIdx].lastSentDate = todayDate;
+                statusDoc.submissionReportSlots[slotIdx].lastSentTime = nowTime;
+                statusDoc.submissionReportSlots[slotIdx].lastStatus = "success";
+                statusDoc.submissionReportSlots[slotIdx].lastError = null;
+                statusDoc.submissionReportSlots[slotIdx].lastSentAt = new Date();
+                statusDoc.lastSubmissionReportDate = todayDate;
+                statusDoc.lastSubmissionReportTime = nowTime;
+                statusDoc.markModified("submissionReportSlots");
+                await statusDoc.save();
+              } else {
+                await Status.updateOne({}, { $set: { lastSubmissionReportDate: todayDate, lastSubmissionReportTime: nowTime } });
+              }
+              console.log(`[Scheduler] ✅ Auto submission report sent successfully for slot ${nowTime}`);
+            } catch (err) {
+              console.warn(`[Scheduler] ❌ Auto submission report failed for slot ${nowTime}:`, err.message);
+              // Mark slot as failed with error reason
+              try {
+                const statusDoc = await Status.findOne();
+                if (statusDoc && Array.isArray(statusDoc.submissionReportSlots) && slotIdx !== -1) {
+                  statusDoc.submissionReportSlots[slotIdx].lastSentDate = todayDate;
+                  statusDoc.submissionReportSlots[slotIdx].lastSentTime = nowTime;
+                  statusDoc.submissionReportSlots[slotIdx].lastStatus = "failed";
+                  statusDoc.submissionReportSlots[slotIdx].lastError = err.message || "Failed to dispatch WhatsApp report";
+                  statusDoc.submissionReportSlots[slotIdx].lastSentAt = new Date();
+                  statusDoc.lastSubmissionReportDate = todayDate;
+                  statusDoc.lastSubmissionReportTime = nowTime;
+                  statusDoc.markModified("submissionReportSlots");
+                  await statusDoc.save();
+                } else {
+                  await Status.updateOne({}, { $set: { lastSubmissionReportDate: todayDate, lastSubmissionReportTime: nowTime } });
+                }
+              } catch {}
+            }
           }
         }
       }
