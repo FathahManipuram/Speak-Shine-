@@ -92,15 +92,25 @@ function isSunday() {
 
 /**
  * Check if today is the story summary day (IST).
- * Uses storyDay from DB settings (default 6 = Saturday).
+ * Uses storyDays from DB settings (fallback to storyDay, default [6] = Saturday).
  */
 async function isStoryDay() {
   try {
-    const status = await Status.findOne().select("storyDay").lean();
-    const configuredDay = status?.storyDay ?? 6; // default Saturday
+    const status = await Status.findOne().select("storyDays storyDay").lean();
+    let days = [];
+    if (Array.isArray(status?.storyDays) && status.storyDays.length > 0) {
+      days = status.storyDays;
+    } else if (status?.storyDay !== undefined && status.storyDay !== null && status.storyDay !== -1) {
+      days = [status.storyDay];
+    } else if (status?.storyDay === -1) {
+      days = [];
+    } else {
+      days = [6]; // default Saturday
+    }
+    if (days.length === 0) return false;
     const now = new Date();
     const istDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    return istDate.getDay() === configuredDay;
+    return days.includes(istDate.getDay());
   } catch {
     // Fallback to Saturday if DB is unavailable
     const now = new Date();
@@ -120,16 +130,25 @@ function isSaturday() {
 
 /**
  * Check if today is the picture description day (IST).
- * Uses pictureDescriptionDay from DB settings (default 4 = Thursday).
- * Returns false if set to -1 (disabled).
+ * Uses pictureDescriptionDays from DB settings (fallback to pictureDescriptionDay, default [4] = Thursday).
+ * Returns false if empty or disabled.
  */
 async function isPictureDescriptionDay() {
   try {
-    const status = await Status.findOne().select("pictureDescriptionDay").lean();
-    const configuredDay = status?.pictureDescriptionDay ?? 4;
-    if (configuredDay === -1) return false;
+    const status = await Status.findOne().select("pictureDescriptionDays pictureDescriptionDay").lean();
+    let days = [];
+    if (Array.isArray(status?.pictureDescriptionDays)) {
+      days = status.pictureDescriptionDays;
+    } else if (status?.pictureDescriptionDay !== undefined && status.pictureDescriptionDay !== null && status.pictureDescriptionDay !== -1) {
+      days = [status.pictureDescriptionDay];
+    } else if (status?.pictureDescriptionDay === -1) {
+      days = [];
+    } else {
+      days = [4]; // default Thursday
+    }
+    if (days.length === 0) return false;
     const istDate = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    return istDate.getDay() === configuredDay;
+    return days.includes(istDate.getDay());
   } catch {
     return false;
   }
@@ -227,17 +246,19 @@ export async function publishAutoSaturdayStory() {
       }
     }, { upsert: true });
 
-    console.log(`[QuestionScheduler] ✅ Saturday story published: "${story.topic}"`);
+    console.log(`[QuestionScheduler] ✅ Story summary published: "${story.topic}"`);
     await ensureTodayVocabulary().catch(err =>
       console.warn("[QuestionScheduler] Vocabulary generation failed (non-fatal):", err.message)
     );
     dispatchPosterToWhatsApp({ topic: story.topic, question: story.question, category: STORY_SUMMARY_CATEGORY });
     return { published: true, type: "story_summary", topic: story.topic, source: "auto" };
   } catch (err) {
-    console.error("[QuestionScheduler] Saturday story auto-publish failed:", err.message);
+    console.error("[QuestionScheduler] Story summary auto-publish failed:", err.message);
     return { published: false, error: err.message };
   }
 }
+
+export const publishAutoStorySummary = publishAutoSaturdayStory;
 
 async function publishStoryQuestion(storyQuestion) {
   await Status.updateOne({}, {

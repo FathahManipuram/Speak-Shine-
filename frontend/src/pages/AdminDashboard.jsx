@@ -406,7 +406,9 @@ export default function AdminDashboard() {
     storyWordCount: 200,
     storyLevel: "B1",
     allowPrivateVideos: true,
+    storyDays: [6],
     storyDay: 6,
+    pictureDescriptionDays: [4],
     pictureDescriptionDay: 4,
     paymentAmount: 5,
     durationDefaultMax: 300,
@@ -823,8 +825,14 @@ export default function AdminDashboard() {
         storyWordCount: s.data.storyWordCount ?? 200,
         storyLevel: s.data.storyLevel || "B1",
         allowPrivateVideos: s.data.allowPrivateVideos ?? true,
-        storyDay: s.data.storyDay ?? 6,
-        pictureDescriptionDay: s.data.pictureDescriptionDay ?? 4,
+        storyDays: Array.isArray(s.data.storyDays) && s.data.storyDays.length > 0
+          ? s.data.storyDays
+          : (s.data.storyDay !== undefined ? [s.data.storyDay] : [6]),
+        storyDay: s.data.storyDay ?? (Array.isArray(s.data.storyDays) && s.data.storyDays.length > 0 ? s.data.storyDays[0] : 6),
+        pictureDescriptionDays: Array.isArray(s.data.pictureDescriptionDays)
+          ? s.data.pictureDescriptionDays
+          : (s.data.pictureDescriptionDay !== undefined && s.data.pictureDescriptionDay !== -1 ? [s.data.pictureDescriptionDay] : [4]),
+        pictureDescriptionDay: s.data.pictureDescriptionDay ?? (Array.isArray(s.data.pictureDescriptionDays) && s.data.pictureDescriptionDays.length > 0 ? s.data.pictureDescriptionDays[0] : -1),
         paymentAmount: s.data.paymentAmount ?? 5,
         durationDefaultMax: s.data.durationDefaultMax ?? 300,
         durationDefaultFull: s.data.durationDefaultFull ?? 300,
@@ -1196,7 +1204,14 @@ export default function AdminDashboard() {
         vocabLevel: fresh.data.vocabLevel || "B2",
         storyWordCount: fresh.data.storyWordCount ?? 200,
         storyLevel: fresh.data.storyLevel || "B1",
+        storyDays: Array.isArray(fresh.data.storyDays)
+          ? fresh.data.storyDays
+          : (fresh.data.storyDay !== undefined ? [fresh.data.storyDay] : [6]),
         storyDay: fresh.data.storyDay ?? 6,
+        pictureDescriptionDays: Array.isArray(fresh.data.pictureDescriptionDays)
+          ? fresh.data.pictureDescriptionDays
+          : (fresh.data.pictureDescriptionDay !== undefined && fresh.data.pictureDescriptionDay !== -1 ? [fresh.data.pictureDescriptionDay] : [4]),
+        pictureDescriptionDay: fresh.data.pictureDescriptionDay ?? -1,
         paymentAmount: fresh.data.paymentAmount ?? 5,
         durationDefaultMax: fresh.data.durationDefaultMax ?? 300,
         durationDefaultFull: fresh.data.durationDefaultFull ?? 300,
@@ -5335,68 +5350,188 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Day of Week Selectors */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
                   
-                  {/* Story Day */}
+                  {/* Story Summary Days (Multi-select) */}
                   <div style={{ padding: "1rem 1.15rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", marginBottom: "0.4rem" }}>
-                      📅 Story Summary Day
-                    </label>
-                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", margin: 0 }}>
+                        📅 Story Summary Days
+                      </label>
+                      <div style={{ display: "flex", gap: "0.3rem" }}>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, storyDays: [0,1,2,3,4,5,6], storyDay: 0 }))}
+                          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.72rem", cursor: "pointer", padding: "0.1rem 0.3rem", fontWeight: 600 }}
+                        >
+                          All
+                        </button>
+                        <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, storyDays: [0,6], storyDay: 0 }))}
+                          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.72rem", cursor: "pointer", padding: "0.1rem 0.3rem", fontWeight: 600 }}
+                        >
+                          Weekends
+                        </button>
+                        <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, storyDays: [], storyDay: 6 }))}
+                          style={{ background: "none", border: "none", color: "var(--muted)", fontSize: "0.72rem", cursor: "pointer", padding: "0.1rem 0.3rem" }}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: "0.74rem", color: "var(--muted)", margin: "0 0 0.5rem" }}>
+                      Select which days of the week to automatically generate and publish audio story summary challenges.
+                    </p>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                       {[
                         { d: 0, label: "Sun" }, { d: 1, label: "Mon" }, { d: 2, label: "Tue" },
                         { d: 3, label: "Wed" }, { d: 4, label: "Thu" }, { d: 5, label: "Fri" }, { d: 6, label: "Sat" }
-                      ].map(({ d, label }) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setSettings(s => ({ ...s, storyDay: d }))}
-                          style={{
-                            padding: "0.35rem 0.65rem", borderRadius: 14, fontSize: "0.78rem", fontWeight: 700,
-                            border: settings.storyDay === d ? "2px solid #7c6fff" : "1px solid var(--border)",
-                            background: settings.storyDay === d ? "rgba(124,111,255,0.22)" : "rgba(255,255,255,0.03)",
-                            color: settings.storyDay === d ? "#c084fc" : "var(--muted)",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      ].map(({ d, label }) => {
+                        const currentDays = Array.isArray(settings.storyDays)
+                          ? settings.storyDays
+                          : (settings.storyDay !== undefined ? [settings.storyDay] : [6]);
+                        const isSelected = currentDays.includes(d);
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => {
+                              const updated = isSelected
+                                ? currentDays.filter(day => day !== d)
+                                : [...currentDays, d].sort((a, b) => a - b);
+                              setSettings(s => ({ ...s, storyDays: updated, storyDay: updated[0] ?? 6 }));
+                            }}
+                            style={{
+                              padding: "0.35rem 0.65rem", borderRadius: 14, fontSize: "0.78rem", fontWeight: 700,
+                              border: isSelected ? "2px solid #7c6fff" : "1px solid var(--border)",
+                              background: isSelected ? "rgba(124,111,255,0.22)" : "rgba(255,255,255,0.03)",
+                              color: isSelected ? "#c084fc" : "var(--muted)",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            {isSelected && <span style={{ fontSize: "0.7rem" }}>✓</span>}
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
-                      Runs on: <strong style={{ color: "var(--accent)" }}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.storyDay ?? 6]}</strong>
-                    </div>
+                    {(() => {
+                      const currentDays = Array.isArray(settings.storyDays)
+                        ? settings.storyDays
+                        : (settings.storyDay !== undefined ? [settings.storyDay] : [6]);
+                      const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+                      return (
+                        <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
+                          Runs on: {currentDays.length > 0 ? (
+                            <strong style={{ color: "var(--accent)" }}>
+                              {currentDays.map(d => dayNames[d]).join(", ")}
+                            </strong>
+                          ) : (
+                            <span style={{ color: "var(--muted)", fontStyle: "italic" }}>Disabled (No days selected)</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  {/* Picture Description Day */}
+                  {/* Picture Description Days (Multi-select) */}
                   <div style={{ padding: "1rem 1.15rem", borderRadius: 12, background: "var(--bg-secondary)", border: "1px solid var(--border)" }}>
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", marginBottom: "0.4rem" }}>
-                      🖼️ Picture Description Day
-                    </label>
-                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
-                      {[
-                        { d: -1, label: "Off" }, { d: 0, label: "Sun" }, { d: 1, label: "Mon" }, { d: 2, label: "Tue" },
-                        { d: 3, label: "Wed" }, { d: 4, label: "Thu" }, { d: 5, label: "Fri" }, { d: 6, label: "Sat" }
-                      ].map(({ d, label }) => (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: "0.86rem", margin: 0 }}>
+                        🖼️ Picture Description Days
+                      </label>
+                      <div style={{ display: "flex", gap: "0.3rem" }}>
                         <button
-                          key={d}
                           type="button"
-                          onClick={() => setSettings(s => ({ ...s, pictureDescriptionDay: d }))}
-                          style={{
-                            padding: "0.35rem 0.65rem", borderRadius: 14, fontSize: "0.78rem", fontWeight: 700,
-                            border: settings.pictureDescriptionDay === d ? "2px solid #38bdf8" : "1px solid var(--border)",
-                            background: settings.pictureDescriptionDay === d ? "rgba(56,189,248,0.22)" : "rgba(255,255,255,0.03)",
-                            color: settings.pictureDescriptionDay === d ? "#38bdf8" : "var(--muted)",
-                            cursor: "pointer",
-                          }}
+                          onClick={() => setSettings(s => ({ ...s, pictureDescriptionDays: [0,1,2,3,4,5,6], pictureDescriptionDay: 0 }))}
+                          style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "0.72rem", cursor: "pointer", padding: "0.1rem 0.3rem", fontWeight: 600 }}
                         >
-                          {label}
+                          All
                         </button>
-                      ))}
+                        <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, pictureDescriptionDays: [1,2,3,4,5], pictureDescriptionDay: 1 }))}
+                          style={{ background: "none", border: "none", color: "#38bdf8", fontSize: "0.72rem", cursor: "pointer", padding: "0.1rem 0.3rem", fontWeight: 600 }}
+                        >
+                          Weekdays
+                        </button>
+                        <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(s => ({ ...s, pictureDescriptionDays: [], pictureDescriptionDay: -1 }))}
+                          style={{ background: "none", border: "none", color: "var(--muted)", fontSize: "0.72rem", cursor: "pointer", padding: "0.1rem 0.3rem" }}
+                        >
+                          Clear / Off
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
-                      Runs on: <strong style={{ color: "#38bdf8" }}>{(settings.pictureDescriptionDay ?? 4) === -1 ? "Disabled" : ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][settings.pictureDescriptionDay ?? 4]}</strong>
+                    <p style={{ fontSize: "0.74rem", color: "var(--muted)", margin: "0 0 0.5rem" }}>
+                      Select which days of the week to automatically generate and publish image description challenges.
+                    </p>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+                      {[
+                        { d: 0, label: "Sun" }, { d: 1, label: "Mon" }, { d: 2, label: "Tue" },
+                        { d: 3, label: "Wed" }, { d: 4, label: "Thu" }, { d: 5, label: "Fri" }, { d: 6, label: "Sat" }
+                      ].map(({ d, label }) => {
+                        const currentDays = Array.isArray(settings.pictureDescriptionDays)
+                          ? settings.pictureDescriptionDays
+                          : (settings.pictureDescriptionDay !== undefined && settings.pictureDescriptionDay !== -1 ? [settings.pictureDescriptionDay] : [4]);
+                        const isSelected = currentDays.includes(d);
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => {
+                              const updated = isSelected
+                                ? currentDays.filter(day => day !== d)
+                                : [...currentDays, d].sort((a, b) => a - b);
+                              setSettings(s => ({ ...s, pictureDescriptionDays: updated, pictureDescriptionDay: updated[0] ?? -1 }));
+                            }}
+                            style={{
+                              padding: "0.35rem 0.65rem", borderRadius: 14, fontSize: "0.78rem", fontWeight: 700,
+                              border: isSelected ? "2px solid #38bdf8" : "1px solid var(--border)",
+                              background: isSelected ? "rgba(56,189,248,0.22)" : "rgba(255,255,255,0.03)",
+                              color: isSelected ? "#38bdf8" : "var(--muted)",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            {isSelected && <span style={{ fontSize: "0.7rem" }}>✓</span>}
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {(() => {
+                      const currentDays = Array.isArray(settings.pictureDescriptionDays)
+                        ? settings.pictureDescriptionDays
+                        : (settings.pictureDescriptionDay !== undefined && settings.pictureDescriptionDay !== -1 ? [settings.pictureDescriptionDay] : [4]);
+                      const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+                      return (
+                        <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
+                          Runs on: {currentDays.length > 0 ? (
+                            <strong style={{ color: "#38bdf8" }}>
+                              {currentDays.map(d => dayNames[d]).join(", ")}
+                            </strong>
+                          ) : (
+                            <span style={{ color: "var(--muted)", fontStyle: "italic" }}>Disabled (No days selected)</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                 </div>

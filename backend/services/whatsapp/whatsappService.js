@@ -577,7 +577,7 @@ export async function sendDailyPosterToGroup(options = {}) {
     });
 
     const caption = [
-      `🎧 *SPEAK & SHINE — SATURDAY STORY SUMMARY* 🎧`,
+      `🎧 *SPEAK & SHINE — STORY SUMMARY CHALLENGE* 🎧`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━`,
       `📖 *Story Title:* ${topic}`,
       ``,

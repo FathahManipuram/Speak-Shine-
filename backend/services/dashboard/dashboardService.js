@@ -498,8 +498,16 @@ export async function getSettings() {
     storyWordCount: status.storyWordCount ?? 200,
     storyLevel: status.storyLevel || "B1",
     allowPrivateVideos: status.allowPrivateVideos ?? true,
-    storyDay: status.storyDay ?? 6,
-    pictureDescriptionDay: status.pictureDescriptionDay ?? 4,
+    storyDays: Array.isArray(status.storyDays) && status.storyDays.length > 0
+      ? status.storyDays
+      : (status.storyDay !== undefined && status.storyDay !== null ? [status.storyDay] : [6]),
+    storyDay: status.storyDay ?? (Array.isArray(status.storyDays) && status.storyDays.length > 0 ? status.storyDays[0] : 6),
+    pictureDescriptionDays: Array.isArray(status.pictureDescriptionDays)
+      ? status.pictureDescriptionDays
+      : (status.pictureDescriptionDay !== undefined && status.pictureDescriptionDay !== null && status.pictureDescriptionDay !== -1
+          ? [status.pictureDescriptionDay]
+          : (status.pictureDescriptionDay === -1 ? [] : [4])),
+    pictureDescriptionDay: status.pictureDescriptionDay ?? (Array.isArray(status.pictureDescriptionDays) && status.pictureDescriptionDays.length > 0 ? status.pictureDescriptionDays[0] : -1),
     paymentAmount: status.paymentAmount ?? 5,
     durationDefaultMax: status.durationDefaultMax ?? 300,
     durationDefaultFull: status.durationDefaultFull ?? 300,
@@ -549,10 +557,12 @@ export async function updateSettings(input, ...rest) {
       submissionReportSlots,
       submissionReportTemplates,
       adminNotifyPhone,
-      deploymentNotifyEnabled
+      deploymentNotifyEnabled,
+      storyDays,
+      pictureDescriptionDays
     ] = [input, ...rest];
     params = {
-      posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+      posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay, storyDays,
       paymentAmount,
       durationDefaultMax, durationDefaultFull,
       durationStoryMax, durationStoryFull,
@@ -560,7 +570,7 @@ export async function updateSettings(input, ...rest) {
       durationMonthlyReflectionMax, durationMonthlyReflectionFull,
       durationMonthlyGoalsMax, durationMonthlyGoalsFull,
       allowPrivateVideos,
-      pictureDescriptionDay,
+      pictureDescriptionDay, pictureDescriptionDays,
       durationPictureMax, durationPictureFull,
       vocabNormalWordCount, vocabNormalRequiredCount,
       vocabStoryWordCount, vocabStoryRequiredCount,
@@ -579,7 +589,7 @@ export async function updateSettings(input, ...rest) {
   }
 
   const {
-    posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+    posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay, storyDays,
     paymentAmount,
     durationDefaultMax, durationDefaultFull,
     durationStoryMax, durationStoryFull,
@@ -587,7 +597,7 @@ export async function updateSettings(input, ...rest) {
     durationMonthlyReflectionMax, durationMonthlyReflectionFull,
     durationMonthlyGoalsMax, durationMonthlyGoalsFull,
     allowPrivateVideos,
-    pictureDescriptionDay,
+    pictureDescriptionDay, pictureDescriptionDays,
     durationPictureMax, durationPictureFull,
     vocabNormalWordCount, vocabNormalRequiredCount,
     vocabStoryWordCount, vocabStoryRequiredCount,
@@ -819,7 +829,22 @@ export async function updateSettings(input, ...rest) {
     updates.storyLevel = storyLevel;
   }
 
-  if (storyDay !== undefined) {
+  if (storyDays !== undefined) {
+    if (!Array.isArray(storyDays)) {
+      const error = new Error("storyDays must be an array of day numbers (0-6)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const parsed = storyDays.map(d => parseInt(d, 10));
+    if (parsed.some(d => isNaN(d) || d < 0 || d > 6)) {
+      const error = new Error("All days in storyDays must be numbers between 0 (Sunday) and 6 (Saturday)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const uniqueDays = [...new Set(parsed)].sort((a, b) => a - b);
+    updates.storyDays = uniqueDays;
+    updates.storyDay = uniqueDays.length > 0 ? uniqueDays[0] : 6;
+  } else if (storyDay !== undefined) {
     const day = parseInt(storyDay, 10);
     if (isNaN(day) || day < 0 || day > 6) {
       const error = new Error("storyDay must be 0 (Sunday) through 6 (Saturday)");
@@ -827,9 +852,25 @@ export async function updateSettings(input, ...rest) {
       throw error;
     }
     updates.storyDay = day;
+    updates.storyDays = [day];
   }
 
-  if (pictureDescriptionDay !== undefined) {
+  if (pictureDescriptionDays !== undefined) {
+    if (!Array.isArray(pictureDescriptionDays)) {
+      const error = new Error("pictureDescriptionDays must be an array of day numbers (0-6)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const parsed = pictureDescriptionDays.map(d => parseInt(d, 10));
+    if (parsed.some(d => isNaN(d) || d < 0 || d > 6)) {
+      const error = new Error("All days in pictureDescriptionDays must be numbers between 0 (Sunday) and 6 (Saturday)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const uniqueDays = [...new Set(parsed)].sort((a, b) => a - b);
+    updates.pictureDescriptionDays = uniqueDays;
+    updates.pictureDescriptionDay = uniqueDays.length > 0 ? uniqueDays[0] : -1;
+  } else if (pictureDescriptionDay !== undefined) {
     const day = parseInt(pictureDescriptionDay, 10);
     if (isNaN(day) || day < -1 || day > 6) {
       const error = new Error("pictureDescriptionDay must be -1 (disabled) or 0 (Sunday) through 6 (Saturday)");
@@ -837,6 +878,7 @@ export async function updateSettings(input, ...rest) {
       throw error;
     }
     updates.pictureDescriptionDay = day;
+    updates.pictureDescriptionDays = day === -1 ? [] : [day];
   }
 
   if (paymentAmount !== undefined) {
