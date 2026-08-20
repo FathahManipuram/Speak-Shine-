@@ -901,7 +901,7 @@ function buildGuestData() {
       vocabWordCount: 5,
       vocabRequiredCount: 3,
     },
-    stats: { total: 87, completed: 23, pending: 64, totalFreeze: 12 },
+    stats: { total: 87, completed: 23, pending: 64 },
     topStreak: [
       { name: "Arjun M.", streak: 42, completed: true, weeklySubmissions: 5, monthlyScore: 210 },
       { name: "Priya K.", streak: 38, completed: true, weeklySubmissions: 5, monthlyScore: 195 },
@@ -1048,21 +1048,159 @@ export default function UserDashboard() {
     const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
     const best = Math.max(...values);
     const latest = values[values.length - 1] ?? 0;
+    const previous = values.length > 1 ? values[values.length - 2] : null;
+    const deltaFromAvg = latest - avg;
+    const deltaFromPrev = previous !== null ? latest - previous : null;
+    const sessionCount = values.length;
 
-    // Calculate performance: latest vs average
-    const performanceDelta = latest - avg;
-    const performanceTrendText = performanceDelta >= 0
-      ? `${Math.round(performanceDelta)} pts above`
-      : `${Math.round(Math.abs(performanceDelta))} pts below`;
-    const performanceLabel = performanceDelta >= 0 ? "Above Average" : "Below Average";
+    // Multi-tier Performance Classification
+    let performanceState;
+    if (sessionCount === 1) {
+      performanceState = {
+        label: "Baseline Set",
+        tier: "initial",
+        icon: "🌱",
+        color: "#38bdf8",
+        badgeBg: "rgba(56,189,248,0.15)",
+        trendText: "First speaking milestone logged",
+        motivationalTip: "Great start! Every submission builds your speaking confidence and vocabulary.",
+      };
+    } else if (latest >= best && sessionCount > 1) {
+      performanceState = {
+        label: "Personal Best!",
+        tier: "peak",
+        icon: "🏆",
+        color: "#fbbf24",
+        badgeBg: "rgba(251,191,36,0.18)",
+        trendText: `+${Math.round(deltaFromAvg)} pts above avg (All-time high!)`,
+        motivationalTip: "🎉 Incredible achievement! You just achieved your highest speaking score ever.",
+      };
+    } else if (deltaFromAvg >= 15 || latest >= 90) {
+      performanceState = {
+        label: "Exceptional",
+        tier: "exceptional",
+        icon: "⚡",
+        color: "#34d399",
+        badgeBg: "rgba(52,211,153,0.18)",
+        trendText: `+${Math.round(deltaFromAvg)} pts above average`,
+        motivationalTip: "🔥 You're in peak form! Outstanding fluency, grammar, and delivery.",
+      };
+    } else if (deltaFromAvg >= 5) {
+      performanceState = {
+        label: "Above Average",
+        tier: "above",
+        icon: "🚀",
+        color: "#22d3ee",
+        badgeBg: "rgba(34,211,238,0.15)",
+        trendText: `+${Math.round(deltaFromAvg)} pts above average`,
+        motivationalTip: "📈 Strong session! You're consistently performing above your historical baseline.",
+      };
+    } else if (Math.abs(deltaFromAvg) < 5) {
+      performanceState = {
+        label: "Solid & On Track",
+        tier: "consistent",
+        icon: "🎯",
+        color: "#818cf8",
+        badgeBg: "rgba(129,140,248,0.15)",
+        trendText: `±${Math.round(Math.abs(deltaFromAvg))} pts from average (${Math.round(avg)} pts)`,
+        motivationalTip: "🎯 Rock-solid consistency! Daily steady practice is the proven path to fluency.",
+      };
+    } else if (deltaFromAvg >= -12) {
+      performanceState = {
+        label: "Building Momentum",
+        tier: "rebuilding",
+        icon: "🌱",
+        color: "#fb923c",
+        badgeBg: "rgba(251,146,60,0.15)",
+        trendText: `${Math.round(Math.abs(deltaFromAvg))} pts from avg · Next one counts!`,
+        motivationalTip: "💪 Good effort! Focus on natural pacing & vocabulary to level up tomorrow.",
+      };
+    } else {
+      performanceState = {
+        label: "Comeback Zone",
+        tier: "comeback",
+        icon: "💫",
+        color: "#f43f5e",
+        badgeBg: "rgba(244,63,94,0.15)",
+        trendText: `Target: ${Math.round(avg)}+ pts on your next video`,
+        motivationalTip: "✨ Every challenge is a stepping stone. Reset, practice once, and shine on your next submission!",
+      };
+    }
+
+    // Multi-tier Momentum / Trend Classification
+    let trendState;
+    if (sessionCount === 1) {
+      trendState = {
+        label: "First Step",
+        icon: "🚀",
+        color: "#38bdf8",
+        subText: "Speaking journey begun",
+      };
+    } else if (sessionCount >= 3 && values[values.length - 1] > values[values.length - 2] && values[values.length - 2] > values[values.length - 3]) {
+      const gain = Math.round(values[values.length - 1] - values[values.length - 3]);
+      trendState = {
+        label: "3-Session Surge",
+        icon: "🔥",
+        color: "#34d399",
+        subText: `+${gain} pts over last 3 sessions`,
+      };
+    } else if (latest >= best && sessionCount > 1) {
+      trendState = {
+        label: "All-Time Peak",
+        icon: "👑",
+        color: "#fbbf24",
+        subText: "Highest speaking level to date",
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev >= 10) {
+      trendState = {
+        label: `Surging Up (+${Math.round(deltaFromPrev)} pts)`,
+        icon: "⚡",
+        color: "#22d3ee",
+        subText: `Jumped +${Math.round(deltaFromPrev)} pts vs last session`,
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev > 0) {
+      trendState = {
+        label: `Growing (+${Math.round(deltaFromPrev)} pts)`,
+        icon: "📈",
+        color: "#4ade80",
+        subText: `Improved vs previous session`,
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev === 0) {
+      trendState = {
+        label: "Even & Steady",
+        icon: "⚖️",
+        color: "#818cf8",
+        subText: `Matched last session score`,
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev >= -6) {
+      trendState = {
+        label: "Holding Strong",
+        icon: "🛡️",
+        color: "#fb923c",
+        subText: "Close to recent best",
+      };
+    } else {
+      trendState = {
+        label: "Ready to Rebound",
+        icon: "💪",
+        color: "#f43f5e",
+        subText: "Next session is your comeback",
+      };
+    }
 
     return {
       avg: Math.round(avg),
       best,
       latest,
-      performanceDelta,
-      performanceTrendText,
-      performanceLabel,
+      previous,
+      deltaFromAvg,
+      deltaFromPrev,
+      sessionCount,
+      performance: performanceState,
+      trend: trendState,
+      performanceDelta: deltaFromAvg,
+      performanceTrendText: performanceState.trendText,
+      performanceLabel: performanceState.label,
       totalRecordedLabel: totalRecordedTimeLabel,
     };
   })() : null;
@@ -1671,7 +1809,7 @@ export default function UserDashboard() {
         <StatCard icon="👥" label="Group Members" value={data?.stats?.total || 0} color="#7c6fff" />
         <StatCard icon="✅" label="Submitted Today" value={data?.stats?.completed || 0} color="#4ade80" />
         <StatCard icon="⏳" label="Pending Today" value={data?.stats?.pending || 0} color="#f87171" />
-        <StatCard icon="🧊" label="Total Freezes" value={data?.stats?.totalFreeze || 0} color="#38bdf8" />
+        <StatCard icon="🧊" label="My Freezes" value={profile?.streakFreeze || 0} color="#38bdf8" />
       </div>
 
       {/* ── Hall of Fame — always visible ── */}
@@ -1931,38 +2069,78 @@ export default function UserDashboard() {
                   <div className="section-title" style={{ marginBottom: "0.25rem" }}>📈 Daily Points Trend</div>
                   <div style={{ color: "var(--muted)", fontSize: "0.74rem" }}>Your consistency over the last {pointsData.length} sessions · Sunday bonuses excluded</div>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(34,211,238,0.12)", color: "#67e8f9", fontSize: "0.74rem", fontWeight: 700 }}>
                     {pointsSummary.avg} avg pts
                   </div>
                   <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(167,139,250,0.14)", color: "#c4b5fd", fontSize: "0.74rem", fontWeight: 700 }}>
                     Best {pointsSummary.best} pts
                   </div>
+                  <div style={{
+                    padding: "0.4rem 0.75rem",
+                    borderRadius: 999,
+                    background: pointsSummary.performance.badgeBg,
+                    color: pointsSummary.performance.color,
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    border: `1px solid ${pointsSummary.performance.color}33`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.3rem",
+                  }}>
+                    <span>{pointsSummary.performance.icon}</span>
+                    <span>{pointsSummary.performance.label}</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Motivational Insight Banner */}
+              {pointsSummary.performance?.motivationalTip && (
+                <div style={{
+                  padding: "0.65rem 0.9rem",
+                  borderRadius: 10,
+                  background: pointsSummary.performance.badgeBg,
+                  border: `1px solid ${pointsSummary.performance.color}33`,
+                  marginBottom: "0.9rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                }}>
+                  <span style={{ fontSize: "1.1rem" }}>{pointsSummary.performance.icon}</span>
+                  <span style={{ fontSize: "0.78rem", color: "#e2e8f0", lineHeight: 1.4, fontWeight: 500 }}>
+                    {pointsSummary.performance.motivationalTip}
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.7rem", marginBottom: "0.9rem" }}>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Latest</div>
                   <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.latest} pts</div>
+                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.2rem" }}>Session #{pointsSummary.sessionCount}</div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Performance</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: pointsSummary.performanceDelta >= 0 ? "#4ade80" : "#f87171" }}>{pointsSummary.performanceLabel}</div>
-                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.2rem" }}>{pointsSummary.performanceTrendText}</div>
+                  <div style={{ fontSize: "1.05rem", fontWeight: 800, color: pointsSummary.performance.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span>{pointsSummary.performance.icon}</span>
+                    <span>{pointsSummary.performance.label}</span>
+                  </div>
+                  <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.2rem" }}>{pointsSummary.performance.trendText}</div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Recorded</div>
                   <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.totalRecordedLabel}</div>
                   <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.25rem" }}>
-                    {totalRecordedSeconds > 0 ? "Based on your saved session durations" : "No session durations yet — they’ll appear here once available"}
+                    {totalRecordedSeconds > 0 ? "Total speak time" : "Across all sessions"}
                   </div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Trend</div>
-                  <div style={{ fontSize: "1rem", fontWeight: 700, color: pointsSummary.performanceDelta >= 0 ? "#67e8f9" : "#fda4af" }}>
-                    {pointsSummary.performanceDelta >= 0 ? "📈 Performing well" : "📊 Room to improve"}
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Momentum</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: pointsSummary.trend.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span>{pointsSummary.trend.icon}</span>
+                    <span>{pointsSummary.trend.label}</span>
                   </div>
+                  <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.2rem" }}>{pointsSummary.trend.subText}</div>
                 </div>
               </div>
 
