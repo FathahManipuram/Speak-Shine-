@@ -425,6 +425,10 @@ async function processJob(job) {
       await User.findOneAndUpdate(
         { phone },
         {
+          $inc: {
+            totalSessions: 1,
+            totalRecordedSeconds: durationToSave || 0,
+          },
           $push: {
             feedbackScores: {
               $each: [{

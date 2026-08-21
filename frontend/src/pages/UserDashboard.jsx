@@ -905,10 +905,16 @@ export default function UserDashboard() {
     const secs = Math.round(seconds % 60);
     return `${mins}m ${String(secs).padStart(2, "0")}s`;
   };
-  const totalRecordedSeconds = scores.reduce((sum, score) => {
-    const durationValue = parseDurationToSeconds(score.duration ?? score.videoDuration ?? score.recordedDuration ?? score.durationSeconds);
-    return sum + (durationValue ?? 0);
-  }, 0);
+  const totalSessionsCount = profile?.totalSessions != null
+    ? profile.totalSessions
+    : scores.length;
+
+  const totalRecordedSeconds = profile?.totalRecordedSeconds != null
+    ? profile.totalRecordedSeconds
+    : scores.reduce((sum, score) => {
+        const durationValue = parseDurationToSeconds(score.duration ?? score.videoDuration ?? score.recordedDuration ?? score.durationSeconds);
+        return sum + (durationValue ?? 0);
+      }, 0);
   const totalRecordedTimeLabel = formatDurationLabel(totalRecordedSeconds);
 
   // Last 30 sessions duration specifically for the Daily Points Trend card
@@ -1546,7 +1552,7 @@ export default function UserDashboard() {
 
       <div className="stat-grid">
         <StatCard icon="🔥" label="Current Streak" value={`${profile?.streak || 0} days`} color="#f97316" />
-        <StatCard icon="📹" label="Total Sessions" value={scores.length} color="#7c6fff" />
+        <StatCard icon="📹" label="Total Sessions" value={totalSessionsCount} color="#7c6fff" />
         <StatCard icon="⏱️" label="Total Recorded (All-time)" value={totalRecordedTimeLabel} color="#38bdf8" />
         <StatCard icon="📅" label="This Week" value={`${profile?.weeklySubmissions || 0}/7`} color="#4ade80" />
         <StatCard icon="📆" label="Monthly" value={profile?.monthlySubmissions || 0} color="#fbbf24" />

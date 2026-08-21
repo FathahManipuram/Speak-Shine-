@@ -255,10 +255,16 @@ export async function getUserProfile(phone) {
     }
   }
 
+  const allTimeSessions = Math.max(user.totalSessions || 0, feedbackScores.length);
+  const feedbackDurationSum = feedbackScores.reduce((sum, s) => sum + (Number(s.duration) || 0), 0);
+  const allTimeRecordedSeconds = Math.max(user.totalRecordedSeconds || 0, feedbackDurationSum);
+
   return {
     profile: {
       name: user.name,
       feedbackScores,
+      totalSessions: allTimeSessions,
+      totalRecordedSeconds: allTimeRecordedSeconds,
       streak: user.streak || 0,
       streakFreeze: user.streakFreeze || 0,
       monthlyScore: user.monthlyScore || 0,

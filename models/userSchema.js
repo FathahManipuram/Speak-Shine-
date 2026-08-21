@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
   consecutiveSkips: { type: Number, default: 0 },
   weeklySubmissions: { type: Number, default: 0 },
   monthlySubmissions: { type: Number, default: 0 },
+  totalSessions: { type: Number, default: 0 },
+  totalRecordedSeconds: { type: Number, default: 0 },
   fineChargedToday: { type: Boolean, default: false },
 
   // ── Streak Freeze ────────────────────────────────────────────────────────
