@@ -542,7 +542,6 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
     const gateFlags = {
       isMonthlyReflection: status?.isMonthlyReflectionDay || false,
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
-      isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: isActiveStoryTask(status),
       isPictureDescription: isActivePictureTask(status),
     };
@@ -606,7 +605,6 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
   const reportGateFlags = {
     isMonthlyReflection: reportStatus?.isMonthlyReflectionDay || false,
     isMonthlyGoals: reportStatus?.isMonthlyGoalsDay || false,
-    isWeeklyReflection: reportStatus?.isWeeklyReflectionDay || false,
     isStorySummary: isActiveStoryTask(reportStatus),
     isPictureDescription: isActivePictureTask(reportStatus),
   };
@@ -615,10 +613,9 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
       userId,
       phone,
       videoFileName: path.basename(key),
-      challengeType: reportGateFlags.isPictureDescription ? "picture_description"
+      challengeType: reportGateFlags.isMonthlyReflection ? "monthly_reflection"
+        : reportGateFlags.isPictureDescription ? "picture_description"
         : reportGateFlags.isStorySummary ? "story_summary"
-        : reportGateFlags.isWeeklyReflection ? "weekly_reflection"
-        : reportGateFlags.isMonthlyReflection ? "monthly_reflection"
         : reportGateFlags.isMonthlyGoals ? "monthly_goals"
         : "topic",
       status: "processing",
@@ -823,7 +820,6 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
     const status = await Status.findOne().lean();
     const isMonthlyReflection = status?.isMonthlyReflectionDay || false;
     const isMonthlyGoals = status?.isMonthlyGoalsDay || false;
-    const isWeeklyReflection = status?.isWeeklyReflectionDay || false;
     const isStorySummary = status?.isStorySummaryDay || false;
     const isPictureDescription = status?.isPictureDescriptionDay || false;
     
@@ -831,8 +827,6 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       ? (status?.durationMonthlyReflectionMax ?? 420) + 5
       : isMonthlyGoals
       ? (status?.durationMonthlyGoalsMax ?? 600) + 5
-      : isWeeklyReflection 
-      ? (status?.durationWeeklyMax ?? 420) + 5
       : isStorySummary
       ? (status?.durationStoryMax ?? 180) + 5
       : isPictureDescription
@@ -901,10 +895,9 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       userId,
       phone,
       videoFileName: safeFilename,
-      challengeType: isPictureDescription ? "picture_description"
+      challengeType: isMonthlyReflection ? "monthly_reflection"
+        : isPictureDescription ? "picture_description"
         : isStorySummary ? "story_summary"
-        : isWeeklyReflection ? "weekly_reflection"
-        : isMonthlyReflection ? "monthly_reflection"
         : isMonthlyGoals ? "monthly_goals"
         : "topic",
       videoDuration: duration,
@@ -1578,10 +1571,9 @@ export async function reEvaluateReport(reportId, userId, userRole = "user") {
 
   // 2. Re-calculate composite score and score breakdown
   const challengeType = report.challengeType || report.analysis?.challengeType || (
-    status?.isPictureDescriptionDay ? "picture_description"
+    status?.isMonthlyReflectionDay ? "monthly_reflection"
+    : status?.isPictureDescriptionDay ? "picture_description"
     : status?.isStorySummaryDay ? "story_summary"
-    : status?.isWeeklyReflectionDay ? "weekly_reflection"
-    : status?.isMonthlyReflectionDay ? "monthly_reflection"
     : status?.isMonthlyGoalsDay ? "monthly_goals"
     : "topic"
   );

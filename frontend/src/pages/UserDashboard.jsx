@@ -8,8 +8,7 @@ import GuestBanner from "../components/GuestBanner.jsx";
 import StreakBadge from "../components/StreakBadge.jsx";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  Area, AreaChart,
+  CartesianGrid, Legend, Area, AreaChart,
 } from "recharts";
 
 const MOTIVATIONAL = [
@@ -21,28 +20,6 @@ const MOTIVATIONAL = [
   "Champions don't wait for the perfect moment — they create it. 🏆",
   "Your streak is your superpower. Keep it alive! 🚀",
   "Speak with confidence. The world is ready to listen. 🌍",
-];
-
-const SUBMIT_MOTIVATIONAL = [
-  "Your streak is on the line! Submit now to keep it alive! 🔥",
-  "The clock is ticking! Show us what you've got! ⏰",
-  "Don't let today slip away — your voice matters! 💪",
-  "Every second counts! Make your submission before midnight! 🌟",
-  "You're so close! Just one video away from another win! 🎯",
-  "Time waits for no one! Submit and keep your momentum! 🚀",
-  "Your future self will thank you for submitting today! ✨",
-  "Beat the deadline! Your consistency is your superpower! 💎",
-];
-
-const CELEBRATION_MESSAGES = [
-  "You're unstoppable! Another day, another victory! 🏆",
-  "Consistency is your superpower! Keep shining! ✨",
-  "You showed up today — that's what champions do! 💪",
-  "Your dedication is inspiring! Tomorrow awaits! 🌟",
-  "Another brick in your success story! Well done! 🎯",
-  "You're building something amazing, one day at a time! 🚀",
-  "Excellence is a habit, and you're mastering it! 💎",
-  "Your commitment today shapes your fluency tomorrow! 🔥",
 ];
 
 const SCORES = { fluency: "#7c6fff", grammar: "#4ade80", confidence: "#fbbf24", vocabulary: "#ff6b9d" };
@@ -164,14 +141,12 @@ function QuestionCountdown({ posterSendTime, name, streak }) {
 
 function SubmitNudge({ name, streak, navigate, specialDay }) {
   const [remaining, setRemaining] = useState(null);
-  const [quote] = useState(() => SUBMIT_MOTIVATIONAL[Math.floor(Math.random() * SUBMIT_MOTIVATIONAL.length)]);
   const timerRef = useRef(null);
 
   const calcRemaining = () => {
     const now = new Date();
     const nowIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
 
-    // Calculate time until next midnight IST (00:00:00 tomorrow)
     const midnight = new Date(nowIST);
     midnight.setDate(midnight.getDate() + 1);
     midnight.setHours(0, 0, 0, 0);
@@ -192,185 +167,78 @@ function SubmitNudge({ name, streak, navigate, specialDay }) {
 
   const pad = n => String(n).padStart(2, "0");
   const urgency = remaining && remaining.hrs < 3 ? "high" : remaining && remaining.hrs < 8 ? "medium" : "low";
+  const timeLabel = remaining ? `${remaining.hrs}h ${pad(remaining.mins)}m ${pad(remaining.secs)}s` : "--";
 
   return (
     <div style={{
       background: urgency === "high"
-        ? "linear-gradient(135deg, #7f1d1d 0%, #991b1b 60%, #7f1d1d 100%)"
+        ? "linear-gradient(135deg, rgba(127,29,29,0.5) 0%, rgba(153,27,27,0.3) 100%)"
         : urgency === "medium"
-          ? "linear-gradient(135deg, #78350f 0%, #92400e 60%, #78350f 100%)"
-          : "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1e3a8a 100%)",
+          ? "linear-gradient(135deg, rgba(120,53,15,0.5) 0%, rgba(146,64,14,0.3) 100%)"
+          : "linear-gradient(135deg, rgba(30,58,138,0.5) 0%, rgba(30,64,175,0.3) 100%)",
       border: urgency === "high"
-        ? "2px solid rgba(248,113,113,0.5)"
+        ? "1px solid rgba(248,113,113,0.4)"
         : urgency === "medium"
-          ? "2px solid rgba(251,191,36,0.5)"
-          : "2px solid rgba(96,165,250,0.5)",
-      borderRadius: 16,
-      padding: "1.75rem 1.5rem",
-      marginBottom: "1.5rem",
-      position: "relative",
-      overflow: "hidden",
-      animation: urgency === "high" ? "pulse 2s ease-in-out infinite" : "none",
+          ? "1px solid rgba(251,191,36,0.4)"
+          : "1px solid rgba(96,165,250,0.35)",
+      borderRadius: 14,
+      padding: "1rem 1.25rem",
+      marginBottom: "1rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: "1rem",
+      flexWrap: "wrap",
     }}>
-      {/* Animated glow */}
-      <div style={{
-        position: "absolute", top: -60, right: -60,
-        width: 200, height: 200, borderRadius: "50%",
-        background: urgency === "high"
-          ? "radial-gradient(circle, rgba(248,113,113,0.3) 0%, transparent 70%)"
-          : urgency === "medium"
-            ? "radial-gradient(circle, rgba(251,191,36,0.3) 0%, transparent 70%)"
-            : "radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)",
-        pointerEvents: "none",
-        animation: "float 3s ease-in-out infinite",
-      }} />
-
-      {/* Urgency badge */}
-      <div style={{
-        position: "absolute", top: "1rem", right: "1rem",
-        background: urgency === "high" ? "#f87171" : urgency === "medium" ? "#fbbf24" : "#60a5fa",
-        color: urgency === "high" ? "#7f1d1d" : urgency === "medium" ? "#78350f" : "#1e3a8a",
-        padding: "0.4rem 0.8rem", borderRadius: 20,
-        fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase",
-        letterSpacing: "0.05em",
-      }}>
-        {urgency === "high" ? "⚠️ URGENT" : urgency === "medium" ? "⏰ HURRY" : "📌 PENDING"}
-      </div>
-
-      {/* Header */}
-      <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.5rem" }}>
-        {name ? `${name.split(" ")[0]}, ` : ""}Time is Running Out!
-      </div>
-
-      {/* Main message */}
-      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", marginBottom: "0.5rem", lineHeight: 1.3 }}>
-        {specialDay === "weekly"
-          ? "📅 Weekly Reflection — Record Before Midnight!"
-          : specialDay === "goals"
-            ? "🎯 Monthly Goals — Speak Your Plan Today!"
-            : specialDay === "reflection"
-              ? "🌟 Monthly Reflection — Submit Before Midnight!"
-              : urgency === "high"
-                ? "⚡ Submit NOW or Lose Your Streak!"
-                : urgency === "medium"
-                  ? "🎯 Don't Wait! Submit Your Video Today!"
-                  : "📹 Question is Live — Time to Shine!"}
-      </div>
-
-      {/* Countdown */}
-      {remaining && (
-        <div style={{ marginTop: "1.25rem", marginBottom: "1.25rem" }}>
-          <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.8)", marginBottom: "0.75rem", fontWeight: 600 }}>
-            ⏰ Time Remaining Until Midnight:
-          </div>
-          <div style={{ display: "flex", gap: "0.6rem", justifyContent: "center" }}>
-            {[
-              { val: pad(remaining.hrs), label: "Hours", icon: "⏰" },
-              { val: pad(remaining.mins), label: "Minutes", icon: "⏱️" },
-              { val: pad(remaining.secs), label: "Seconds", icon: "⚡" },
-            ].map(({ val, label, icon }) => (
-              <div key={label} style={{
-                flex: 1,
-                background: "rgba(255,255,255,0.15)",
-                backdropFilter: "blur(10px)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: 12,
-                padding: "0.9rem 0.5rem",
-                textAlign: "center",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-              }}>
-                <div style={{ fontSize: "0.9rem", marginBottom: "0.2rem" }}>{icon}</div>
-                <div style={{ fontSize: "2.2rem", fontWeight: 900, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums", textShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>{val}</div>
-                <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.8)", marginTop: "0.35rem", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</div>
-              </div>
-            ))}
-          </div>
+      <div style={{ flex: 1, minWidth: 260 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.3rem", flexWrap: "wrap" }}>
+          <span style={{
+            fontSize: "0.68rem", fontWeight: 800, padding: "0.2rem 0.55rem", borderRadius: 20,
+            background: urgency === "high" ? "#f87171" : urgency === "medium" ? "#fbbf24" : "#60a5fa",
+            color: urgency === "high" ? "#7f1d1d" : urgency === "medium" ? "#78350f" : "#1e3a8a",
+            textTransform: "uppercase", letterSpacing: "0.06em",
+          }}>
+            {urgency === "high" ? "⚠️ Urgent" : urgency === "medium" ? "⏰ Due Tonight" : "📌 Pending"}
+          </span>
+          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#fff" }}>
+            ⏰ {timeLabel} until midnight
+          </span>
         </div>
-      )}
-
-      {/* Streak warning */}
-      {streak > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: "0.6rem",
-          background: "rgba(249,115,22,0.2)",
-          border: "2px solid rgba(249,115,22,0.4)",
-          borderRadius: 12,
-          padding: "0.8rem 1rem",
-          marginBottom: "1.25rem",
-          fontSize: "0.9rem",
-          boxShadow: "0 4px 12px rgba(249,115,22,0.2)",
-        }}>
-          <span style={{ fontSize: "1.5rem" }}>🔥</span>
-          <div>
-            <div style={{ color: "#fff", fontWeight: 700, marginBottom: "0.1rem" }}>
-              {streak}-Day Streak at Risk!
-            </div>
-            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.8rem" }}>
-              Don't break your amazing streak — submit before midnight!
-            </div>
-          </div>
+        <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.4 }}>
+          {specialDay === "goals" ? (
+            <span>🎯 <strong style={{ color: "#4ade80" }}>Monthly Goal Setting:</strong> Speak your goals before midnight!</span>
+          ) : specialDay === "reflection" ? (
+            <span>🌟 <strong style={{ color: "#c4b5fd" }}>Monthly Reflection:</strong> Submit your monthly reflection before midnight!</span>
+          ) : streak > 0 ? (
+            <span>🔥 <strong style={{ color: "#fb923c" }}>{streak}-day streak at risk!</strong> Submit your video before midnight to keep it alive.</span>
+          ) : (
+            <span>Today's challenge is live! Record and submit your video before midnight.</span>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* CTA Button */}
       <button
         onClick={() => navigate('/record')}
         style={{
-          width: "100%",
           background: urgency === "high"
-            ? "linear-gradient(135deg, #f87171 0%, #ef4444 100%)"
+            ? "linear-gradient(135deg, #ef4444, #dc2626)"
             : urgency === "medium"
-              ? "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)"
-              : "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
-          color: urgency === "high" || urgency === "medium" ? "#000" : "#fff",
+              ? "linear-gradient(135deg, #f59e0b, #d97706)"
+              : "linear-gradient(135deg, #3b82f6, #2563eb)",
+          color: "#fff",
           border: "none",
-          borderRadius: 12,
-          padding: "1rem 1.5rem",
-          fontSize: "1.05rem",
-          fontWeight: 800,
+          borderRadius: 10,
+          padding: "0.65rem 1.15rem",
+          fontSize: "0.85rem",
+          fontWeight: 700,
           cursor: "pointer",
-          transition: "all 0.3s ease",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          boxShadow: "0 6px 20px rgba(0,0,0,0.3)",
-          marginBottom: "1rem",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
-          e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.4)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0) scale(1)";
-          e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.3)";
+          whiteSpace: "nowrap",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          flexShrink: 0,
         }}
       >
-        🎥 {specialDay === "weekly" ? "RECORD WEEKLY REFLECTION" : specialDay === "goals" ? "RECORD MONTHLY GOALS" : specialDay === "reflection" ? "RECORD MONTHLY REFLECTION" : urgency === "high" ? "SUBMIT NOW!" : urgency === "medium" ? "Upload Video Now!" : "Record Your Answer"}
+        🎥 Record Now
       </button>
-
-      {/* Motivational quote */}
-      <div style={{
-        borderLeft: "3px solid rgba(255,255,255,0.4)",
-        paddingLeft: "0.85rem",
-        color: "rgba(255,255,255,0.9)",
-        fontSize: "0.85rem",
-        fontStyle: "italic",
-        lineHeight: 1.5,
-        fontWeight: 500,
-      }}>
-        💡 {quote}
-      </div>
-
-      {/* Add keyframes for animations */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(248,113,113,0.4); }
-          50% { box-shadow: 0 0 40px rgba(248,113,113,0.7); }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-      `}</style>
     </div>
   );
 }
@@ -890,7 +758,6 @@ function buildGuestData() {
       questionSent: true,
       isMonthlyReflection: false,
       isMonthlyGoals: false,
-      isWeeklyReflection: false,
       vocabulary: [
         { word: "Resilience", meaning: "The ability to recover quickly from setbacks", example: "Her resilience helped her bounce back after every failure." },
         { word: "Perseverance", meaning: "Continued effort despite difficulty", example: "With perseverance, he finally mastered public speaking." },
@@ -901,7 +768,7 @@ function buildGuestData() {
       vocabWordCount: 5,
       vocabRequiredCount: 3,
     },
-    stats: { total: 87, completed: 23, pending: 64, totalFreeze: 12 },
+    stats: { total: 87, completed: 23, pending: 64 },
     topStreak: [
       { name: "Arjun M.", streak: 42, completed: true, weeklySubmissions: 5, monthlyScore: 210 },
       { name: "Priya K.", streak: 38, completed: true, weeklySubmissions: 5, monthlyScore: 195 },
@@ -1038,35 +905,189 @@ export default function UserDashboard() {
     const secs = Math.round(seconds % 60);
     return `${mins}m ${String(secs).padStart(2, "0")}s`;
   };
-  const totalRecordedSeconds = scores.reduce((sum, score) => {
+  const totalSessionsCount = profile?.totalSessions != null
+    ? profile.totalSessions
+    : scores.length;
+
+  const totalRecordedSeconds = profile?.totalRecordedSeconds != null
+    ? profile.totalRecordedSeconds
+    : scores.reduce((sum, score) => {
+        const durationValue = parseDurationToSeconds(score.duration ?? score.videoDuration ?? score.recordedDuration ?? score.durationSeconds);
+        return sum + (durationValue ?? 0);
+      }, 0);
+  const totalRecordedTimeLabel = formatDurationLabel(totalRecordedSeconds);
+
+  // Last 30 sessions duration specifically for the Daily Points Trend card
+  const last30Scores = scores.slice(-30);
+  const last30RecordedSeconds = last30Scores.reduce((sum, score) => {
     const durationValue = parseDurationToSeconds(score.duration ?? score.videoDuration ?? score.recordedDuration ?? score.durationSeconds);
     return sum + (durationValue ?? 0);
   }, 0);
-  const totalRecordedTimeLabel = formatDurationLabel(totalRecordedSeconds);
+  const last30RecordedTimeLabel = formatDurationLabel(last30RecordedSeconds);
+
   const pointsSummary = pointsData.length > 0 ? (() => {
     const values = pointsData.map(d => d.pts);
     const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
     const best = Math.max(...values);
     const latest = values[values.length - 1] ?? 0;
+    const previous = values.length > 1 ? values[values.length - 2] : null;
+    const deltaFromAvg = latest - avg;
+    const deltaFromPrev = previous !== null ? latest - previous : null;
+    const sessionCount = values.length;
 
-    // Calculate performance: latest vs average
-    const performanceDelta = latest - avg;
-    const performanceTrendText = performanceDelta >= 0
-      ? `${Math.round(performanceDelta)} pts above`
-      : `${Math.round(Math.abs(performanceDelta))} pts below`;
-    const performanceLabel = performanceDelta >= 0 ? "Above Average" : "Below Average";
+    // Multi-tier Performance Classification
+    let performanceState;
+    if (sessionCount === 1) {
+      performanceState = {
+        label: "Baseline Set",
+        tier: "initial",
+        icon: "🌱",
+        color: "#38bdf8",
+        badgeBg: "rgba(56,189,248,0.15)",
+        trendText: "First speaking milestone logged",
+        motivationalTip: "Great start! Every submission builds your speaking confidence and vocabulary.",
+      };
+    } else if (latest >= best && sessionCount > 1) {
+      performanceState = {
+        label: "Personal Best!",
+        tier: "peak",
+        icon: "🏆",
+        color: "#fbbf24",
+        badgeBg: "rgba(251,191,36,0.18)",
+        trendText: `+${Math.round(deltaFromAvg)} pts above avg (All-time high!)`,
+        motivationalTip: "🎉 Incredible achievement! You just achieved your highest speaking score ever.",
+      };
+    } else if (deltaFromAvg >= 15 || latest >= 90) {
+      performanceState = {
+        label: "Exceptional",
+        tier: "exceptional",
+        icon: "⚡",
+        color: "#34d399",
+        badgeBg: "rgba(52,211,153,0.18)",
+        trendText: `+${Math.round(deltaFromAvg)} pts above average`,
+        motivationalTip: "🔥 You're in peak form! Outstanding fluency, grammar, and delivery.",
+      };
+    } else if (deltaFromAvg >= 5) {
+      performanceState = {
+        label: "Above Average",
+        tier: "above",
+        icon: "🚀",
+        color: "#22d3ee",
+        badgeBg: "rgba(34,211,238,0.15)",
+        trendText: `+${Math.round(deltaFromAvg)} pts above average`,
+        motivationalTip: "📈 Strong session! You're consistently performing above your historical baseline.",
+      };
+    } else if (Math.abs(deltaFromAvg) < 5) {
+      performanceState = {
+        label: "Solid & On Track",
+        tier: "consistent",
+        icon: "🎯",
+        color: "#818cf8",
+        badgeBg: "rgba(129,140,248,0.15)",
+        trendText: `±${Math.round(Math.abs(deltaFromAvg))} pts from average (${Math.round(avg)} pts)`,
+        motivationalTip: "🎯 Rock-solid consistency! Daily steady practice is the proven path to fluency.",
+      };
+    } else if (deltaFromAvg >= -12) {
+      performanceState = {
+        label: "Building Momentum",
+        tier: "rebuilding",
+        icon: "🌱",
+        color: "#fb923c",
+        badgeBg: "rgba(251,146,60,0.15)",
+        trendText: `${Math.round(Math.abs(deltaFromAvg))} pts from avg · Next one counts!`,
+        motivationalTip: "💪 Good effort! Focus on natural pacing & vocabulary to level up tomorrow.",
+      };
+    } else {
+      performanceState = {
+        label: "Comeback Zone",
+        tier: "comeback",
+        icon: "💫",
+        color: "#f43f5e",
+        badgeBg: "rgba(244,63,94,0.15)",
+        trendText: `Target: ${Math.round(avg)}+ pts on your next video`,
+        motivationalTip: "✨ Every challenge is a stepping stone. Reset, practice once, and shine on your next submission!",
+      };
+    }
+
+    // Multi-tier Momentum / Trend Classification
+    let trendState;
+    if (sessionCount === 1) {
+      trendState = {
+        label: "First Step",
+        icon: "🚀",
+        color: "#38bdf8",
+        subText: "Speaking journey begun",
+      };
+    } else if (sessionCount >= 3 && values[values.length - 1] > values[values.length - 2] && values[values.length - 2] > values[values.length - 3]) {
+      const gain = Math.round(values[values.length - 1] - values[values.length - 3]);
+      trendState = {
+        label: "3-Session Surge",
+        icon: "🔥",
+        color: "#34d399",
+        subText: `+${gain} pts over last 3 sessions`,
+      };
+    } else if (latest >= best && sessionCount > 1) {
+      trendState = {
+        label: "All-Time Peak",
+        icon: "👑",
+        color: "#fbbf24",
+        subText: "Highest speaking level to date",
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev >= 10) {
+      trendState = {
+        label: `Surging Up (+${Math.round(deltaFromPrev)} pts)`,
+        icon: "⚡",
+        color: "#22d3ee",
+        subText: `Jumped +${Math.round(deltaFromPrev)} pts vs last session`,
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev > 0) {
+      trendState = {
+        label: `Growing (+${Math.round(deltaFromPrev)} pts)`,
+        icon: "📈",
+        color: "#4ade80",
+        subText: `Improved vs previous session`,
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev === 0) {
+      trendState = {
+        label: "Even & Steady",
+        icon: "⚖️",
+        color: "#818cf8",
+        subText: `Matched last session score`,
+      };
+    } else if (deltaFromPrev !== null && deltaFromPrev >= -6) {
+      trendState = {
+        label: "Holding Strong",
+        icon: "🛡️",
+        color: "#fb923c",
+        subText: "Close to recent best",
+      };
+    } else {
+      trendState = {
+        label: "Ready to Rebound",
+        icon: "💪",
+        color: "#f43f5e",
+        subText: "Next session is your comeback",
+      };
+    }
 
     return {
       avg: Math.round(avg),
       best,
       latest,
-      performanceDelta,
-      performanceTrendText,
-      performanceLabel,
+      previous,
+      deltaFromAvg,
+      deltaFromPrev,
+      sessionCount,
+      performance: performanceState,
+      trend: trendState,
+      performanceDelta: deltaFromAvg,
+      performanceTrendText: performanceState.trendText,
+      performanceLabel: performanceState.label,
       totalRecordedLabel: totalRecordedTimeLabel,
+      last30RecordedLabel: last30RecordedTimeLabel,
+      last30RecordedSeconds,
     };
   })() : null;
-  const radarData = latest ? Object.keys(SCORES).map(k => ({ subject: k.charAt(0).toUpperCase() + k.slice(1), score: latest[k] || 0 })) : [];
   const SESSION_PAGE_SIZE = 5;
   const reversedScores = [...scores].reverse();
   const totalPages = Math.ceil(reversedScores.length / SESSION_PAGE_SIZE);
@@ -1231,10 +1252,6 @@ export default function UserDashboard() {
           background: "linear-gradient(135deg, #0a1f0a 0%, #0d3d1a 50%, #0a2e12 100%)",
           border: "2px solid rgba(74,222,128,0.45)",
           boxShadow: "0 8px 40px rgba(34,197,94,0.2)",
-        } : data?.today?.isWeeklyReflection ? {
-          background: "linear-gradient(135deg, #0c1a2e 0%, #0f2d4a 50%, #0c1a2e 100%)",
-          border: "2px solid rgba(56,189,248,0.45)",
-          boxShadow: "0 8px 40px rgba(14,165,233,0.2)",
         } : data?.today?.isStorySummary ? {
           background: "linear-gradient(135deg, #10231f 0%, #173d35 50%, #10231f 100%)",
           border: "2px solid rgba(45,212,191,0.45)",
@@ -1249,18 +1266,16 @@ export default function UserDashboard() {
             <div className="daily-poster-brand">
               {data?.today?.isMonthlyReflection ? "🌟 Speak & Shine"
                 : data?.today?.isMonthlyGoals ? "🎯 Speak & Shine"
-                  : data?.today?.isWeeklyReflection ? "📅 Speak & Shine"
-                    : data?.today?.isStorySummary ? "🎧 Speak & Shine"
-                      : data?.today?.isPictureDescription ? "🖼️ Speak & Shine"
-                      : "✦ Speak & Shine"}
+                  : data?.today?.isStorySummary ? "🎧 Speak & Shine"
+                    : data?.today?.isPictureDescription ? "🖼️ Speak & Shine"
+                    : "✦ Speak & Shine"}
             </div>
             <div className="daily-poster-sub">
               {data?.today?.isMonthlyReflection ? "MONTHLY REFLECTION"
                 : data?.today?.isMonthlyGoals ? "MONTHLY GOAL SETTING"
-                  : data?.today?.isWeeklyReflection ? "WEEKLY REFLECTION"
-                    : data?.today?.isStorySummary ? "STORY SUMMARY"
-                      : data?.today?.isPictureDescription ? "PICTURE DESCRIPTION"
-                      : "DAILY SPEAKING CHALLENGE"}
+                  : data?.today?.isStorySummary ? "STORY SUMMARY"
+                    : data?.today?.isPictureDescription ? "PICTURE DESCRIPTION"
+                    : "DAILY SPEAKING CHALLENGE"}
             </div>
             {/* Sunday bonus badge */}
             {new Date().getDay() === 0 && (
@@ -1272,10 +1287,9 @@ export default function UserDashboard() {
               <div className="daily-poster-badge" style={
                 data?.today?.isMonthlyReflection ? { background: "rgba(139,92,246,0.3)", border: "1px solid rgba(167,139,250,0.5)", color: "#c4b5fd" }
                   : data?.today?.isMonthlyGoals ? { background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", color: "#4ade80" }
-                    : data?.today?.isWeeklyReflection ? { background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", color: "#38bdf8" }
-                      : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
-                        : data?.today?.isPictureDescription ? { background: "rgba(66,153,225,0.25)", border: "1px solid rgba(99,179,237,0.5)", color: "#90cdf4" }
-                        : {}
+                    : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
+                      : data?.today?.isPictureDescription ? { background: "rgba(66,153,225,0.25)", border: "1px solid rgba(99,179,237,0.5)", color: "#90cdf4" }
+                      : {}
               }>
                 {data.today.category}
               </div>
@@ -1368,22 +1382,6 @@ export default function UserDashboard() {
               </div>
             </div>
 
-            /* Weekly Reflection questions */
-          ) : data?.today?.isWeeklyReflection ? (
-            <div style={{ marginTop: "1rem" }}>
-              <div className="daily-poster-section-label">📅 WEEKLY REFLECTION QUESTIONS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["Did you attend your review this week? If yes, did you pass or fail? Why?", "How many days did you submit your speaking video this week?", "What was the best speaking moment you had this week?", "What was the most difficult part of speaking this week?", "What new word or phrase did you learn and use this week?", "What is your focus for next week — in both review preparation and communication?"].map((q, i) => (
-                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
-                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#38bdf8", flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: "0.85rem", background: "rgba(14,165,233,0.08)", border: "1px solid rgba(56,189,248,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
-                💡 Be honest about your week. Reflection is how you grow — speak clearly and specifically!
-              </div>
-            </div>
 
           ) : (
             <>
@@ -1460,10 +1458,9 @@ export default function UserDashboard() {
                 {isGuest ? "Register to Submit Video"
                   : data?.today?.isMonthlyReflection ? "Record Monthly Reflection"
                     : data?.today?.isMonthlyGoals ? "Record Monthly Goals"
-                      : data?.today?.isWeeklyReflection ? "Record Weekly Reflection"
-                        : data?.today?.isStorySummary ? "Record Story Summary"
-                          : data?.today?.isPictureDescription ? "Record Picture Description"
-                            : "Record Video Now"}
+                      : data?.today?.isStorySummary ? "Record Story Summary"
+                        : data?.today?.isPictureDescription ? "Record Picture Description"
+                        : "Record Video Now"}
               </span>
             </button>
             {!isGuest && (
@@ -1503,15 +1500,14 @@ export default function UserDashboard() {
             streak={profile?.streak || 0}
             navigate={navigate}
           />
-          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals || data?.today?.isWeeklyReflection)
+          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals)
             ? <SubmitNudge
               name={profile?.name}
               streak={profile?.streak || 0}
               navigate={navigate}
               specialDay={
-                data?.today?.isWeeklyReflection ? "weekly"
-                  : data?.today?.isMonthlyGoals ? "goals"
-                    : "reflection"
+                data?.today?.isMonthlyGoals ? "goals"
+                  : "reflection"
               }
             />
             : <SubmitNudge
@@ -1556,8 +1552,8 @@ export default function UserDashboard() {
 
       <div className="stat-grid">
         <StatCard icon="🔥" label="Current Streak" value={`${profile?.streak || 0} days`} color="#f97316" />
-        <StatCard icon="📹" label="Total Sessions" value={scores.length} color="#7c6fff" />
-        <StatCard icon="⏱️" label="Total Recorded" value={totalRecordedTimeLabel} color="#38bdf8" />
+        <StatCard icon="📹" label="Total Sessions" value={totalSessionsCount} color="#7c6fff" />
+        <StatCard icon="⏱️" label="Total Recorded (All-time)" value={totalRecordedTimeLabel} color="#38bdf8" />
         <StatCard icon="📅" label="This Week" value={`${profile?.weeklySubmissions || 0}/7`} color="#4ade80" />
         <StatCard icon="📆" label="Monthly" value={profile?.monthlySubmissions || 0} color="#fbbf24" />
       </div>
@@ -1621,57 +1617,10 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* Points & Freeze Summary */}
-      <div className="card" style={{ marginBottom: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-          <div className="section-title" style={{ margin: 0 }}>🎯 Progress & Rewards</div>
-        </div>
-        <div className="grid-cols-2">
-          {/* Streak Freeze */}
-          <div style={{
-            background: "rgba(56,189,248,0.08)",
-            border: "1px solid rgba(56,189,248,0.25)",
-            borderRadius: "12px", padding: "1rem", textAlign: "center",
-          }}>
-            <div style={{ fontSize: "1.5rem", marginBottom: "0.3rem" }}>🧊</div>
-            <div style={{ fontSize: "0.7rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>
-              Streak Freeze
-            </div>
-            <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#38bdf8" }}>
-              {profile?.streakFreeze || 0}
-            </div>
-            <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-              {(profile?.streakFreeze || 0) > 0 ? "protection available" : "earn via streaks"}
-            </div>
-          </div>
-          {/* Monthly Score */}
-          <div style={{
-            background: "rgba(167,139,250,0.08)",
-            border: "1px solid rgba(167,139,250,0.25)",
-            borderRadius: "12px",
-            padding: "1rem",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: "1.5rem", marginBottom: "0.3rem" }}>⭐</div>
-            <div style={{ fontSize: "0.7rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>Monthly Score</div>
-            <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#a78bfa" }}>
-              {profile?.monthlyScore || 0}
-            </div>
-            <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-              {(profile?.monthlyScore || 0) > 0 ? "points this month" : "earn via submissions"}
-            </div>
-          </div>
-        </div>
-        <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.75rem", textAlign: "center", lineHeight: 1.5 }}>
-          💡 Submit daily to earn points and build streak freezes for protection!
-        </p>
-      </div>
-
       <div className="stat-grid">
         <StatCard icon="👥" label="Group Members" value={data?.stats?.total || 0} color="#7c6fff" />
         <StatCard icon="✅" label="Submitted Today" value={data?.stats?.completed || 0} color="#4ade80" />
         <StatCard icon="⏳" label="Pending Today" value={data?.stats?.pending || 0} color="#f87171" />
-        <StatCard icon="🧊" label="Total Freezes" value={data?.stats?.totalFreeze || 0} color="#38bdf8" />
       </div>
 
       {/* ── Hall of Fame — always visible ── */}
@@ -1876,19 +1825,9 @@ export default function UserDashboard() {
             ))}
           </div>
 
-          <div className="grid-2">
-            <div className="card">
-              <div className="section-title">Latest Session Radar</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="#252545" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: "#8888aa", fontSize: 12 }} />
-                  <Radar dataKey="score" stroke="#7c6fff" fill="#7c6fff" fillOpacity={0.25} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="card">
-              <div className="section-title">Latest Scores</div>
+          <div className="card" style={{ marginTop: "1rem" }}>
+            <div className="section-title">Latest Session Scores</div>
+            <div className="grid-cols-2" style={{ gap: "1rem" }}>
               {Object.entries(SCORES).map(([k, c]) => (
                 <div className="score-bar" key={k}>
                   <div className="score-bar-header">
@@ -1931,38 +1870,78 @@ export default function UserDashboard() {
                   <div className="section-title" style={{ marginBottom: "0.25rem" }}>📈 Daily Points Trend</div>
                   <div style={{ color: "var(--muted)", fontSize: "0.74rem" }}>Your consistency over the last {pointsData.length} sessions · Sunday bonuses excluded</div>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(34,211,238,0.12)", color: "#67e8f9", fontSize: "0.74rem", fontWeight: 700 }}>
                     {pointsSummary.avg} avg pts
                   </div>
                   <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(167,139,250,0.14)", color: "#c4b5fd", fontSize: "0.74rem", fontWeight: 700 }}>
                     Best {pointsSummary.best} pts
                   </div>
+                  <div style={{
+                    padding: "0.4rem 0.75rem",
+                    borderRadius: 999,
+                    background: pointsSummary.performance.badgeBg,
+                    color: pointsSummary.performance.color,
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    border: `1px solid ${pointsSummary.performance.color}33`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.3rem",
+                  }}>
+                    <span>{pointsSummary.performance.icon}</span>
+                    <span>{pointsSummary.performance.label}</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Motivational Insight Banner */}
+              {pointsSummary.performance?.motivationalTip && (
+                <div style={{
+                  padding: "0.65rem 0.9rem",
+                  borderRadius: 10,
+                  background: pointsSummary.performance.badgeBg,
+                  border: `1px solid ${pointsSummary.performance.color}33`,
+                  marginBottom: "0.9rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                }}>
+                  <span style={{ fontSize: "1.1rem" }}>{pointsSummary.performance.icon}</span>
+                  <span style={{ fontSize: "0.78rem", color: "#e2e8f0", lineHeight: 1.4, fontWeight: 500 }}>
+                    {pointsSummary.performance.motivationalTip}
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.7rem", marginBottom: "0.9rem" }}>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Latest</div>
                   <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.latest} pts</div>
+                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.2rem" }}>Session #{pointsSummary.sessionCount}</div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
                   <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Performance</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: pointsSummary.performanceDelta >= 0 ? "#4ade80" : "#f87171" }}>{pointsSummary.performanceLabel}</div>
-                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.2rem" }}>{pointsSummary.performanceTrendText}</div>
+                  <div style={{ fontSize: "1.05rem", fontWeight: 800, color: pointsSummary.performance.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span>{pointsSummary.performance.icon}</span>
+                    <span>{pointsSummary.performance.label}</span>
+                  </div>
+                  <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.2rem" }}>{pointsSummary.performance.trendText}</div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Recorded</div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.totalRecordedLabel}</div>
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Last 30 Sessions</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.last30RecordedLabel}</div>
                   <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.25rem" }}>
-                    {totalRecordedSeconds > 0 ? "Based on your saved session durations" : "No session durations yet — they’ll appear here once available"}
+                    {pointsSummary.last30RecordedSeconds > 0 ? "Recent speak time" : "Last 30 sessions"}
                   </div>
                 </div>
                 <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Trend</div>
-                  <div style={{ fontSize: "1rem", fontWeight: 700, color: pointsSummary.performanceDelta >= 0 ? "#67e8f9" : "#fda4af" }}>
-                    {pointsSummary.performanceDelta >= 0 ? "📈 Performing well" : "📊 Room to improve"}
+                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Momentum</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: pointsSummary.trend.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span>{pointsSummary.trend.icon}</span>
+                    <span>{pointsSummary.trend.label}</span>
                   </div>
+                  <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.2rem" }}>{pointsSummary.trend.subText}</div>
                 </div>
               </div>
 

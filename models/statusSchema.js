@@ -49,9 +49,11 @@ const statusSchema = new mongoose.Schema({
   usedStoryThemes: { type: [String], default: [] },
   storyLevel: { type: String, default: "B1", enum: ["A2", "B1", "B2", "C1"] },
   allowPrivateVideos: { type: Boolean, default: true }, // admin can disable to force all videos public
-  // Which day of the week auto-story runs (0=Sun, 1=Mon, ... 6=Sat). Default: 6 (Saturday)
+  // Which days of the week auto-story runs (array of 0=Sun, 1=Mon, ... 6=Sat). Default: [6] (Saturday)
+  storyDays: { type: [Number], default: [6] },
   storyDay: { type: Number, default: 6, min: 0, max: 6 },
-  // Which day of the week picture description runs (0=Sun ... 6=Sat). Default: 4 (Thursday). -1 = disabled.
+  // Which days of the week picture description runs (array of 0=Sun ... 6=Sat). Default: [4] (Thursday).
+  pictureDescriptionDays: { type: [Number], default: [4] },
   pictureDescriptionDay: { type: Number, default: 4, min: -1, max: 6 },
   // Payment settings (admin-configurable)
   paymentAmount: { type: Number, default: 5, min: 1, max: 100000 },
@@ -69,7 +71,6 @@ const statusSchema = new mongoose.Schema({
   // Monthly reflection
   isMonthlyReflectionDay: { type: Boolean, default: false },
   isMonthlyGoalsDay: { type: Boolean, default: false },
-  isWeeklyReflectionDay: { type: Boolean, default: false },
   isStorySummaryDay: { type: Boolean, default: false },
   isPictureDescriptionDay: { type: Boolean, default: false },
   // Duration scoring — picture description (admin-configurable)

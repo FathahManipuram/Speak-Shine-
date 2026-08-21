@@ -39,18 +39,6 @@ export const MONTHLY_GOALS_QUESTIONS = [
 export const MONTHLY_GOALS_TOPIC    = "Monthly Goal Setting";
 export const MONTHLY_GOALS_CATEGORY = "Monthly Goals";
 
-// Weekly reflection questions — shown every Sunday
-export const WEEKLY_REFLECTION_QUESTIONS = [
-  "Did you attend your review this week? If yes, did you pass or fail? Why?",
-  "How many days did you submit your speaking video this week?",
-  "What was the best speaking moment you had this week?",
-  "What was the most difficult part of speaking this week?",
-  "What new word or phrase did you learn and use this week?",
-  "What is your focus for next week — in both review preparation and communication?",
-];
-export const WEEKLY_REFLECTION_TOPIC    = "Weekly Reflection";
-export const WEEKLY_REFLECTION_CATEGORY = "Weekly Reflection";
-
 /** Returns true if today is the last day of the month (IST) */
 function isLastDayOfMonth() {
   const now = new Date();
@@ -66,13 +54,6 @@ function isFirstDayOfMonth() {
   return istDate.getDate() === 1;
 }
 
-/** Returns true if today is Sunday (IST) */
-function isSunday() {
-  const now = new Date();
-  const istDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  return istDate.getDay() === 0; // 0 = Sunday
-}
-
 /** Returns true if today is Saturday (IST) */
 function isSaturday() {
   const now = new Date();
@@ -82,132 +63,8 @@ function isSaturday() {
 
 async function publishDailyQuestion() {
   try {
-    const statusCheck = await Status.findOne();
-    if (statusCheck?.questionSentToday) {
-      return; // already published today
-    }
-
-    // ── Story Summary Day → delegate to questionSchedulerService ──────────
-    if (isSaturday()) {
-      const { publishDailyQuestion: publishFromService } = await import("../backend/services/scheduler/questionSchedulerService.js");
-      return await publishFromService();
-    }
-
-    // ── 1st of month → Monthly Goal Setting (takes priority over Sunday) ─
-    if (isFirstDayOfMonth()) {
-      const goalsText = MONTHLY_GOALS_QUESTIONS
-        .map((q, i) => `${i + 1}. ${q}`)
-        .join("\n");
-      await Status.updateOne({}, {
-        $set: {
-          questionSentToday: true,
-          isMonthlyGoalsDay: true,
-          todayTopic: MONTHLY_GOALS_TOPIC,
-          todayQuestion: goalsText,
-          todayCategory: MONTHLY_GOALS_CATEGORY,
-        }
-      }, { upsert: true });
-      console.log("[Scheduler] 🎯 Monthly Goal Setting published for 1st of month");
-      return;
-    }
-
-    // ── Last day of month → Monthly Reflection (takes priority over Sunday)
-    if (isLastDayOfMonth()) {
-      const reflectionText = MONTHLY_REFLECTION_QUESTIONS
-        .map((q, i) => `${i + 1}. ${q}`)
-        .join("\n");
-      await Status.updateOne({}, {
-        $set: {
-          questionSentToday: true,
-          isMonthlyReflectionDay: true,
-          todayTopic: MONTHLY_REFLECTION_TOPIC,
-          todayQuestion: reflectionText,
-          todayCategory: MONTHLY_REFLECTION_CATEGORY,
-        }
-      }, { upsert: true });
-      console.log("[Scheduler] 🌟 Monthly Reflection published for last day of month");
-      return;
-    }
-
-    // ── Sunday → Weekly Reflection ────────────────────────────────────────
-    if (isSunday()) {
-      const weeklyText = WEEKLY_REFLECTION_QUESTIONS
-        .map((q, i) => `${i + 1}. ${q}`)
-        .join("\n");
-      await Status.updateOne({}, {
-        $set: {
-          questionSentToday: true,
-          isWeeklyReflectionDay: true,
-          todayTopic: WEEKLY_REFLECTION_TOPIC,
-          todayQuestion: weeklyText,
-          todayCategory: WEEKLY_REFLECTION_CATEGORY,
-        }
-      }, { upsert: true });
-      console.log("[Scheduler] 📅 Weekly Reflection published for Sunday");
-      return;
-    }
-
-    // Ensure question bank has questions
-    let count = await Question.countDocuments();
-    if (count === 0) {
-      console.log("[Scheduler] Question bank empty — auto-generating 14...");
-      try {
-        const { inserted, totalInDb } = await generateAndInsertQuestions(14);
-        count = totalInDb;
-        console.log(`[Scheduler] Generated ${inserted.length} questions. Total: ${count}`);
-      } catch (err) {
-        console.log("[Scheduler] Auto-generate failed:", err.message);
-        return;
-      }
-    } else if (count <= 14) {
-      // Refill in background — bank is getting low
-      console.log(`[Scheduler] ⚠️  Bank low (${count}) — triggering background refill…`);
-      generateAndInsertQuestions(14)
-        .then(({ inserted, totalInDb }) =>
-          console.log(`[Scheduler] ✅ Background refill: +${inserted.length} questions. Total: ${totalInDb}`)
-        )
-        .catch(err =>
-          console.error("[Scheduler] ❌ Background refill failed:", err.message)
-        );
-    }
-
-    // Pick a question avoiding recent categories
-    const statusDoc = await Status.findOne();
-    const recentCategories = statusDoc?.recentCategories || [];
-
-    let q = null;
-    if (recentCategories.length > 0) {
-      const fresh = await Question.aggregate([
-        { $match: { category: { $nin: recentCategories } } },
-        { $sample: { size: 1 } },
-      ]);
-      if (fresh?.length) q = fresh;
-    }
-    if (!q || !q.length) {
-      q = await Question.aggregate([{ $sample: { size: 1 } }]);
-    }
-    if (!q || !q.length) {
-      console.log("[Scheduler] No questions available");
-      return;
-    }
-
-    const question = q[0];
-    const updatedRecent = question.category
-      ? [...new Set([...recentCategories, question.category])].slice(-7)
-      : recentCategories;
-
-    await Status.updateOne({}, {
-      $set: {
-        questionSentToday: true,
-        todayTopic: question.topic || null,
-        todayQuestion: question.question || null,
-        todayCategory: question.category || null,
-        recentCategories: updatedRecent,
-      }
-    }, { upsert: true });
-
-    await Question.findByIdAndDelete(question._id);
-    console.log(`[Scheduler] ✅ Question published | Topic: ${question.topic} | Category: ${question.category}`);
+    const { publishDailyQuestion: publishFromService } = await import("../backend/services/scheduler/questionSchedulerService.js");
+    return await publishFromService();
   } catch (err) {
     console.log("[Scheduler] Error:", err.message);
   }
@@ -225,16 +82,11 @@ export function startScheduler() {
       const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: TIMEZONE }));
       const nowTime = `${String(nowIST.getHours()).padStart(2,"0")}:${String(nowIST.getMinutes()).padStart(2,"0")}`;
 
-      // ── 0. Publish due manual story task at its exact scheduled time ─────
-      const { publishDueManualStoryQuestion, publishDueManualPictureDescriptionQuestion } = await import("../backend/services/scheduler/questionSchedulerService.js");
-      const storyResult = await publishDueManualStoryQuestion();
-      if (storyResult?.published) {
-        console.log(`[Scheduler] 🎧 Story summary published: ${storyResult.topic}`);
-        return;
-      }
-      const pictureResult = await publishDueManualPictureDescriptionQuestion();
-      if (pictureResult?.published) {
-        console.log(`[Scheduler] 🖼️ Picture description published: ${pictureResult.topic}`);
+      // ── 0. Publish due manual tasks (normal, story, picture, reflection, goals) ─────
+      const { publishDueManualQuestion } = await import("../backend/services/scheduler/questionSchedulerService.js");
+      const manualResult = await publishDueManualQuestion();
+      if (manualResult?.published) {
+        console.log(`[Scheduler] 📝 Due manual task published (${manualResult.type}): ${manualResult.topic}`);
         return;
       }
 

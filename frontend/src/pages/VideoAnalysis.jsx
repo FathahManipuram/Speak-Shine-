@@ -41,7 +41,6 @@ export default function VideoAnalysis() {
   const [vocabRequiredCount, setVocabRequiredCount] = useState(3);
   const [isMonthlyReflection, setIsMonthlyReflection] = useState(false);
   const [isMonthlyGoals, setIsMonthlyGoals] = useState(false);
-  const [isWeeklyReflection, setIsWeeklyReflection] = useState(false);
   const [isStorySummary, setIsStorySummary] = useState(false);
   const [isPictureDescription, setIsPictureDescription] = useState(false);
   const [picturePreviewOpen, setPicturePreviewOpen] = useState(false);
@@ -94,7 +93,6 @@ export default function VideoAnalysis() {
       if (t?.question) setTodayQuestion({ question: t.question, topic: t.topic, category: t.category, audioUrl: t.audioUrl, contentType: t.contentType, imageUrl: t.imageUrl, imageSource: t.imageSource, imagePageUrl: t.imagePageUrl, imagePhotographer: t.imagePhotographer, imagePhotographerUrl: t.imagePhotographerUrl, imageInstructions: t.imageInstructions });
       if (t?.isMonthlyReflection) setIsMonthlyReflection(true);
       if (t?.isMonthlyGoals) setIsMonthlyGoals(true);
-      if (t?.isWeeklyReflection) setIsWeeklyReflection(true);
       if (t?.isStorySummary || t?.contentType === "story_audio") setIsStorySummary(true);
       if (t?.isPictureDescription || t?.contentType === "picture_description") setIsPictureDescription(true);
       if (Array.isArray(t?.vocabulary) && t.vocabulary.length > 0) setTodayVocabulary(t.vocabulary);
@@ -302,47 +300,6 @@ export default function VideoAnalysis() {
           </div>
         )}
 
-        {/* ── Weekly Reflection Card (Sunday) ── */}
-        {isWeeklyReflection && (
-          <div style={{
-            background: "linear-gradient(135deg, #0c1a2e 0%, #0f2d4a 50%, #0c1a2e 100%)",
-            border: "2px solid rgba(56,189,248,0.45)",
-            borderRadius: 18,
-            padding: "1.5rem",
-            marginBottom: "1rem",
-            position: "relative",
-            overflow: "hidden",
-            boxShadow: "0 8px 40px rgba(14,165,233,0.2)",
-          }}>
-            <div style={{ position:"absolute", top:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"radial-gradient(circle, rgba(56,189,248,0.18) 0%, transparent 70%)", pointerEvents:"none" }} />
-            <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", marginBottom:"1.25rem" }}>
-              <div style={{ fontSize:"2.5rem" }}>📅</div>
-              <div>
-                <div style={{ fontSize:"0.7rem", color:"rgba(56,189,248,0.8)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.1em" }}>Sunday — End of Week</div>
-                <div style={{ fontSize:"1.3rem", fontWeight:800, color:"#fff", lineHeight:1.2 }}>Weekly Reflection</div>
-                <div style={{ fontSize:"0.8rem", color:"rgba(255,255,255,0.6)", marginTop:"0.2rem" }}>Speak your weekly review &amp; learnings</div>
-              </div>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem", marginBottom:"1.25rem" }}>
-              {[
-                { n:"1", q:"Did you attend your review this week? If yes, did you pass or fail? Why?" },
-                { n:"2", q:"How many days did you submit your speaking video this week?" },
-                { n:"3", q:"What was the best speaking moment you had this week?" },
-                { n:"4", q:"What was the most difficult part of speaking this week?" },
-                { n:"5", q:"What new word or phrase did you learn and use this week?" },
-                { n:"6", q:"What is your focus for next week — in both review preparation and communication?" },
-              ].map(({ n, q }) => (
-                <div key={n} style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(56,189,248,0.2)", borderRadius:12, padding:"0.75rem 1rem" }}>
-                  <div style={{ minWidth:26, height:26, borderRadius:"50%", background:"rgba(14,165,233,0.25)", border:"1px solid rgba(56,189,248,0.5)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.75rem", fontWeight:800, color:"#38bdf8", flexShrink:0 }}>{n}</div>
-                  <div style={{ fontSize:"0.88rem", color:"rgba(255,255,255,0.9)", lineHeight:1.5 }}>{q}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ background:"rgba(14,165,233,0.1)", border:"1px solid rgba(56,189,248,0.25)", borderRadius:10, padding:"0.75rem 1rem", fontSize:"0.8rem", color:"rgba(255,255,255,0.7)", lineHeight:1.5 }}>
-              💡 <strong style={{ color:"#38bdf8" }}>Tip:</strong> Be honest about your week. Reflection is how you grow — speak clearly and specifically!
-            </div>
-          </div>
-        )}
 
         {/* ── Monthly Goals Card (1st of month) ── */}
         {isMonthlyGoals && (
@@ -672,7 +629,7 @@ export default function VideoAnalysis() {
         )}
 
         {/* ── Today's Question Card — regular days only ── */}
-        {todayQuestion && !isMonthlyReflection && !isMonthlyGoals && !isWeeklyReflection && !isStorySummary && !isPictureDescription && (
+        {todayQuestion && !isMonthlyReflection && !isMonthlyGoals && !isStorySummary && !isPictureDescription && (
           <div className="daily-poster" style={{ marginBottom: "1rem" }}>
             <div className="daily-poster-header">
               <div className="daily-poster-brand">✦ Speak &amp; Shine</div>
@@ -724,8 +681,8 @@ export default function VideoAnalysis() {
         </div>
 
         {mode === "upload"
-          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} isPictureDescription={isPictureDescription} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
-          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isWeeklyReflection={isWeeklyReflection} isStorySummary={isStorySummary} isPictureDescription={isPictureDescription} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
+          ? <UploadCard onAnalysisStarted={onAnalysisStarted} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isStorySummary={isStorySummary} isPictureDescription={isPictureDescription} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
+          : <RecordCard  onAnalysisStarted={onAnalysisStarted} question={todayQuestion} isMonthlyReflection={isMonthlyReflection} isMonthlyGoals={isMonthlyGoals} isStorySummary={isStorySummary} isPictureDescription={isPictureDescription} vocabulary={todayVocabulary} vocabRequiredCount={vocabRequiredCount} vocabWordCount={vocabWordCount} isGuest={isGuest} durationLimits={durationLimits} allowPrivateVideos={allowPrivateVideos} />
         }
 
         {/* Report Section */}
@@ -1661,7 +1618,7 @@ function VocabularyWords({ words, compact = false, requiredCount, totalCount }) 
 }
 
 // ── Upload Card (direct-to-R2 flow) ─────────────────────────────────────────
-function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription = false, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
+function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, isStorySummary, isPictureDescription = false, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const [file, setFile]           = useState(null);
   const [fileDuration, setFileDuration] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1675,7 +1632,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
   const uploadStartRef = useRef(null);
   const { generateHashAndFrames, cacheResult, isHashing, hashProgress } = useVideoFrameHash();
 
-  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription };
+  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isStorySummary, isPictureDescription };
   const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
 
   const handleFileChange = (e) => {
@@ -1736,7 +1693,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
           // If original file is too large and compression failed, show clear error
           if (file.size > 200 * 1024 * 1024) {
             setUploading(false);
-            setError(`Video compression failed (browser memory limit). Your file is ${(file.size/1024/1024).toFixed(1)}MB (max 200MB without compression). Please:\n• Record a shorter video (max ${isMonthlyReflection || isWeeklyReflection ? "7" : isMonthlyGoals ? "10" : isStorySummary || isPictureDescription ? "3" : "5"} min)\n• Or use a lower resolution when recording`);
+            setError(`Video compression failed (browser memory limit). Your file is ${(file.size/1024/1024).toFixed(1)}MB (max 200MB without compression). Please:\n• Record a shorter video (max ${isMonthlyReflection ? "7" : isMonthlyGoals ? "10" : isStorySummary || isPictureDescription ? "3" : "5"} min)\n• Or use a lower resolution when recording`);
             return;
           }
         }
@@ -2057,7 +2014,7 @@ function UploadCard({ onAnalysisStarted, isMonthlyReflection, isMonthlyGoals, is
 // ── Record Card ──────────────────────────────────────────────────────────────
 // States: "setup" → "countdown" → "recording" → "preview" → "uploading"
 
-function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription = false, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
+function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthlyGoals, isStorySummary, isPictureDescription = false, vocabulary = [], vocabRequiredCount = 3, vocabWordCount = 5, isGuest = false, durationLimits: dbDurationLimits, allowPrivateVideos = true }) {
   const navigate = useNavigate();
   const [step, setStep]             = useState("setup");
   const [cameras, setCameras]       = useState([]);
@@ -2129,7 +2086,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
     return seconds;
   }, []);
 
-  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isWeeklyReflection, isStorySummary, isPictureDescription };
+  const gateFlags = { isMonthlyReflection, isMonthlyGoals, isStorySummary, isPictureDescription };
   const durationLimits = dbDurationLimits || getDurationLimits(gateFlags);
   const MAX_SECONDS = durationLimits.maxSeconds;
 
@@ -2817,7 +2774,7 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
           </p>
           
           {/* Recording stability notice for long recordings */}
-          {(isMonthlyReflection || isMonthlyGoals || isWeeklyReflection) && (
+          {(isMonthlyReflection || isMonthlyGoals) && (
             <div style={{
               background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
               borderRadius: 12, padding: "0.85rem 1rem", marginBottom: "1.25rem",
@@ -2870,25 +2827,6 @@ function RecordCard({ onAnalysisStarted, question, isMonthlyReflection, isMonthl
                 <li>Biggest challenge last month &amp; how to overcome it?</li>
                 <li>How many reviews are you planning this month?</li>
                 <li>What will you do differently to grow faster?</li>
-              </ol>
-            </div>
-          )}
-
-          {/* Weekly reflection reminder inside record card */}
-          {isWeeklyReflection && (
-            <div style={{
-              background: "rgba(14,165,233,0.08)", border: "1px solid rgba(56,189,248,0.3)",
-              borderRadius: 12, padding: "0.85rem 1rem", marginBottom: "1.25rem",
-              fontSize: "0.82rem", color: "rgba(255,255,255,0.8)", lineHeight: 1.6,
-            }}>
-              📅 <strong style={{ color: "#38bdf8" }}>Weekly Reflection Sunday!</strong> Answer all 6 questions:
-              <ol style={{ marginTop: "0.5rem", paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                <li>Did you attend your review this week? Pass or fail? Why?</li>
-                <li>How many days did you submit this week?</li>
-                <li>Best speaking moment this week?</li>
-                <li>Most difficult part of speaking this week?</li>
-                <li>New word or phrase you learned this week?</li>
-                <li>Focus for next week — review prep &amp; communication?</li>
               </ol>
             </div>
           )}

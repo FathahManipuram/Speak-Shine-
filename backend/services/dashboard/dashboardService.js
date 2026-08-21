@@ -38,6 +38,13 @@ function getPosterImage(status) {
  * Get today's dashboard overview (all roles)
  */
 export async function getTodayOverview() {
+  try {
+    const { publishDueManualQuestion } = await import("../scheduler/questionSchedulerService.js");
+    await publishDueManualQuestion();
+  } catch {
+    // non-fatal
+  }
+
   const status = await Status.findOne().lean();
   const users = await User.find().lean();
 
@@ -64,12 +71,15 @@ export async function getTodayOverview() {
       audioUrl: status?.todayAudioUrl || null,
       isStorySummary: activeStoryTask(status),
       isPictureDescription: activePictureTask(status),
+      isMonthlyReflection: Boolean(status?.isMonthlyReflectionDay),
+      isMonthlyGoals: Boolean(status?.isMonthlyGoalsDay),
       imageUrl:          status?.todayImageUrl || null,
       imageSource:       status?.todayImageSource || null,
       imagePageUrl:      status?.todayImagePageUrl || null,
       imagePhotographer: status?.todayImagePhotographer || null,
       imageInstructions: status?.todayImageInstructions || null,
       posterImage: getPosterImage(status),
+      vocabulary: status?.todayVocabulary || [],
     },
     stats: {
       total: users.length,
@@ -245,10 +255,16 @@ export async function getUserProfile(phone) {
     }
   }
 
+  const allTimeSessions = Math.max(user.totalSessions || 0, feedbackScores.length);
+  const feedbackDurationSum = feedbackScores.reduce((sum, s) => sum + (Number(s.duration) || 0), 0);
+  const allTimeRecordedSeconds = Math.max(user.totalRecordedSeconds || 0, feedbackDurationSum);
+
   return {
     profile: {
       name: user.name,
       feedbackScores,
+      totalSessions: allTimeSessions,
+      totalRecordedSeconds: allTimeRecordedSeconds,
       streak: user.streak || 0,
       streakFreeze: user.streakFreeze || 0,
       monthlyScore: user.monthlyScore || 0,
@@ -268,7 +284,6 @@ export async function getUserProfile(phone) {
       posterImage: getPosterImage(status),
       isMonthlyReflection: status?.isMonthlyReflectionDay || false,
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
-      isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: activeStoryTask(status),
       isPictureDescription: activePictureTask(status),
       // Picture description image data (only populated on picture description days)
@@ -300,7 +315,6 @@ export async function getUserProfile(phone) {
       durationLimits: getDurationLimits({
         isMonthlyReflection: status?.isMonthlyReflectionDay || false,
         isMonthlyGoals: status?.isMonthlyGoalsDay || false,
-        isWeeklyReflection: status?.isWeeklyReflectionDay || false,
         isStorySummary: activeStoryTask(status),
         isPictureDescription: activePictureTask(status),
       }, status || {}),
@@ -498,8 +512,16 @@ export async function getSettings() {
     storyWordCount: status.storyWordCount ?? 200,
     storyLevel: status.storyLevel || "B1",
     allowPrivateVideos: status.allowPrivateVideos ?? true,
-    storyDay: status.storyDay ?? 6,
-    pictureDescriptionDay: status.pictureDescriptionDay ?? 4,
+    storyDays: Array.isArray(status.storyDays) && status.storyDays.length > 0
+      ? status.storyDays
+      : (status.storyDay !== undefined && status.storyDay !== null ? [status.storyDay] : [6]),
+    storyDay: status.storyDay ?? (Array.isArray(status.storyDays) && status.storyDays.length > 0 ? status.storyDays[0] : 6),
+    pictureDescriptionDays: Array.isArray(status.pictureDescriptionDays)
+      ? status.pictureDescriptionDays
+      : (status.pictureDescriptionDay !== undefined && status.pictureDescriptionDay !== null && status.pictureDescriptionDay !== -1
+          ? [status.pictureDescriptionDay]
+          : (status.pictureDescriptionDay === -1 ? [] : [4])),
+    pictureDescriptionDay: status.pictureDescriptionDay ?? (Array.isArray(status.pictureDescriptionDays) && status.pictureDescriptionDays.length > 0 ? status.pictureDescriptionDays[0] : -1),
     paymentAmount: status.paymentAmount ?? 5,
     durationDefaultMax: status.durationDefaultMax ?? 300,
     durationDefaultFull: status.durationDefaultFull ?? 300,
@@ -549,10 +571,12 @@ export async function updateSettings(input, ...rest) {
       submissionReportSlots,
       submissionReportTemplates,
       adminNotifyPhone,
-      deploymentNotifyEnabled
+      deploymentNotifyEnabled,
+      storyDays,
+      pictureDescriptionDays
     ] = [input, ...rest];
     params = {
-      posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+      posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay, storyDays,
       paymentAmount,
       durationDefaultMax, durationDefaultFull,
       durationStoryMax, durationStoryFull,
@@ -560,7 +584,7 @@ export async function updateSettings(input, ...rest) {
       durationMonthlyReflectionMax, durationMonthlyReflectionFull,
       durationMonthlyGoalsMax, durationMonthlyGoalsFull,
       allowPrivateVideos,
-      pictureDescriptionDay,
+      pictureDescriptionDay, pictureDescriptionDays,
       durationPictureMax, durationPictureFull,
       vocabNormalWordCount, vocabNormalRequiredCount,
       vocabStoryWordCount, vocabStoryRequiredCount,
@@ -579,7 +603,7 @@ export async function updateSettings(input, ...rest) {
   }
 
   const {
-    posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay,
+    posterSendTime, questionGenerateTime, vocabWordCount, vocabRequiredCount, vocabLevel, storyWordCount, storyLevel, storyDay, storyDays,
     paymentAmount,
     durationDefaultMax, durationDefaultFull,
     durationStoryMax, durationStoryFull,
@@ -587,7 +611,7 @@ export async function updateSettings(input, ...rest) {
     durationMonthlyReflectionMax, durationMonthlyReflectionFull,
     durationMonthlyGoalsMax, durationMonthlyGoalsFull,
     allowPrivateVideos,
-    pictureDescriptionDay,
+    pictureDescriptionDay, pictureDescriptionDays,
     durationPictureMax, durationPictureFull,
     vocabNormalWordCount, vocabNormalRequiredCount,
     vocabStoryWordCount, vocabStoryRequiredCount,
@@ -819,7 +843,22 @@ export async function updateSettings(input, ...rest) {
     updates.storyLevel = storyLevel;
   }
 
-  if (storyDay !== undefined) {
+  if (storyDays !== undefined) {
+    if (!Array.isArray(storyDays)) {
+      const error = new Error("storyDays must be an array of day numbers (0-6)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const parsed = storyDays.map(d => parseInt(d, 10));
+    if (parsed.some(d => isNaN(d) || d < 0 || d > 6)) {
+      const error = new Error("All days in storyDays must be numbers between 0 (Sunday) and 6 (Saturday)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const uniqueDays = [...new Set(parsed)].sort((a, b) => a - b);
+    updates.storyDays = uniqueDays;
+    updates.storyDay = uniqueDays.length > 0 ? uniqueDays[0] : 6;
+  } else if (storyDay !== undefined) {
     const day = parseInt(storyDay, 10);
     if (isNaN(day) || day < 0 || day > 6) {
       const error = new Error("storyDay must be 0 (Sunday) through 6 (Saturday)");
@@ -827,9 +866,25 @@ export async function updateSettings(input, ...rest) {
       throw error;
     }
     updates.storyDay = day;
+    updates.storyDays = [day];
   }
 
-  if (pictureDescriptionDay !== undefined) {
+  if (pictureDescriptionDays !== undefined) {
+    if (!Array.isArray(pictureDescriptionDays)) {
+      const error = new Error("pictureDescriptionDays must be an array of day numbers (0-6)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const parsed = pictureDescriptionDays.map(d => parseInt(d, 10));
+    if (parsed.some(d => isNaN(d) || d < 0 || d > 6)) {
+      const error = new Error("All days in pictureDescriptionDays must be numbers between 0 (Sunday) and 6 (Saturday)");
+      error.statusCode = 400;
+      throw error;
+    }
+    const uniqueDays = [...new Set(parsed)].sort((a, b) => a - b);
+    updates.pictureDescriptionDays = uniqueDays;
+    updates.pictureDescriptionDay = uniqueDays.length > 0 ? uniqueDays[0] : -1;
+  } else if (pictureDescriptionDay !== undefined) {
     const day = parseInt(pictureDescriptionDay, 10);
     if (isNaN(day) || day < -1 || day > 6) {
       const error = new Error("pictureDescriptionDay must be -1 (disabled) or 0 (Sunday) through 6 (Saturday)");
@@ -837,6 +892,7 @@ export async function updateSettings(input, ...rest) {
       throw error;
     }
     updates.pictureDescriptionDay = day;
+    updates.pictureDescriptionDays = day === -1 ? [] : [day];
   }
 
   if (paymentAmount !== undefined) {
@@ -998,7 +1054,6 @@ export async function enableMonthlyGoals() {
       questionSentToday: true,
       isMonthlyGoalsDay: true,
       isMonthlyReflectionDay: false,
-      isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
       isPictureDescriptionDay: false,
       todayContentType: "question",
@@ -1014,33 +1069,6 @@ export async function enableMonthlyGoals() {
   return { success: true, message: "Monthly goal-setting mode activated — refresh the app to see it" };
 }
 
-/**
- * Force weekly reflection mode ON (admin only, for testing)
- */
-export async function enableWeeklyReflection() {
-  const { WEEKLY_REFLECTION_QUESTIONS, WEEKLY_REFLECTION_TOPIC, WEEKLY_REFLECTION_CATEGORY } = await import("../../../api/scheduler.js");
-  const weeklyText = WEEKLY_REFLECTION_QUESTIONS.map((q, i) => `${i + 1}. ${q}`).join("\n");
-  
-  await Status.updateOne({}, {
-    $set: {
-      questionSentToday: true,
-      isWeeklyReflectionDay: true,
-      isMonthlyReflectionDay: false,
-      isMonthlyGoalsDay: false,
-      isStorySummaryDay: false,
-      isPictureDescriptionDay: false,
-      todayContentType: "question",
-      todayAudioUrl: null,
-      todayStoryTranscript: null,
-      todaySummaryGuide: null,
-      todayTopic: WEEKLY_REFLECTION_TOPIC,
-      todayQuestion: weeklyText,
-      todayCategory: WEEKLY_REFLECTION_CATEGORY,
-    }
-  }, { upsert: true });
-  
-  return { success: true, message: "Weekly reflection mode activated — refresh the app to see it" };
-}
 
 /**
  * Force story summary mode ON (admin only, for testing)
@@ -1064,7 +1092,6 @@ export async function disableSpecialModes() {
     $set: {
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
-      isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
       isPictureDescriptionDay: false,
       questionSentToday: false,

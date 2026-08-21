@@ -131,7 +131,6 @@ export async function preCheckSubmit(req, res) {
     const flags = {
       isMonthlyReflection: !!req.body?.isMonthlyReflection,
       isMonthlyGoals: !!req.body?.isMonthlyGoals,
-      isWeeklyReflection: !!req.body?.isWeeklyReflection,
       isStorySummary: !!req.body?.isStorySummary,
       isPictureDescription: !!req.body?.isPictureDescription,
     };

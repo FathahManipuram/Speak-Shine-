@@ -68,7 +68,7 @@ export async function deleteQuestion(req, res) {
  */
 export async function setupManualQuestion(req, res) {
   try {
-    const { setupType, scheduledFor, scheduledTime, category, topic, question, audioUrl, storyTranscript, summaryGuide, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery, imageInstructions, imageDifficulty, speakingDuration } = req.body;
+    const { setupType, scheduledFor, scheduledTime, category, topic, question, audioUrl, storyTranscript, summaryGuide, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery, imageInstructions, imageDifficulty, speakingDuration, publishNow } = req.body;
     const createdBy = req.user.phone;
     
     const result = await questionsService.setupManualQuestion(
@@ -79,23 +79,14 @@ export async function setupManualQuestion(req, res) {
       topic, 
       question, 
       createdBy,
-      { audioUrl, storyTranscript, summaryGuide, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery, imageInstructions, imageDifficulty, speakingDuration }
+      { audioUrl, storyTranscript, summaryGuide, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery, imageInstructions, imageDifficulty, speakingDuration },
+      publishNow === true
     );
-    if (setupType === "story_summary") {
-      try {
-        const { publishDueManualStoryQuestion } = await import("../services/scheduler/questionSchedulerService.js");
-        await publishDueManualStoryQuestion();
-      } catch (publishErr) {
-        console.warn("[Questions] Story publish check skipped:", publishErr.message);
-      }
-    }
-    if (setupType === "picture_description") {
-      try {
-        const { publishDueManualPictureDescriptionQuestion } = await import("../services/scheduler/questionSchedulerService.js");
-        await publishDueManualPictureDescriptionQuestion();
-      } catch (publishErr) {
-        console.warn("[Questions] Picture description publish check skipped:", publishErr.message);
-      }
+    try {
+      const { publishDueManualQuestion } = await import("../services/scheduler/questionSchedulerService.js");
+      await publishDueManualQuestion();
+    } catch (publishErr) {
+      console.warn("[Questions] Publish check skipped:", publishErr.message);
     }
     res.status(201).json(result);
   } catch (error) {
@@ -103,6 +94,25 @@ export async function setupManualQuestion(req, res) {
       return res.status(error.statusCode).json({ error: error.message });
     }
     console.error("[Questions] Setup manual question error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * POST /api/questions/manual/:id/publish-now - Immediately publish a manual question as today's active question
+ */
+export async function publishManualQuestionNow(req, res) {
+  try {
+    const Question = (await import("../../../models/questionSchema.js")).default;
+    const question = await Question.findById(req.params.id);
+    if (!question) {
+      return res.status(404).json({ error: "Question not found" });
+    }
+    const { publishManualQuestion } = await import("../services/scheduler/questionSchedulerService.js");
+    const result = await publishManualQuestion(question);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("[Questions] Publish manual question now error:", error.message);
     res.status(500).json({ error: error.message });
   }
 }
@@ -117,6 +127,29 @@ export async function listManualQuestions(req, res) {
     res.json(result);
   } catch (error) {
     console.error("[Questions] List manual questions error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * PATCH /api/questions/manual/:id - Edit manual question (admin/trainer)
+ */
+export async function updateManualQuestion(req, res) {
+  try {
+    const result = await questionsService.updateManualQuestion(req.params.id, req.body, req.user?.phone || req.user?.name);
+    
+    try {
+      const { publishDueManualQuestion } = await import("../services/scheduler/questionSchedulerService.js");
+      await publishDueManualQuestion();
+    } catch (publishErr) {
+      console.warn("[Questions] Publish check skipped:", publishErr.message);
+    }
+    res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("[Questions] Update manual question error:", error.message);
     res.status(500).json({ error: error.message });
   }
 }

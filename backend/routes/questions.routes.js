@@ -17,6 +17,8 @@ router.get("/", authMiddleware, requireRole("admin", "admins", "trainer", "viewe
 router.get("/manual", authMiddleware, requireRole("admin", "admins", "trainer", "viewer"), questionsController.listManualQuestions);
 router.get("/templates", authMiddleware, requireRole("admin", "admins", "trainer", "viewer"), questionsController.getQuestionTemplates);
 router.post("/manual", authMiddleware, requireRole("admin", "admins", "trainer"), questionsController.setupManualQuestion);
+router.post("/manual/:id/publish-now", authMiddleware, requireRole("admin", "admins", "trainer"), questionsController.publishManualQuestionNow);
+router.patch("/manual/:id", authMiddleware, requireRole("admin", "admins", "trainer"), questionsController.updateManualQuestion);
 router.delete("/manual/:id", authMiddleware, requireRole("admin", "admins", "trainer"), questionsController.deleteManualQuestion);
 
 // Admin-only routes
