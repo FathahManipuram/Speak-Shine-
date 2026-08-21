@@ -843,20 +843,29 @@ function ManualQuestionsPanel() {
   const [templates, setTemplates] = useState({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [publishMode, setPublishMode] = useState("now"); // "now" | "schedule"
   const [form, setForm] = useState({
-    setupType: "monthly_reflection",
+    setupType: "normal",
     scheduledFor: "",
     scheduledTime: "",
-    category: "",
+    category: "General",
     topic: "",
     question: "",
     audioUrl: "",
     storyTranscript: "",
-    summaryGuide: ""
+    summaryGuide: "",
+    imageUrl: "",
+    imageSource: "",
+    imagePageUrl: "",
+    imagePhotographer: "",
+    imagePhotographerUrl: "",
+    imageInstructions: ""
   });
   const [saving, setSaving] = useState(false);
   const [generatingStory, setGeneratingStory] = useState(false);
   const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [generatingPicture, setGeneratingPicture] = useState(false);
   const [busy, setBusy] = useState({});
   const [toast, setToast] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -864,6 +873,42 @@ function ManualQuestionsPanel() {
   const notify = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+  const getCurrentTime = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const getNextMonthFirst = () => {
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    return nextMonth.toISOString().split('T')[0];
+  };
+
+  const getNextMonthLast = () => {
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    return nextMonth.toISOString().split('T')[0];
+  };
+
+  const getDefaultDate = (setupType, mode = publishMode) => {
+    if (mode === "now") return getTodayDate();
+    switch (setupType) {
+      case "normal":
+      case "regular":
+      case "story_summary":
+      case "picture_description":
+        return getTodayDate();
+      case "monthly_goals":
+        return getNextMonthFirst();
+      case "monthly_reflection":
+        return getNextMonthLast();
+      default:
+        return getTodayDate();
+    }
   };
 
   const handleGenerateStory = async () => {
@@ -886,13 +931,58 @@ function ManualQuestionsPanel() {
     }
   };
 
+  const handleGenerateAudio = async () => {
+    if (!form.storyTranscript) {
+      notify("Generate a story first — the transcript is needed for audio.", "error");
+      return;
+    }
+    setGeneratingAudio(true);
+    try {
+      const res = await api.post("/questions/generate-story-audio", {
+        storyText: form.storyTranscript,
+        topic: form.topic || "story",
+      });
+      setForm(f => ({ ...f, audioUrl: res.data.audioUrl }));
+      notify("Audio generated and uploaded! URL has been filled in.");
+    } catch (err) {
+      notify(err.response?.data?.error || "Audio generation failed", "error");
+    } finally {
+      setGeneratingAudio(false);
+    }
+  };
+
+  const handleGeneratePicture = async () => {
+    setGeneratingPicture(true);
+    try {
+      const res = await api.post("/questions/generate-picture");
+      const { title, instructions, imageUrl, imageSource, imagePageUrl, imagePhotographer, imagePhotographerUrl, imageSearchQuery } = res.data;
+      setForm(f => ({
+        ...f,
+        topic: title || f.topic,
+        question: instructions || f.question,
+        imageUrl: imageUrl || "",
+        imageSource: imageSource || "",
+        imagePageUrl: imagePageUrl || "",
+        imagePhotographer: imagePhotographer || "",
+        imagePhotographerUrl: imagePhotographerUrl || "",
+        imageInstructions: instructions || "",
+        category: "Picture Description",
+      }));
+      notify("Picture challenge generated! All fields have been filled in.");
+    } catch (err) {
+      notify(err.response?.data?.error || "Picture generation failed", "error");
+    } finally {
+      setGeneratingPicture(false);
+    }
+  };
+
   const load = async () => {
     try {
       const [questionsRes, templatesRes] = await Promise.all([
-        api.get("/questions?limit=200"),
-        api.get("/questions/templates").catch(() => ({ data: {} })),
+        api.get("/questions/manual?upcoming=true"),
+        api.get("/questions/templates")
       ]);
-      setManualQuestions(questionsRes.data?.questions || questionsRes.data || []);
+      setManualQuestions(questionsRes.data);
       setTemplates(templatesRes.data);
     } catch (err) {
       notify(err.response?.data?.error || "Failed to load data", "error");
@@ -903,30 +993,93 @@ function ManualQuestionsPanel() {
 
   useEffect(() => { load(); }, []);
 
+  const resetForm = () => {
+    setEditingId(null);
+    setPublishMode("now");
+    setForm({
+      setupType: "normal",
+      scheduledFor: getTodayDate(),
+      scheduledTime: getCurrentTime(),
+      category: "General",
+      topic: "",
+      question: "",
+      audioUrl: "",
+      storyTranscript: "",
+      summaryGuide: "",
+      imageUrl: "",
+      imageSource: "",
+      imagePageUrl: "",
+      imagePhotographer: "",
+      imagePhotographerUrl: "",
+      imageInstructions: ""
+    });
+    setSelectedTemplate("");
+    setShowForm(false);
+  };
+
+  const handleEdit = (q) => {
+    setEditingId(q._id);
+    const isPastOrToday = q.scheduledFor && new Date(q.scheduledFor) <= new Date();
+    setPublishMode(isPastOrToday ? "now" : "schedule");
+    const dateStr = q.scheduledFor ? new Date(q.scheduledFor).toISOString().split("T")[0] : "";
+    setForm({
+      setupType: q.setupType || "normal",
+      scheduledFor: dateStr,
+      scheduledTime: q.scheduledTime || (q.scheduledFor ? new Date(q.scheduledFor).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""),
+      category: q.category || "General",
+      topic: q.topic || "",
+      question: q.question || "",
+      audioUrl: q.audioUrl || "",
+      storyTranscript: q.storyTranscript || "",
+      summaryGuide: q.summaryGuide || "",
+      imageUrl: q.imageUrl || "",
+      imageSource: q.imageSource || "",
+      imagePageUrl: q.imagePageUrl || "",
+      imagePhotographer: q.imagePhotographer || "",
+      imagePhotographerUrl: q.imagePhotographerUrl || "",
+      imageInstructions: q.imageInstructions || ""
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const setupQuestion = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post("/questions/manual", form);
-      setForm({
-        setupType: "monthly_reflection",
-        scheduledFor: "",
-        scheduledTime: "",
-        category: "",
-        topic: "",
-        question: "",
-        audioUrl: "",
-        storyTranscript: "",
-        summaryGuide: ""
-      });
-      setSelectedTemplate("");
-      setShowForm(false);
-      notify("Manual question scheduled successfully!");
+      const payload = {
+        ...form,
+        publishNow: publishMode === "now",
+        scheduledFor: publishMode === "now" ? getTodayDate() : form.scheduledFor,
+        scheduledTime: publishMode === "now" ? getCurrentTime() : form.scheduledTime,
+      };
+
+      if (editingId) {
+        await api.patch(`/questions/manual/${editingId}`, payload);
+        notify(publishMode === "now" ? "⚡ Question updated & made active today!" : "Manual question updated!");
+      } else {
+        await api.post("/questions/manual", payload);
+        notify(publishMode === "now" ? "⚡ Question published live to user dashboard!" : "Manual question scheduled successfully!");
+      }
+      resetForm();
       load();
     } catch (err) {
-      notify(err.response?.data?.error || "Failed to setup question", "error");
+      notify(err.response?.data?.error || `Failed to ${editingId ? "update" : "setup"} question`, "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublishNow = async (id) => {
+    setBusy(b => ({ ...b, [id]: true }));
+    try {
+      await api.post(`/questions/manual/${id}/publish-now`);
+      notify("⚡ Question activated live on user dashboard!");
+      load();
+    } catch (err) {
+      notify(err.response?.data?.error || "Failed to publish question now", "error");
+    } finally {
+      setBusy(b => ({ ...b, [id]: false }));
     }
   };
 
@@ -935,6 +1088,7 @@ function ManualQuestionsPanel() {
     try {
       await api.delete(`/questions/manual/${id}`);
       notify("Question deleted successfully!");
+      if (editingId === id) resetForm();
       load();
     } catch (err) {
       notify(err.response?.data?.error || "Failed to delete question", "error");
@@ -947,56 +1101,25 @@ function ManualQuestionsPanel() {
     setForm(f => ({
       ...f,
       question: templateQuestion,
-      category: f.setupType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      topic: f.setupType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+      category: f.setupType === "normal" || f.setupType === "regular" ? (f.category || "General") : f.setupType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      topic: f.setupType === "normal" || f.setupType === "regular" ? f.topic : f.setupType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
     }));
   };
 
-  const getNextSunday = () => {
-    const today = new Date();
-    const nextSunday = new Date(today);
-    nextSunday.setDate(today.getDate() + (7 - today.getDay()));
-    return nextSunday.toISOString().split('T')[0];
-  };
-
-  const getNextMonthFirst = () => {
-    const today = new Date();
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    return nextMonth.toISOString().split('T')[0];
-  };
-
-  const getNextMonthLast = () => {
-    const today = new Date();
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-    return nextMonth.toISOString().split('T')[0];
-  };
-
-  const getTodayDate = () => new Date().toISOString().split('T')[0];
-
-  const getCurrentTime = () => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  };
-
-  const getDefaultDate = (setupType) => {
-    switch (setupType) {
-      case "monthly_goals": return getNextMonthFirst();
-      case "monthly_reflection": return getNextMonthLast();
-      case "story_summary": return getTodayDate();
-      default: return "";
-    }
-  };
-
   const setupTypeLabels = {
+    normal: "Normal Question (Daily Practice Prompt)",
+    story_summary: "Story Summary (Listening Practice)",
+    picture_description: "Picture Description Challenge",
     monthly_reflection: "Monthly Reflection (Last day of month)",
-    monthly_goals: "Monthly Goals (1st of month)",
-    story_summary: "Story Summary (scheduled time)"
+    monthly_goals: "Monthly Goals (1st of month)"
   };
 
   const groupedQuestions = {
+    normal: manualQuestions.filter(q => q.setupType === "normal" || q.setupType === "regular"),
+    story_summary: manualQuestions.filter(q => q.setupType === "story_summary"),
+    picture_description: manualQuestions.filter(q => q.setupType === "picture_description"),
     monthly_reflection: manualQuestions.filter(q => q.setupType === "monthly_reflection"),
     monthly_goals: manualQuestions.filter(q => q.setupType === "monthly_goals"),
-    story_summary: manualQuestions.filter(q => q.setupType === "story_summary")
   };
 
   return (
@@ -1017,39 +1140,118 @@ function ManualQuestionsPanel() {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800 }}>📝 Manual Questions</h2>
           <p style={{ margin: "0.25rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
-            Setup custom questions, reflections, and story listening tasks
+            Setup and publish custom questions, reflections, stories, or picture description challenges
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(f => !f)}
-          style={{
-            background: showForm ? "rgba(248,113,113,0.15)" : "linear-gradient(135deg,#7c6fff,#4f46e5)",
-            border: showForm ? "1px solid rgba(248,113,113,0.3)" : "none",
-            color: showForm ? "#f87171" : "#fff",
-            borderRadius: 12, padding: "0.65rem 1.25rem",
-            fontWeight: 700, fontSize: "0.9rem", cursor: "pointer",
-            transition: "all 0.2s",
-          }}
-        >
-          {showForm ? "✕ Cancel" : "+ Setup Question"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            onClick={() => {
+              if (showForm && publishMode === "now" && !editingId) {
+                resetForm();
+              } else {
+                resetForm();
+                setPublishMode("now");
+                setShowForm(true);
+              }
+            }}
+            style={{
+              background: showForm && publishMode === "now" ? "linear-gradient(135deg,#10b981,#059669)" : "linear-gradient(135deg,#059669,#047857)",
+              border: "none",
+              color: "#fff",
+              borderRadius: 12, padding: "0.65rem 1.15rem",
+              fontWeight: 700, fontSize: "0.88rem", cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(16,185,129,0.25)",
+              display: "inline-flex", alignItems: "center", gap: "0.4rem"
+            }}
+          >
+            ⚡ Setup Now (Today)
+          </button>
+          <button
+            onClick={() => {
+              if (showForm && publishMode === "schedule" && !editingId) {
+                resetForm();
+              } else {
+                resetForm();
+                setPublishMode("schedule");
+                setShowForm(true);
+              }
+            }}
+            style={{
+              background: showForm && publishMode === "schedule" ? "linear-gradient(135deg,#7c6fff,#4f46e5)" : "rgba(124,111,255,0.15)",
+              border: "1px solid rgba(124,111,255,0.3)",
+              color: showForm && publishMode === "schedule" ? "#fff" : "#a78bfa",
+              borderRadius: 12, padding: "0.65rem 1.15rem",
+              fontWeight: 700, fontSize: "0.88rem", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", gap: "0.4rem"
+            }}
+          >
+            📅 Schedule Later
+          </button>
+        </div>
       </div>
 
       {/* Setup form */}
       {showForm && (
         <div style={{
-          background: "linear-gradient(135deg, rgba(124,111,255,0.08), rgba(79,70,229,0.05))",
-          border: "1px solid rgba(124,111,255,0.25)",
+          background: publishMode === "now" 
+            ? "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.04))"
+            : "linear-gradient(135deg, rgba(124,111,255,0.08), rgba(79,70,229,0.05))",
+          border: publishMode === "now" ? "1px solid rgba(16,185,129,0.35)" : "1px solid rgba(124,111,255,0.25)",
           borderRadius: 16, padding: "1.5rem", marginBottom: "1.5rem",
         }}>
-          <div style={{ fontWeight: 700, marginBottom: "1rem", fontSize: "1rem" }}>📝 Setup Manual Question</div>
+          {/* Mode Switcher Tabs inside Form */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2rem", flexWrap: "wrap", gap: "0.75rem" }}>
+            <div style={{ fontWeight: 800, fontSize: "1.05rem", color: publishMode === "now" ? "#34d399" : "#a78bfa" }}>
+              {editingId ? "✏️ Edit Manual Question" : (publishMode === "now" ? "⚡ Setup & Publish Now (Today)" : "📅 Schedule Question for Later")}
+            </div>
+            <div style={{ display: "flex", background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: 3, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <button
+                type="button"
+                onClick={() => setPublishMode("now")}
+                style={{
+                  background: publishMode === "now" ? "rgba(16,185,129,0.3)" : "transparent",
+                  color: publishMode === "now" ? "#34d399" : "var(--muted)",
+                  border: "none", borderRadius: 8, padding: "0.35rem 0.75rem",
+                  fontSize: "0.78rem", fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                ⚡ Set for Today (Now)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPublishMode("schedule")}
+                style={{
+                  background: publishMode === "schedule" ? "rgba(124,111,255,0.3)" : "transparent",
+                  color: publishMode === "schedule" ? "#a78bfa" : "var(--muted)",
+                  border: "none", borderRadius: 8, padding: "0.35rem 0.75rem",
+                  fontSize: "0.78rem", fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                📅 Schedule Later
+              </button>
+            </div>
+          </div>
+
+          {publishMode === "now" && (
+            <div style={{
+              background: "rgba(16,185,129,0.12)",
+              border: "1px solid rgba(16,185,129,0.25)",
+              borderRadius: 10, padding: "0.6rem 0.85rem",
+              fontSize: "0.82rem", color: "#34d399", marginBottom: "1rem",
+              display: "flex", alignItems: "center", gap: "0.5rem"
+            }}>
+              <span>⚡</span>
+              <span>This question will become <strong>immediately active</strong> on the user dashboard as today's challenge.</span>
+            </div>
+          )}
+
           <form onSubmit={setupQuestion}>
-            <div className="grid-cols-2" style={{ marginBottom: "0.75rem" }}>
-              <div>
+            <div className={publishMode === "now" ? "" : "grid-cols-2"} style={{ marginBottom: "0.75rem" }}>
+              <div style={{ marginBottom: publishMode === "now" ? "0.75rem" : 0 }}>
                 <label className="form-label">Question Type *</label>
                 <select 
                   className="form-input" 
@@ -1061,10 +1263,10 @@ function ManualQuestionsPanel() {
                       ...f, 
                       setupType: newType,
                       scheduledFor: getDefaultDate(newType),
-                      scheduledTime: newType === "story_summary" ? getCurrentTime() : f.scheduledTime,
-                      category: newType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                      topic: newType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                      question: newType === "story_summary" ? "Listen to the story audio and record a short video summary in your own words." : f.question
+                      scheduledTime: (newType === "story_summary" || newType === "picture_description") ? getCurrentTime() : f.scheduledTime,
+                      category: newType === "normal" ? (f.category && f.category !== "Monthly Reflection" && f.category !== "Monthly Goals" ? f.category : "General") : newType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                      topic: newType === "normal" ? f.topic : newType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                      question: newType === "story_summary" ? "Listen to the story audio and record a short video summary in your own words." : newType === "picture_description" ? "Describe what you see in the image. Mention the people, setting, and actions. Share what you think might be happening." : f.question
                     }));
                     setSelectedTemplate("");
                   }}
@@ -1074,26 +1276,31 @@ function ManualQuestionsPanel() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="form-label">Scheduled Date *</label>
-                <input 
-                  className="form-input" 
-                  type="date" 
-                  required
-                  value={form.scheduledFor} 
-                  onChange={e => setForm(f => ({ ...f, scheduledFor: e.target.value }))} 
-                />
-              </div>
-              <div>
-                <label className="form-label">Scheduled Time {form.setupType === "story_summary" ? "*" : "(optional)"}</label>
-                <input
-                  className="form-input"
-                  type="time"
-                  required={form.setupType === "story_summary"}
-                  value={form.scheduledTime}
-                  onChange={e => setForm(f => ({ ...f, scheduledTime: e.target.value }))}
-                />
-              </div>
+
+              {publishMode === "schedule" && (
+                <>
+                  <div>
+                    <label className="form-label">Scheduled Date *</label>
+                    <input 
+                      className="form-input" 
+                      type="date" 
+                      required
+                      value={form.scheduledFor} 
+                      onChange={e => setForm(f => ({ ...f, scheduledFor: e.target.value }))} 
+                    />
+                  </div>
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <label className="form-label">Scheduled Time {form.setupType === "story_summary" || form.setupType === "picture_description" ? "*" : "(optional)"}</label>
+                    <input
+                      className="form-input"
+                      type="time"
+                      required={form.setupType === "story_summary" || form.setupType === "picture_description"}
+                      value={form.scheduledTime}
+                      onChange={e => setForm(f => ({ ...f, scheduledTime: e.target.value }))}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Template selector */}
@@ -1101,7 +1308,7 @@ function ManualQuestionsPanel() {
               <div style={{ marginBottom: "0.75rem" }}>
                 <label className="form-label">Use Template (optional)</label>
                 <select 
-                  className="form-input"
+                  className="form-input" 
                   value={selectedTemplate}
                   onChange={e => {
                     setSelectedTemplate(e.target.value);
@@ -1123,7 +1330,7 @@ function ManualQuestionsPanel() {
                 <label className="form-label">Category *</label>
                 <input 
                   className="form-input" 
-                  placeholder="e.g. Weekly Reflection" 
+                  placeholder="e.g. Daily Life, Opinion, Reflection" 
                   required
                   value={form.category} 
                   onChange={e => setForm(f => ({ ...f, category: e.target.value }))} 
@@ -1133,7 +1340,7 @@ function ManualQuestionsPanel() {
                 <label className="form-label">Topic *</label>
                 <input 
                   className="form-input" 
-                  placeholder="e.g. Weekly Progress Review" 
+                  placeholder="e.g. My Favorite Childhood Memory" 
                   required
                   value={form.topic} 
                   onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} 
@@ -1154,6 +1361,17 @@ function ManualQuestionsPanel() {
             {form.setupType === "story_summary" && (
               <>
                 <div style={{ marginBottom: "0.75rem" }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={generatingStory}
+                    onClick={handleGenerateStory}
+                    style={{ width: "100%", marginBottom: "0.75rem", background: "linear-gradient(135deg,#0f766e,#0d9488)" }}
+                  >
+                    {generatingStory ? "✨ Generating story…" : "✨ AI Generate Story"}
+                  </button>
+                </div>
+                <div style={{ marginBottom: "0.75rem" }}>
                   <label className="form-label">Story Audio URL *</label>
                   <input
                     className="form-input"
@@ -1163,6 +1381,15 @@ function ManualQuestionsPanel() {
                     value={form.audioUrl}
                     onChange={e => setForm(f => ({ ...f, audioUrl: e.target.value }))}
                   />
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    disabled={generatingAudio}
+                    onClick={handleGenerateAudio}
+                    style={{ marginTop: "0.5rem", width: "100%", color: "#22d3ee", borderColor: "rgba(6,182,212,0.4)" }}
+                  >
+                    {generatingAudio ? "🔊 Generating audio…" : "🔊 Generate Audio from Story"}
+                  </button>
                 </div>
                 <div style={{ marginBottom: "0.75rem" }}>
                   <label className="form-label">Story Transcript (optional)</label>
@@ -1186,9 +1413,115 @@ function ManualQuestionsPanel() {
                 </div>
               </>
             )}
-            <button type="submit" className="btn-primary" disabled={saving} style={{ minWidth: 160 }}>
-              {saving ? "Setting up…" : "📝 Setup Question"}
-            </button>
+            {form.setupType === "picture_description" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={generatingPicture}
+                    onClick={handleGeneratePicture}
+                    style={{ width: "100%", marginBottom: "0.5rem", background: "linear-gradient(135deg,#1e40af,#1d4ed8)" }}
+                  >
+                    {generatingPicture ? "🖼️ Generating picture challenge…" : "🖼️ AI Generate Picture Challenge"}
+                  </button>
+                  <div style={{ fontSize: "0.72rem", color: "var(--muted)", textAlign: "center" }}>
+                    Generates topic, instructions, and fetches a Pexels image automatically. You can edit any field before saving.
+                  </div>
+                </div>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <label className="form-label">Image URL * <span style={{ color: "var(--muted)", fontWeight: 400 }}>(direct photo link)</span></label>
+                  <input
+                    className="form-input"
+                    type="url"
+                    placeholder="https://images.pexels.com/photos/..."
+                    required
+                    value={form.imageUrl}
+                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  />
+                  {form.imageUrl && (
+                    <img
+                      src={form.imageUrl}
+                      alt="preview"
+                      style={{ marginTop: "0.5rem", width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(99,179,237,0.3)" }}
+                      onError={e => { e.target.style.display = "none"; }}
+                    />
+                  )}
+                </div>
+                <div className="grid-cols-2" style={{ marginBottom: "0.75rem" }}>
+                  <div>
+                    <label className="form-label">Photographer Name</label>
+                    <input
+                      className="form-input"
+                      placeholder="e.g. John Smith"
+                      value={form.imagePhotographer}
+                      onChange={e => setForm(f => ({ ...f, imagePhotographer: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Image Source</label>
+                    <input
+                      className="form-input"
+                      placeholder="e.g. Pexels"
+                      value={form.imageSource}
+                      onChange={e => setForm(f => ({ ...f, imageSource: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid-cols-2" style={{ marginBottom: "0.75rem" }}>
+                  <div>
+                    <label className="form-label">Pexels Photo Page URL</label>
+                    <input
+                      className="form-input"
+                      type="url"
+                      placeholder="https://www.pexels.com/photo/..."
+                      value={form.imagePageUrl}
+                      onChange={e => setForm(f => ({ ...f, imagePageUrl: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Photographer Profile URL</label>
+                    <input
+                      className="form-input"
+                      type="url"
+                      placeholder="https://www.pexels.com/@..."
+                      value={form.imagePhotographerUrl}
+                      onChange={e => setForm(f => ({ ...f, imagePhotographerUrl: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label className="form-label">Speaking Instructions (optional)</label>
+                  <textarea
+                    className="form-input"
+                    rows={2}
+                    placeholder="e.g. Describe what you see. Mention who is in the image, what they are doing, and what the setting feels like."
+                    value={form.imageInstructions}
+                    onChange={e => setForm(f => ({ ...f, imageInstructions: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                disabled={saving} 
+                style={{ 
+                  minWidth: 180,
+                  background: publishMode === "now" ? "linear-gradient(135deg,#10b981,#059669)" : undefined 
+                }}
+              >
+                {saving 
+                  ? (editingId ? "Updating…" : "Publishing…") 
+                  : (editingId 
+                      ? (publishMode === "now" ? "⚡ Update & Make Active Now" : "💾 Update Question") 
+                      : (publishMode === "now" ? "⚡ Publish Active Question Now" : "📅 Schedule Question"))}
+              </button>
+              <button type="button" onClick={resetForm} className="btn-ghost" style={{ padding: "0.65rem 1.25rem" }}>
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -1214,23 +1547,23 @@ function ManualQuestionsPanel() {
                 {questions.map(q => (
                   <div key={q._id} style={{
                     background: "var(--bg-secondary)",
-                    border: "1px solid rgba(124,111,255,0.25)",
+                    border: editingId === q._id ? "2px solid #7c6fff" : (q.isUsed ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(124,111,255,0.25)"),
                     borderRadius: 14, 
                     padding: "1rem 1.25rem",
                     marginBottom: "0.75rem",
                     transition: "all 0.2s",
                   }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.3rem" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+                      <div style={{ flex: 1, minWidth: 260 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.3rem", flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text)" }}>{q.topic}</span>
                           <span style={{
                             fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.5rem",
                             borderRadius: 20, textTransform: "uppercase",
-                            background: "rgba(124,111,255,0.15)",
-                            color: "#7c6fff",
+                            background: q.isUsed ? "rgba(16,185,129,0.15)" : "rgba(124,111,255,0.15)",
+                            color: q.isUsed ? "#34d399" : "#7c6fff",
                           }}>
-                            Manual
+                            {q.isUsed ? "⚡ Active / Published" : "Manual"}
                           </span>
                         </div>
 
@@ -1240,6 +1573,11 @@ function ManualQuestionsPanel() {
                         {q.audioUrl && (
                           <div style={{ fontSize: "0.78rem", color: "#2dd4bf", marginBottom: "0.4rem", wordBreak: "break-all" }}>
                             🎧 {q.audioUrl}
+                          </div>
+                        )}
+                        {q.imageUrl && (
+                          <div style={{ fontSize: "0.78rem", color: "#90cdf4", marginBottom: "0.4rem", wordBreak: "break-all" }}>
+                            🖼️ {q.imageUrl}
                           </div>
                         )}
 
@@ -1252,7 +1590,35 @@ function ManualQuestionsPanel() {
                       </div>
 
                       {/* Actions */}
-                      <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0, alignItems: "center", flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => handlePublishNow(q._id)}
+                          disabled={busy[q._id]}
+                          title="Immediately set as today's active question"
+                          style={{
+                            background: "rgba(16,185,129,0.15)",
+                            border: "1px solid rgba(16,185,129,0.35)",
+                            color: "#34d399", borderRadius: 10,
+                            padding: "0.5rem 0.85rem", fontWeight: 700, fontSize: "0.82rem",
+                            cursor: "pointer", whiteSpace: "nowrap",
+                            opacity: busy[q._id] ? 0.5 : 1
+                          }}
+                        >
+                          ⚡ Make Active
+                        </button>
+                        <button
+                          onClick={() => handleEdit(q)}
+                          disabled={busy[q._id]}
+                          style={{
+                            background: "rgba(124,111,255,0.12)",
+                            border: "1px solid rgba(124,111,255,0.3)",
+                            color: "#a78bfa", borderRadius: 10,
+                            padding: "0.5rem 0.85rem", fontWeight: 700, fontSize: "0.82rem",
+                            cursor: "pointer", whiteSpace: "nowrap",
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
                         <button
                           onClick={() => deleteQuestion(q._id)}
                           disabled={busy[q._id]}
@@ -1279,7 +1645,7 @@ function ManualQuestionsPanel() {
             <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--muted)" }}>
               <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📝</div>
               <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>No manual questions scheduled</div>
-              <div style={{ fontSize: "0.85rem" }}>Click "+ Setup Question" to create custom weekly, monthly, or story tasks</div>
+              <div style={{ fontSize: "0.85rem" }}>Click "⚡ Setup Now" to create and publish a question immediately for today</div>
             </div>
           )}
         </>
