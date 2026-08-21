@@ -237,109 +237,84 @@ export async function publishAutoSaturdayStory() {
 
 export const publishAutoStorySummary = publishAutoSaturdayStory;
 
-async function publishStoryQuestion(storyQuestion) {
-  await Status.updateOne({}, {
-    $set: {
-      questionSentToday: true,
-      isStorySummaryDay: true,
-      isPictureDescriptionDay: false,
-      isMonthlyReflectionDay: false,
-      isMonthlyGoalsDay: false,
-      todayContentType: "story_audio",
-      todayTopic: storyQuestion.topic || STORY_SUMMARY_TOPIC,
-      todayQuestion: storyQuestion.question || "Listen to the story and record a short video summary in your own words.",
-      todayCategory: storyQuestion.category || STORY_SUMMARY_CATEGORY,
-      todayAudioUrl: storyQuestion.audioUrl || null,
-      todayStoryTranscript: storyQuestion.storyTranscript || null,
-      todaySummaryGuide: storyQuestion.summaryGuide || null,
-      todayImageUrl: null,
-      todayImageSource: null,
-      todayImagePageUrl: null,
-      todayImagePhotographer: null,
-      todayImagePhotographerUrl: null,
-      todayImageSearchQuery: null,
-      todayImageInstructions: null,
-      todayPosterImage: null,
-      todayVocabulary: [],
-    }
-  }, { upsert: true });
-
-  dispatchPosterToWhatsApp({
-    topic: storyQuestion.topic || STORY_SUMMARY_TOPIC,
-    question: storyQuestion.question,
-    category: storyQuestion.category || STORY_SUMMARY_CATEGORY,
-  });
-
-  return {
-    published: true,
-    type: "story_summary",
-    topic: storyQuestion.topic || STORY_SUMMARY_TOPIC,
-    source: "manual"
-  };
-}
-
 /**
- * Publish a due story summary task by exact scheduled datetime.
- * This can override the current daily question because story tasks are explicitly scheduled.
+ * Publish any manual question (story, picture, normal, monthly reflection, monthly goals)
  */
-export async function publishDueManualStoryQuestion(now = new Date()) {
-  const storyQuestion = await getDueManualQuestion("story_summary", now);
-  if (!storyQuestion) return { published: false };
-  return publishStoryQuestion(storyQuestion);
-}
+export async function publishManualQuestion(q) {
+  if (!q) return { published: false };
 
-// ── Picture Description — manual publish ─────────────────────────────────────
+  const isStory = q.setupType === "story_summary";
+  const isPicture = q.setupType === "picture_description";
+  const isReflection = q.setupType === "monthly_reflection";
+  const isGoals = q.setupType === "monthly_goals";
 
-const PICTURE_DESCRIPTION_CATEGORY = "Picture Description";
-
-async function publishPictureDescriptionQuestion(q) {
   await Status.updateOne({}, {
     $set: {
       questionSentToday: true,
-      isPictureDescriptionDay: true,
-      isStorySummaryDay: false,
-      isMonthlyReflectionDay: false,
-      isMonthlyGoalsDay: false,
-      todayContentType: "picture_description",
-      todayTopic: q.topic,
+      todayContentType: isStory ? "story_audio" : isPicture ? "picture_description" : "question",
+      isStorySummaryDay: isStory,
+      isPictureDescriptionDay: isPicture,
+      isMonthlyReflectionDay: isReflection,
+      isMonthlyGoalsDay: isGoals,
+      todayTopic: q.topic || (isStory ? STORY_SUMMARY_TOPIC : isPicture ? PICTURE_DESCRIPTION_CATEGORY : isReflection ? MONTHLY_REFLECTION_TOPIC : isGoals ? MONTHLY_GOALS_TOPIC : "Daily Practice"),
       todayQuestion: q.question,
-      todayCategory: q.category || PICTURE_DESCRIPTION_CATEGORY,
+      todayCategory: q.category || (isStory ? STORY_SUMMARY_CATEGORY : isPicture ? PICTURE_DESCRIPTION_CATEGORY : isReflection ? MONTHLY_REFLECTION_CATEGORY : isGoals ? MONTHLY_GOALS_CATEGORY : "General"),
+      todayAudioUrl: q.audioUrl || null,
+      todayStoryTranscript: q.storyTranscript || null,
+      todaySummaryGuide: q.summaryGuide || null,
       todayImageUrl: q.imageUrl || null,
       todayImageSource: q.imageSource || null,
       todayImagePageUrl: q.imagePageUrl || null,
       todayImagePhotographer: q.imagePhotographer || null,
       todayImagePhotographerUrl: q.imagePhotographerUrl || null,
       todayImageSearchQuery: q.imageSearchQuery || null,
-      todayImageInstructions: q.imageInstructions || q.question || null,
-      todayAudioUrl: null,
-      todayStoryTranscript: null,
-      todaySummaryGuide: null,
+      todayImageInstructions: q.imageInstructions || (isPicture ? q.question : null),
       todayPosterImage: null,
       todayVocabulary: [],
     }
   }, { upsert: true });
 
+  await Question.findByIdAndUpdate(q._id, { isUsed: true });
+
+  await ensureTodayVocabulary().catch(err =>
+    console.warn("[QuestionScheduler] Vocabulary generation failed (non-fatal):", err.message)
+  );
+
   dispatchPosterToWhatsApp({
     topic: q.topic,
     question: q.question,
-    category: q.category || PICTURE_DESCRIPTION_CATEGORY,
+    category: q.category,
   });
 
   return {
     published: true,
-    type: "picture_description",
+    type: q.setupType || "normal",
     topic: q.topic,
-    source: "manual",
+    source: "manual"
   };
 }
 
 /**
- * Publish a due picture description task by exact scheduled datetime.
+ * Publish any due manual task by exact scheduled datetime.
  */
+export async function publishDueManualQuestion(now = new Date()) {
+  const manualQuestion = await getDueManualQuestion(null, now);
+  if (!manualQuestion) return { published: false };
+  return publishManualQuestion(manualQuestion);
+}
+
+export async function publishDueManualStoryQuestion(now = new Date()) {
+  const storyQuestion = await getDueManualQuestion("story_summary", now);
+  if (!storyQuestion) return { published: false };
+  return publishManualQuestion(storyQuestion);
+}
+
+const PICTURE_DESCRIPTION_CATEGORY = "Picture Description";
+
 export async function publishDueManualPictureDescriptionQuestion(now = new Date()) {
   const q = await getDueManualQuestion("picture_description", now);
   if (!q) return { published: false };
-  return publishPictureDescriptionQuestion(q);
+  return publishManualQuestion(q);
 }
 
 /**
@@ -355,6 +330,15 @@ export async function publishDailyQuestion() {
     }
 
     const today = new Date();
+
+    // ── 0. Check for any due or scheduled manual question for today first ──────
+    const dueManual = await publishDueManualQuestion(today);
+    if (dueManual.published) return dueManual;
+
+    const todayManual = await getManualQuestionForDate(today, null);
+    if (todayManual) {
+      return await publishManualQuestion(todayManual);
+    }
 
     // ── 1. Last day of month → Monthly Reflection (Highest milestone priority) ──
     if (isLastDayOfMonth()) {

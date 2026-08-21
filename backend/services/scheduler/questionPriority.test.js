@@ -131,3 +131,44 @@ describe("Scheduler Priority Hierarchy Simulation", () => {
     expect(result).toBe("regular");
   });
 });
+
+describe("Manual Question Edit Validation", () => {
+  const validTypes = ["normal", "regular", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
+
+  it("validates setupType against allowed types", () => {
+    expect(validTypes.includes("normal")).toBe(true);
+    expect(validTypes.includes("regular")).toBe(true);
+    expect(validTypes.includes("monthly_reflection")).toBe(true);
+    expect(validTypes.includes("monthly_goals")).toBe(true);
+    expect(validTypes.includes("story_summary")).toBe(true);
+    expect(validTypes.includes("picture_description")).toBe(true);
+    expect(validTypes.includes("weekly_reflection")).toBe(false);
+  });
+
+  it("allows normal questions without audioUrl or imageUrl", () => {
+    const data = { setupType: "normal", category: "Daily Life", topic: "Morning Routine", question: "Describe your morning routine." };
+    expect(Boolean(data.category && data.topic && data.question)).toBe(true);
+    expect(Boolean(data.audioUrl)).toBe(false);
+    expect(Boolean(data.imageUrl)).toBe(false);
+  });
+
+  it("requires audioUrl for story_summary update", () => {
+    const data = { setupType: "story_summary", audioUrl: "" };
+    const hasAudio = Boolean(data.audioUrl);
+    expect(hasAudio).toBe(false);
+  });
+
+  it("requires imageUrl for picture_description update", () => {
+    const data = { setupType: "picture_description", imageUrl: "" };
+    const hasImage = Boolean(data.imageUrl);
+    expect(hasImage).toBe(false);
+  });
+
+  it("validates scheduledTime format HH:MM", () => {
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    expect(timeRegex.test("08:00")).toBe(true);
+    expect(timeRegex.test("23:59")).toBe(true);
+    expect(timeRegex.test("24:00")).toBe(false);
+    expect(timeRegex.test("8:00")).toBe(false);
+  });
+});

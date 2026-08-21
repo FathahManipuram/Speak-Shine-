@@ -82,16 +82,11 @@ export function startScheduler() {
       const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: TIMEZONE }));
       const nowTime = `${String(nowIST.getHours()).padStart(2,"0")}:${String(nowIST.getMinutes()).padStart(2,"0")}`;
 
-      // ── 0. Publish due manual story task at its exact scheduled time ─────
-      const { publishDueManualStoryQuestion, publishDueManualPictureDescriptionQuestion } = await import("../backend/services/scheduler/questionSchedulerService.js");
-      const storyResult = await publishDueManualStoryQuestion();
-      if (storyResult?.published) {
-        console.log(`[Scheduler] 🎧 Story summary published: ${storyResult.topic}`);
-        return;
-      }
-      const pictureResult = await publishDueManualPictureDescriptionQuestion();
-      if (pictureResult?.published) {
-        console.log(`[Scheduler] 🖼️ Picture description published: ${pictureResult.topic}`);
+      // ── 0. Publish due manual tasks (normal, story, picture, reflection, goals) ─────
+      const { publishDueManualQuestion } = await import("../backend/services/scheduler/questionSchedulerService.js");
+      const manualResult = await publishDueManualQuestion();
+      if (manualResult?.published) {
+        console.log(`[Scheduler] 📝 Due manual task published (${manualResult.type}): ${manualResult.topic}`);
         return;
       }
 

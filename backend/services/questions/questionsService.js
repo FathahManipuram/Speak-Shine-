@@ -88,12 +88,18 @@ export async function editQuestion(questionId, category, topic, question) {
 /**
  * Setup manual question for specific date/type (admin/trainer)
  */
-export async function setupManualQuestion(setupType, scheduledFor, scheduledTime, category, topic, question, createdBy, story = {}) {
+export async function setupManualQuestion(setupType, scheduledFor, scheduledTime, category, topic, question, createdBy, story = {}, publishNow = false) {
+  if (publishNow) {
+    scheduledFor = scheduledFor || new Date().toISOString().split('T')[0];
+    const now = new Date();
+    scheduledTime = scheduledTime || `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  }
+
   if (!setupType || !scheduledFor || !category || !topic || !question) {
     throw new Error("setupType, scheduledFor, category, topic and question are required");
   }
 
-  const validTypes = ["monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
+  const validTypes = ["normal", "regular", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
   if (!validTypes.includes(setupType)) {
     throw new Error("Invalid setupType. Must be one of: " + validTypes.join(", "));
   }
@@ -112,26 +118,30 @@ export async function setupManualQuestion(setupType, scheduledFor, scheduledTime
     throw new Error("Invalid scheduledTime format. Use HH:MM");
   }
 
-  const scheduleDate = normalizedTime
-    ? new Date(`${scheduledFor}T${normalizedTime}:00+05:30`)
-    : new Date(scheduledFor);
+  const scheduleDate = publishNow
+    ? new Date()
+    : (normalizedTime
+      ? new Date(`${scheduledFor}T${normalizedTime}:00+05:30`)
+      : new Date(scheduledFor));
   if (isNaN(scheduleDate.getTime())) {
     throw new Error("Invalid scheduledFor date");
   }
 
   // Check if there's already a manual question for this date and type
-  const existing = await Question.findOne({
-    isManualSetup: true,
-    setupType,
-    scheduledFor: {
-      $gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
-      $lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1)
-    },
-    isUsed: false
-  });
+  if (!publishNow) {
+    const existing = await Question.findOne({
+      isManualSetup: true,
+      setupType,
+      scheduledFor: {
+        $gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+        $lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1)
+      },
+      isUsed: false
+    });
 
-  if (existing) {
-    throw new Error(`A manual ${setupType.replace('_', ' ')} question is already scheduled for this date`);
+    if (existing) {
+      throw new Error(`A manual ${setupType.replace('_', ' ')} question is already scheduled for this date`);
+    }
   }
 
   const manualQuestion = await Question.create({
@@ -156,8 +166,13 @@ export async function setupManualQuestion(setupType, scheduledFor, scheduledTime
     scheduledFor: scheduleDate,
     scheduledTime: normalizedTime,
     createdBy,
-    isUsed: false
+    isUsed: publishNow ? true : false
   });
+
+  if (publishNow) {
+    const { publishManualQuestion } = await import("../scheduler/questionSchedulerService.js");
+    await publishManualQuestion(manualQuestion);
+  }
 
   return manualQuestion;
 }
@@ -183,6 +198,164 @@ export async function listManualQuestions(setupType, upcomingOnly = false) {
     .lean();
 
   return questions;
+}
+
+/**
+ * Update manual question (admin/trainer)
+ */
+export async function updateManualQuestion(questionId, data, userPhone) {
+  const question = await Question.findById(questionId);
+
+  if (!question) {
+    const error = new Error("Question not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!question.isManualSetup) {
+    const error = new Error("Can only edit manual setup questions");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const {
+    setupType,
+    scheduledFor,
+    scheduledTime,
+    category,
+    topic,
+    question: questionText,
+    audioUrl,
+    storyTranscript,
+    summaryGuide,
+    imageUrl,
+    imageSource,
+    imagePageUrl,
+    imagePhotographer,
+    imagePhotographerUrl,
+    imageSearchQuery,
+    imageInstructions,
+    imageDifficulty,
+    speakingDuration,
+  } = data;
+
+  const validTypes = ["normal", "regular", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
+  const finalSetupType = setupType || question.setupType;
+  if (!validTypes.includes(finalSetupType)) {
+    const error = new Error("Invalid setupType. Must be one of: " + validTypes.join(", "));
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (finalSetupType === "story_summary" && !audioUrl && !question.audioUrl) {
+    const error = new Error("audioUrl is required for story summary questions");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (finalSetupType === "picture_description" && !imageUrl && !question.imageUrl) {
+    const error = new Error("imageUrl is required for picture description questions");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let scheduleDate = question.scheduledFor;
+  let normalizedTime = question.scheduledTime;
+
+  if (scheduledTime !== undefined) {
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    normalizedTime = scheduledTime && timeRegex.test(scheduledTime) ? scheduledTime : null;
+    if (scheduledTime && !normalizedTime) {
+      const error = new Error("Invalid scheduledTime format. Use HH:MM");
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  if (scheduledFor) {
+    const datePart = typeof scheduledFor === "string" ? scheduledFor.split("T")[0] : new Date(scheduledFor).toISOString().split("T")[0];
+    scheduleDate = normalizedTime
+      ? new Date(`${datePart}T${normalizedTime}:00+05:30`)
+      : new Date(scheduledFor);
+    if (isNaN(scheduleDate.getTime())) {
+      const error = new Error("Invalid scheduledFor date");
+      error.statusCode = 400;
+      throw error;
+    }
+  } else if (normalizedTime && question.scheduledFor) {
+    const datePart = question.scheduledFor.toISOString().split("T")[0];
+    scheduleDate = new Date(`${datePart}T${normalizedTime}:00+05:30`);
+  }
+
+  // Check if another manual question conflicts on this date
+  if (scheduledFor || setupType) {
+    const startOfDay = new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate());
+    const endOfDay = new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1);
+    const existing = await Question.findOne({
+      _id: { $ne: questionId },
+      isManualSetup: true,
+      setupType: finalSetupType,
+      scheduledFor: { $gte: startOfDay, $lt: endOfDay },
+      isUsed: false,
+    });
+    if (existing) {
+      const error = new Error(`Another manual ${finalSetupType.replace('_', ' ')} question is already scheduled for this date`);
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  // Update question properties
+  if (category) question.category = category;
+  if (topic) question.topic = topic;
+  if (questionText) question.question = questionText;
+  question.setupType = finalSetupType;
+  question.contentType = finalSetupType === "story_summary" ? "story_audio" : finalSetupType === "picture_description" ? "picture_description" : "question";
+  question.scheduledFor = scheduleDate;
+  question.scheduledTime = normalizedTime;
+  if (audioUrl !== undefined) question.audioUrl = audioUrl || null;
+  if (storyTranscript !== undefined) question.storyTranscript = storyTranscript || null;
+  if (summaryGuide !== undefined) question.summaryGuide = summaryGuide || null;
+  if (imageUrl !== undefined) question.imageUrl = imageUrl || null;
+  if (imageSource !== undefined) question.imageSource = imageSource || null;
+  if (imagePageUrl !== undefined) question.imagePageUrl = imagePageUrl || null;
+  if (imagePhotographer !== undefined) question.imagePhotographer = imagePhotographer || null;
+  if (imagePhotographerUrl !== undefined) question.imagePhotographerUrl = imagePhotographerUrl || null;
+  if (imageSearchQuery !== undefined) question.imageSearchQuery = imageSearchQuery || null;
+  if (imageInstructions !== undefined) question.imageInstructions = imageInstructions || null;
+  if (imageDifficulty !== undefined) question.imageDifficulty = imageDifficulty || null;
+  if (speakingDuration !== undefined) question.speakingDuration = speakingDuration || null;
+
+  await question.save();
+
+  // If question is currently active on today's status, update Status in real time
+  if (question.isUsed) {
+    const status = await Status.findOne();
+    if (status) {
+      const isActiveType = (finalSetupType === "story_summary" && status.todayContentType === "story_audio")
+        || (finalSetupType === "picture_description" && status.todayContentType === "picture_description")
+        || (finalSetupType === "monthly_reflection" && status.isMonthlyReflectionDay)
+        || (finalSetupType === "monthly_goals" && status.isMonthlyGoalsDay);
+
+      if (isActiveType) {
+        if (topic) status.todayTopic = topic;
+        if (questionText) status.todayQuestion = questionText;
+        if (category) status.todayCategory = category;
+        if (audioUrl !== undefined) status.todayAudioUrl = audioUrl || null;
+        if (storyTranscript !== undefined) status.todayStoryTranscript = storyTranscript || null;
+        if (summaryGuide !== undefined) status.todaySummaryGuide = summaryGuide || null;
+        if (imageUrl !== undefined) status.todayImageUrl = imageUrl || null;
+        if (imageSource !== undefined) status.todayImageSource = imageSource || null;
+        if (imagePageUrl !== undefined) status.todayImagePageUrl = imagePageUrl || null;
+        if (imagePhotographer !== undefined) status.todayImagePhotographer = imagePhotographer || null;
+        if (imagePhotographerUrl !== undefined) status.todayImagePhotographerUrl = imagePhotographerUrl || null;
+        if (imageInstructions !== undefined) status.todayImageInstructions = imageInstructions || null;
+        await status.save();
+      }
+    }
+  }
+
+  return question;
 }
 
 /**
@@ -253,6 +426,20 @@ export async function deleteManualQuestion(questionId, userPhone) {
  */
 export async function getQuestionTemplates() {
   const templates = {
+    normal: [
+      "Share an experience that significantly changed your perspective on life.",
+      "If you could master any new skill in 30 days, what would it be and why?",
+      "Describe your morning routine and how it sets the tone for your day.",
+      "What is a piece of advice that you received that has helped you the most?",
+      "Talk about a book, movie, or speaker that inspired you recently."
+    ],
+    regular: [
+      "Share an experience that significantly changed your perspective on life.",
+      "If you could master any new skill in 30 days, what would it be and why?",
+      "Describe your morning routine and how it sets the tone for your day.",
+      "What is a piece of advice that you received that has helped you the most?",
+      "Talk about a book, movie, or speaker that inspired you recently."
+    ],
     monthly_reflection: [
       "How many reviews did you attend this month?",
       "How many reviews passed and how many failed? Why did you fail?",
@@ -287,42 +474,39 @@ export async function getQuestionTemplates() {
 /**
  * Get manual question for specific date and type (used by scheduler)
  */
-export async function getManualQuestionForDate(date, setupType) {
+export async function getManualQuestionForDate(date, setupType = null) {
   const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
 
-  const manualQuestion = await Question.findOne({
+  const filter = {
     isManualSetup: true,
-    setupType,
     scheduledFor: {
       $gte: startOfDay,
       $lt: endOfDay
     },
     isUsed: false
-  });
-
-  if (manualQuestion) {
-    // Mark as used
-    await Question.findByIdAndUpdate(manualQuestion._id, { isUsed: true });
+  };
+  if (setupType) {
+    filter.setupType = setupType;
   }
 
+  const manualQuestion = await Question.findOne(filter).sort({ scheduledFor: 1 });
   return manualQuestion;
 }
 
 /**
  * Get the oldest due manual question by exact scheduled datetime.
  */
-export async function getDueManualQuestion(setupType, now = new Date()) {
-  const manualQuestion = await Question.findOne({
+export async function getDueManualQuestion(setupType = null, now = new Date()) {
+  const filter = {
     isManualSetup: true,
-    setupType,
     scheduledFor: { $lte: now },
     isUsed: false
-  }).sort({ scheduledFor: 1 });
-
-  if (manualQuestion) {
-    await Question.findByIdAndUpdate(manualQuestion._id, { isUsed: true });
+  };
+  if (setupType) {
+    filter.setupType = setupType;
   }
+  const manualQuestion = await Question.findOne(filter).sort({ scheduledFor: 1 });
 
   return manualQuestion;
 }

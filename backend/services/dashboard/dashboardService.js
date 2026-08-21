@@ -38,6 +38,13 @@ function getPosterImage(status) {
  * Get today's dashboard overview (all roles)
  */
 export async function getTodayOverview() {
+  try {
+    const { publishDueManualQuestion } = await import("../scheduler/questionSchedulerService.js");
+    await publishDueManualQuestion();
+  } catch {
+    // non-fatal
+  }
+
   const status = await Status.findOne().lean();
   const users = await User.find().lean();
 
@@ -64,12 +71,15 @@ export async function getTodayOverview() {
       audioUrl: status?.todayAudioUrl || null,
       isStorySummary: activeStoryTask(status),
       isPictureDescription: activePictureTask(status),
+      isMonthlyReflection: Boolean(status?.isMonthlyReflectionDay),
+      isMonthlyGoals: Boolean(status?.isMonthlyGoalsDay),
       imageUrl:          status?.todayImageUrl || null,
       imageSource:       status?.todayImageSource || null,
       imagePageUrl:      status?.todayImagePageUrl || null,
       imagePhotographer: status?.todayImagePhotographer || null,
       imageInstructions: status?.todayImageInstructions || null,
       posterImage: getPosterImage(status),
+      vocabulary: status?.todayVocabulary || [],
     },
     stats: {
       total: users.length,
