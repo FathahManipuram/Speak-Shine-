@@ -26,7 +26,6 @@ router.get("/debug-report", authMiddleware, requireRole("admin", "admins"), dash
 router.post("/generate-report-now", authMiddleware, requireRole("admin", "admins"), dashboardController.generateReportNow);
 router.post("/demo-monthly-reflection", authMiddleware, requireRole("admin", "admins"), dashboardController.enableMonthlyReflection);
 router.post("/demo-monthly-goals", authMiddleware, requireRole("admin", "admins"), dashboardController.enableMonthlyGoals);
-router.post("/demo-weekly-reflection", authMiddleware, requireRole("admin", "admins"), dashboardController.enableWeeklyReflection);
 router.post("/demo-monthly-reflection-off", authMiddleware, requireRole("admin", "admins"), dashboardController.disableSpecialModes);
 router.post("/demo-story-summary", authMiddleware, requireRole("admin", "admins"), dashboardController.enableStorySummaryDemo);
 

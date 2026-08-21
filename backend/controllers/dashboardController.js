@@ -174,18 +174,6 @@ export async function enableMonthlyGoals(req, res) {
   }
 }
 
-/**
- * POST /api/dashboard/demo-weekly-reflection - Force weekly reflection mode (admin)
- */
-export async function enableWeeklyReflection(req, res) {
-  try {
-    const result = await dashboardService.enableWeeklyReflection();
-    res.json(result);
-  } catch (error) {
-    console.error("[Dashboard] Enable weekly reflection error:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-}
 
 /**
  * POST /api/dashboard/demo-story-summary - Force story summary mode (admin)

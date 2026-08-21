@@ -6555,7 +6555,7 @@ function ManualQuestionsPanel() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    setupType: "weekly_reflection",
+    setupType: "monthly_reflection",
     scheduledFor: "",
     scheduledTime: "",
     category: "",
@@ -6672,7 +6672,7 @@ function ManualQuestionsPanel() {
     try {
       await api.post("/questions/manual", form);
       setForm({
-        setupType: "weekly_reflection",
+        setupType: "monthly_reflection",
         scheduledFor: "",
         scheduledTime: "",
         category: "",
@@ -6743,7 +6743,6 @@ function ManualQuestionsPanel() {
 
   const getDefaultDate = (setupType) => {
     switch (setupType) {
-      case "weekly_reflection": return getNextSunday();
       case "monthly_goals": return getNextMonthFirst();
       case "monthly_reflection": return getNextMonthLast();
       case "story_summary": return getTodayDate();
@@ -6753,17 +6752,15 @@ function ManualQuestionsPanel() {
   };
 
   const setupTypeLabels = {
-    weekly_reflection: "Weekly Reflection (Sunday)",
-    monthly_goals: "Monthly Goals (1st of month)",
     monthly_reflection: "Monthly Reflection (Last day of month)",
+    monthly_goals: "Monthly Goals (1st of month)",
     story_summary: "Story Summary (scheduled time)",
     picture_description: "Picture Description (scheduled time)"
   };
 
   const groupedQuestions = {
-    weekly_reflection: manualQuestions.filter(q => q.setupType === "weekly_reflection"),
-    monthly_goals: manualQuestions.filter(q => q.setupType === "monthly_goals"),
     monthly_reflection: manualQuestions.filter(q => q.setupType === "monthly_reflection"),
+    monthly_goals: manualQuestions.filter(q => q.setupType === "monthly_goals"),
     story_summary: manualQuestions.filter(q => q.setupType === "story_summary"),
     picture_description: manualQuestions.filter(q => q.setupType === "picture_description"),
   };

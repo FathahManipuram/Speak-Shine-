@@ -193,7 +193,6 @@ function buildGuestPreviewData() {
       questionSent: true,
       isMonthlyReflection: false,
       isMonthlyGoals: false,
-      isWeeklyReflection: false,
       vocabulary: [
         { word: "Resilience",   meaning: "The ability to recover quickly from setbacks",  example: "Her resilience helped her bounce back after every failure." },
         { word: "Perseverance", meaning: "Continued effort despite difficulty",            example: "With perseverance, he finally mastered public speaking." },

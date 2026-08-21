@@ -93,7 +93,7 @@ export async function setupManualQuestion(setupType, scheduledFor, scheduledTime
     throw new Error("setupType, scheduledFor, category, topic and question are required");
   }
 
-  const validTypes = ["weekly_reflection", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
+  const validTypes = ["monthly_reflection", "monthly_goals", "story_summary", "picture_description"];
   if (!validTypes.includes(setupType)) {
     throw new Error("Invalid setupType. Must be one of: " + validTypes.join(", "));
   }
@@ -209,8 +209,6 @@ export async function deleteManualQuestion(questionId, userPhone) {
       ? status?.todayContentType === "story_audio"
       : question.setupType === "picture_description"
       ? status?.todayContentType === "picture_description"
-      : question.setupType === "weekly_reflection"
-      ? status?.isWeeklyReflectionDay === true
       : question.setupType === "monthly_reflection"
       ? status?.isMonthlyReflectionDay === true
       : question.setupType === "monthly_goals"
@@ -255,14 +253,6 @@ export async function deleteManualQuestion(questionId, userPhone) {
  */
 export async function getQuestionTemplates() {
   const templates = {
-    weekly_reflection: [
-      "Did you attend your review this week? If yes, did you pass or fail? Why?",
-      "How many days did you submit your speaking video this week?",
-      "What was the best speaking moment you had this week?",
-      "What was the most difficult part of speaking this week?",
-      "What new word or phrase did you learn and use this week?",
-      "What is your focus for next week — in both review preparation and communication?"
-    ],
     monthly_reflection: [
       "How many reviews did you attend this month?",
       "How many reviews passed and how many failed? Why did you fail?",

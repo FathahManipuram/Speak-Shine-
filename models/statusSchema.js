@@ -71,7 +71,6 @@ const statusSchema = new mongoose.Schema({
   // Monthly reflection
   isMonthlyReflectionDay: { type: Boolean, default: false },
   isMonthlyGoalsDay: { type: Boolean, default: false },
-  isWeeklyReflectionDay: { type: Boolean, default: false },
   isStorySummaryDay: { type: Boolean, default: false },
   isPictureDescriptionDay: { type: Boolean, default: false },
   // Duration scoring — picture description (admin-configurable)

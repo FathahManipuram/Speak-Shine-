@@ -9,7 +9,7 @@ const questionSchema = new mongoose.Schema(
     isManualSetup: { type: Boolean, default: false },
     setupType: { 
       type: String, 
-      enum: ["regular", "weekly_reflection", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"],
+      enum: ["regular", "monthly_reflection", "monthly_goals", "story_summary", "picture_description"],
       default: "regular"
     },
     contentType: {

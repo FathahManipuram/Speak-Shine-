@@ -268,7 +268,6 @@ export async function getUserProfile(phone) {
       posterImage: getPosterImage(status),
       isMonthlyReflection: status?.isMonthlyReflectionDay || false,
       isMonthlyGoals: status?.isMonthlyGoalsDay || false,
-      isWeeklyReflection: status?.isWeeklyReflectionDay || false,
       isStorySummary: activeStoryTask(status),
       isPictureDescription: activePictureTask(status),
       // Picture description image data (only populated on picture description days)
@@ -300,7 +299,6 @@ export async function getUserProfile(phone) {
       durationLimits: getDurationLimits({
         isMonthlyReflection: status?.isMonthlyReflectionDay || false,
         isMonthlyGoals: status?.isMonthlyGoalsDay || false,
-        isWeeklyReflection: status?.isWeeklyReflectionDay || false,
         isStorySummary: activeStoryTask(status),
         isPictureDescription: activePictureTask(status),
       }, status || {}),
@@ -1040,7 +1038,6 @@ export async function enableMonthlyGoals() {
       questionSentToday: true,
       isMonthlyGoalsDay: true,
       isMonthlyReflectionDay: false,
-      isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
       isPictureDescriptionDay: false,
       todayContentType: "question",
@@ -1056,33 +1053,6 @@ export async function enableMonthlyGoals() {
   return { success: true, message: "Monthly goal-setting mode activated — refresh the app to see it" };
 }
 
-/**
- * Force weekly reflection mode ON (admin only, for testing)
- */
-export async function enableWeeklyReflection() {
-  const { WEEKLY_REFLECTION_QUESTIONS, WEEKLY_REFLECTION_TOPIC, WEEKLY_REFLECTION_CATEGORY } = await import("../../../api/scheduler.js");
-  const weeklyText = WEEKLY_REFLECTION_QUESTIONS.map((q, i) => `${i + 1}. ${q}`).join("\n");
-  
-  await Status.updateOne({}, {
-    $set: {
-      questionSentToday: true,
-      isWeeklyReflectionDay: true,
-      isMonthlyReflectionDay: false,
-      isMonthlyGoalsDay: false,
-      isStorySummaryDay: false,
-      isPictureDescriptionDay: false,
-      todayContentType: "question",
-      todayAudioUrl: null,
-      todayStoryTranscript: null,
-      todaySummaryGuide: null,
-      todayTopic: WEEKLY_REFLECTION_TOPIC,
-      todayQuestion: weeklyText,
-      todayCategory: WEEKLY_REFLECTION_CATEGORY,
-    }
-  }, { upsert: true });
-  
-  return { success: true, message: "Weekly reflection mode activated — refresh the app to see it" };
-}
 
 /**
  * Force story summary mode ON (admin only, for testing)
@@ -1106,7 +1076,6 @@ export async function disableSpecialModes() {
     $set: {
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
-      isWeeklyReflectionDay: false,
       isStorySummaryDay: false,
       isPictureDescriptionDay: false,
       questionSentToday: false,

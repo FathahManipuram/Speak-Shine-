@@ -327,17 +327,15 @@ async function processJob(job) {
     try {
       const status = await Status.findOne().lean();
       challengeType = challengeType || (
-        status?.isPictureDescriptionDay ? "picture_description"
+        status?.isMonthlyReflectionDay ? "monthly_reflection"
+        : status?.isPictureDescriptionDay ? "picture_description"
         : status?.isStorySummaryDay ? "story_summary"
-        : status?.isWeeklyReflectionDay ? "weekly_reflection"
-        : status?.isMonthlyReflectionDay ? "monthly_reflection"
         : status?.isMonthlyGoalsDay ? "monthly_goals"
         : "topic"
       );
       gateFlags = {
         isMonthlyReflection: challengeType === "monthly_reflection",
         isMonthlyGoals:      challengeType === "monthly_goals",
-        isWeeklyReflection:  challengeType === "weekly_reflection",
         isStorySummary:      challengeType === "story_summary",
         isPictureDescription: challengeType === "picture_description",
       };
@@ -387,12 +385,10 @@ async function processJob(job) {
       console.warn("[Queue] Composite score calculation failed (non-fatal):", scoreErr.message);
     }
 
-    // Keep report persistence safe even if the optional score calculation fails.
     challengeType = challengeType || "topic";
     gateFlags = gateFlags || {
       isMonthlyReflection: challengeType === "monthly_reflection",
       isMonthlyGoals:      challengeType === "monthly_goals",
-      isWeeklyReflection:  challengeType === "weekly_reflection",
       isStorySummary:      challengeType === "story_summary",
       isPictureDescription: challengeType === "picture_description",
     };
@@ -405,10 +401,9 @@ async function processJob(job) {
         vocabularyScore,
         compositeScore: result.analysis._compositeScore ?? null,
         scoreBreakdown: result.analysis._scoreBreakdown ?? null,
-        challengeType: gateFlags.isPictureDescription ? "picture_description"
+        challengeType: gateFlags.isMonthlyReflection ? "monthly_reflection"
+          : gateFlags.isPictureDescription ? "picture_description"
           : gateFlags.isStorySummary ? "story_summary"
-          : gateFlags.isWeeklyReflection ? "weekly_reflection"
-          : gateFlags.isMonthlyReflection ? "monthly_reflection"
           : gateFlags.isMonthlyGoals ? "monthly_goals"
           : "topic",
       },

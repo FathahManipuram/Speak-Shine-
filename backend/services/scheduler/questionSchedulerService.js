@@ -47,18 +47,6 @@ export const MONTHLY_GOALS_QUESTIONS = [
 export const MONTHLY_GOALS_TOPIC = "Monthly Goal Setting";
 export const MONTHLY_GOALS_CATEGORY = "Monthly Goals";
 
-// Weekly reflection questions — shown every Sunday
-export const WEEKLY_REFLECTION_QUESTIONS = [
-  "Did you attend your review this week? If yes, did you pass or fail? Why?",
-  "How many days did you submit your speaking video this week?",
-  "What was the best speaking moment you had this week?",
-  "What was the most difficult part of speaking this week?",
-  "What new word or phrase did you learn and use this week?",
-  "What is your focus for next week — in both review preparation and communication?",
-];
-export const WEEKLY_REFLECTION_TOPIC = "Weekly Reflection";
-export const WEEKLY_REFLECTION_CATEGORY = "Weekly Reflection";
-
 export const STORY_SUMMARY_TOPIC = "Story Summary";
 export const STORY_SUMMARY_CATEGORY = "Listening Practice";
 
@@ -79,15 +67,6 @@ function isFirstDayOfMonth() {
   const now = new Date();
   const istDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   return istDate.getDate() === 1;
-}
-
-/**
- * Check if today is Sunday (IST)
- */
-function isSunday() {
-  const now = new Date();
-  const istDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  return istDate.getDay() === 0; // 0 = Sunday
 }
 
 /**
@@ -172,7 +151,6 @@ async function publishAutoPictureDescription() {
         isStorySummaryDay: false,
         isMonthlyReflectionDay: false,
         isMonthlyGoalsDay: false,
-        isWeeklyReflectionDay: false,
         todayContentType: "picture_description",
         todayTopic: challenge.title,
         todayQuestion: challenge.instructions,
@@ -233,7 +211,6 @@ export async function publishAutoSaturdayStory() {
         isStorySummaryDay: true,
         isMonthlyReflectionDay: false,
         isMonthlyGoalsDay: false,
-        isWeeklyReflectionDay: false,
         todayContentType: "story_audio",
         todayTopic: story.topic,
         todayQuestion: story.question,
@@ -268,7 +245,6 @@ async function publishStoryQuestion(storyQuestion) {
       isPictureDescriptionDay: false,
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
-      isWeeklyReflectionDay: false,
       todayContentType: "story_audio",
       todayTopic: storyQuestion.topic || STORY_SUMMARY_TOPIC,
       todayQuestion: storyQuestion.question || "Listen to the story and record a short video summary in your own words.",
@@ -324,7 +300,6 @@ async function publishPictureDescriptionQuestion(q) {
       isStorySummaryDay: false,
       isMonthlyReflectionDay: false,
       isMonthlyGoalsDay: false,
-      isWeeklyReflectionDay: false,
       todayContentType: "picture_description",
       todayTopic: q.topic,
       todayQuestion: q.question,
@@ -369,17 +344,11 @@ export async function publishDueManualPictureDescriptionQuestion(now = new Date(
 
 /**
  * Publish daily question
- * Handles special days (monthly reflection, goals, weekly reflection) and regular questions
+ * Handles special days (monthly reflection, monthly goals) and regular questions
  * Now checks for manual questions first before using defaults
  */
 export async function publishDailyQuestion() {
   try {
-    const dueStory = await publishDueManualStoryQuestion();
-    if (dueStory.published) return dueStory;
-
-    const duePicture = await publishDueManualPictureDescriptionQuestion();
-    if (duePicture.published) return duePicture;
-
     const statusCheck = await Status.findOne();
     if (statusCheck?.questionSentToday) {
       return { alreadyPublished: true };
@@ -387,70 +356,7 @@ export async function publishDailyQuestion() {
 
     const today = new Date();
 
-    // ── Story Summary Day → Auto Story Summary ────────────────────────────
-    if (await isStoryDay()) {
-      return await publishAutoSaturdayStory();
-    }
-
-    // ── Picture Description Day → Auto Picture Description ────────────────
-    // Runs on the configured weekday (default Thursday).
-    // Falls back to a normal question if generation fails (non-fatal).
-    if (await isPictureDescriptionDay()) {
-      const result = await publishAutoPictureDescription();
-      if (result.published) return result;
-      // If picture generation failed (e.g. no Pexels key), log and fall through
-      // to the normal question so users still get a challenge today.
-      console.warn("[QuestionScheduler] ⚠️  Picture Description failed — falling back to normal question");
-    }
-
-    // ── 1st of month → Monthly Goal Setting (takes priority over Sunday) ─
-    if (isFirstDayOfMonth()) {
-      // Check for manual monthly goals question first
-      const manualQuestion = await getManualQuestionForDate(today, "monthly_goals");
-      
-      if (manualQuestion) {
-        await Status.updateOne({}, {
-          $set: {
-            questionSentToday: true,
-            isMonthlyGoalsDay: true,
-            todayTopic: manualQuestion.topic,
-            todayQuestion: manualQuestion.question,
-            todayCategory: manualQuestion.category,
-          }
-        }, { upsert: true });
-        
-        return { 
-          published: true, 
-          type: "monthly_goals",
-          topic: manualQuestion.topic,
-          source: "manual"
-        };
-      }
-
-      // Use default questions if no manual question
-      const goalsText = MONTHLY_GOALS_QUESTIONS
-        .map((q, i) => `${i + 1}. ${q}`)
-        .join("\n");
-      
-      await Status.updateOne({}, {
-        $set: {
-          questionSentToday: true,
-          isMonthlyGoalsDay: true,
-          todayTopic: MONTHLY_GOALS_TOPIC,
-          todayQuestion: goalsText,
-          todayCategory: MONTHLY_GOALS_CATEGORY,
-        }
-      }, { upsert: true });
-      
-      return { 
-        published: true, 
-        type: "monthly_goals",
-        topic: MONTHLY_GOALS_TOPIC,
-        source: "default"
-      };
-    }
-
-    // ── Last day of month → Monthly Reflection (takes priority over Sunday)
+    // ── 1. Last day of month → Monthly Reflection (Highest milestone priority) ──
     if (isLastDayOfMonth()) {
       // Check for manual monthly reflection question first
       const manualQuestion = await getManualQuestionForDate(today, "monthly_reflection");
@@ -460,6 +366,9 @@ export async function publishDailyQuestion() {
           $set: {
             questionSentToday: true,
             isMonthlyReflectionDay: true,
+            isMonthlyGoalsDay: false,
+            isStorySummaryDay: false,
+            isPictureDescriptionDay: false,
             todayTopic: manualQuestion.topic,
             todayQuestion: manualQuestion.question,
             todayCategory: manualQuestion.category,
@@ -483,6 +392,9 @@ export async function publishDailyQuestion() {
         $set: {
           questionSentToday: true,
           isMonthlyReflectionDay: true,
+          isMonthlyGoalsDay: false,
+          isStorySummaryDay: false,
+          isPictureDescriptionDay: false,
           todayTopic: MONTHLY_REFLECTION_TOPIC,
           todayQuestion: reflectionText,
           todayCategory: MONTHLY_REFLECTION_CATEGORY,
@@ -497,16 +409,41 @@ export async function publishDailyQuestion() {
       };
     }
 
-    // ── Sunday → Weekly Reflection ────────────────────────────────────────
-    if (isSunday()) {
-      // Check for manual weekly reflection question first
-      const manualQuestion = await getManualQuestionForDate(today, "weekly_reflection");
+    // ── 2. Due Manual Story Task ──────────────────────────────────────────
+    const dueStory = await publishDueManualStoryQuestion();
+    if (dueStory.published) return dueStory;
+
+    // ── 3. Due Manual Picture Description Task ────────────────────────────
+    const duePicture = await publishDueManualPictureDescriptionQuestion();
+    if (duePicture.published) return duePicture;
+
+    // ── 4. Story Summary Day → Auto Story Summary (e.g. Saturday) ────────
+    if (await isStoryDay()) {
+      return await publishAutoSaturdayStory();
+    }
+
+    // ── 5. Picture Description Day → Auto Picture Description (e.g. Thursday) ──
+    if (await isPictureDescriptionDay()) {
+      const result = await publishAutoPictureDescription();
+      if (result.published) return result;
+      // If picture generation failed (e.g. no Pexels key), log and fall through
+      // to next challenge so users still get a task today.
+      console.warn("[QuestionScheduler] ⚠️  Picture Description failed — falling back to next task");
+    }
+
+    // ── 6. 1st of month → Monthly Goal Setting (lower priority than story/picture) ──
+    if (isFirstDayOfMonth()) {
+      // Check for manual monthly goals question first
+      const manualQuestion = await getManualQuestionForDate(today, "monthly_goals");
       
       if (manualQuestion) {
         await Status.updateOne({}, {
           $set: {
             questionSentToday: true,
-            isWeeklyReflectionDay: true,
+            isMonthlyGoalsDay: true,
+            isMonthlyReflectionDay: false,
+            isStorySummaryDay: false,
+            isPictureDescriptionDay: false,
             todayTopic: manualQuestion.topic,
             todayQuestion: manualQuestion.question,
             todayCategory: manualQuestion.category,
@@ -515,31 +452,34 @@ export async function publishDailyQuestion() {
         
         return { 
           published: true, 
-          type: "weekly_reflection",
+          type: "monthly_goals",
           topic: manualQuestion.topic,
           source: "manual"
         };
       }
 
       // Use default questions if no manual question
-      const weeklyText = WEEKLY_REFLECTION_QUESTIONS
+      const goalsText = MONTHLY_GOALS_QUESTIONS
         .map((q, i) => `${i + 1}. ${q}`)
         .join("\n");
       
       await Status.updateOne({}, {
         $set: {
           questionSentToday: true,
-          isWeeklyReflectionDay: true,
-          todayTopic: WEEKLY_REFLECTION_TOPIC,
-          todayQuestion: weeklyText,
-          todayCategory: WEEKLY_REFLECTION_CATEGORY,
+          isMonthlyGoalsDay: true,
+          isMonthlyReflectionDay: false,
+          isStorySummaryDay: false,
+          isPictureDescriptionDay: false,
+          todayTopic: MONTHLY_GOALS_TOPIC,
+          todayQuestion: goalsText,
+          todayCategory: MONTHLY_GOALS_CATEGORY,
         }
       }, { upsert: true });
       
       return { 
         published: true, 
-        type: "weekly_reflection",
-        topic: WEEKLY_REFLECTION_TOPIC,
+        type: "monthly_goals",
+        topic: MONTHLY_GOALS_TOPIC,
         source: "default"
       };
     }

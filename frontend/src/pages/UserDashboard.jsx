@@ -890,7 +890,6 @@ function buildGuestData() {
       questionSent: true,
       isMonthlyReflection: false,
       isMonthlyGoals: false,
-      isWeeklyReflection: false,
       vocabulary: [
         { word: "Resilience", meaning: "The ability to recover quickly from setbacks", example: "Her resilience helped her bounce back after every failure." },
         { word: "Perseverance", meaning: "Continued effort despite difficulty", example: "With perseverance, he finally mastered public speaking." },
@@ -1369,10 +1368,6 @@ export default function UserDashboard() {
           background: "linear-gradient(135deg, #0a1f0a 0%, #0d3d1a 50%, #0a2e12 100%)",
           border: "2px solid rgba(74,222,128,0.45)",
           boxShadow: "0 8px 40px rgba(34,197,94,0.2)",
-        } : data?.today?.isWeeklyReflection ? {
-          background: "linear-gradient(135deg, #0c1a2e 0%, #0f2d4a 50%, #0c1a2e 100%)",
-          border: "2px solid rgba(56,189,248,0.45)",
-          boxShadow: "0 8px 40px rgba(14,165,233,0.2)",
         } : data?.today?.isStorySummary ? {
           background: "linear-gradient(135deg, #10231f 0%, #173d35 50%, #10231f 100%)",
           border: "2px solid rgba(45,212,191,0.45)",
@@ -1387,18 +1382,16 @@ export default function UserDashboard() {
             <div className="daily-poster-brand">
               {data?.today?.isMonthlyReflection ? "🌟 Speak & Shine"
                 : data?.today?.isMonthlyGoals ? "🎯 Speak & Shine"
-                  : data?.today?.isWeeklyReflection ? "📅 Speak & Shine"
-                    : data?.today?.isStorySummary ? "🎧 Speak & Shine"
-                      : data?.today?.isPictureDescription ? "🖼️ Speak & Shine"
-                      : "✦ Speak & Shine"}
+                  : data?.today?.isStorySummary ? "🎧 Speak & Shine"
+                    : data?.today?.isPictureDescription ? "🖼️ Speak & Shine"
+                    : "✦ Speak & Shine"}
             </div>
             <div className="daily-poster-sub">
               {data?.today?.isMonthlyReflection ? "MONTHLY REFLECTION"
                 : data?.today?.isMonthlyGoals ? "MONTHLY GOAL SETTING"
-                  : data?.today?.isWeeklyReflection ? "WEEKLY REFLECTION"
-                    : data?.today?.isStorySummary ? "STORY SUMMARY"
-                      : data?.today?.isPictureDescription ? "PICTURE DESCRIPTION"
-                      : "DAILY SPEAKING CHALLENGE"}
+                  : data?.today?.isStorySummary ? "STORY SUMMARY"
+                    : data?.today?.isPictureDescription ? "PICTURE DESCRIPTION"
+                    : "DAILY SPEAKING CHALLENGE"}
             </div>
             {/* Sunday bonus badge */}
             {new Date().getDay() === 0 && (
@@ -1410,10 +1403,9 @@ export default function UserDashboard() {
               <div className="daily-poster-badge" style={
                 data?.today?.isMonthlyReflection ? { background: "rgba(139,92,246,0.3)", border: "1px solid rgba(167,139,250,0.5)", color: "#c4b5fd" }
                   : data?.today?.isMonthlyGoals ? { background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", color: "#4ade80" }
-                    : data?.today?.isWeeklyReflection ? { background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", color: "#38bdf8" }
-                      : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
-                        : data?.today?.isPictureDescription ? { background: "rgba(66,153,225,0.25)", border: "1px solid rgba(99,179,237,0.5)", color: "#90cdf4" }
-                        : {}
+                    : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
+                      : data?.today?.isPictureDescription ? { background: "rgba(66,153,225,0.25)", border: "1px solid rgba(99,179,237,0.5)", color: "#90cdf4" }
+                      : {}
               }>
                 {data.today.category}
               </div>
@@ -1506,22 +1498,6 @@ export default function UserDashboard() {
               </div>
             </div>
 
-            /* Weekly Reflection questions */
-          ) : data?.today?.isWeeklyReflection ? (
-            <div style={{ marginTop: "1rem" }}>
-              <div className="daily-poster-section-label">📅 WEEKLY REFLECTION QUESTIONS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["Did you attend your review this week? If yes, did you pass or fail? Why?", "How many days did you submit your speaking video this week?", "What was the best speaking moment you had this week?", "What was the most difficult part of speaking this week?", "What new word or phrase did you learn and use this week?", "What is your focus for next week — in both review preparation and communication?"].map((q, i) => (
-                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
-                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.25)", border: "1px solid rgba(56,189,248,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#38bdf8", flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: "0.85rem", background: "rgba(14,165,233,0.08)", border: "1px solid rgba(56,189,248,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
-                💡 Be honest about your week. Reflection is how you grow — speak clearly and specifically!
-              </div>
-            </div>
 
           ) : (
             <>
@@ -1598,10 +1574,9 @@ export default function UserDashboard() {
                 {isGuest ? "Register to Submit Video"
                   : data?.today?.isMonthlyReflection ? "Record Monthly Reflection"
                     : data?.today?.isMonthlyGoals ? "Record Monthly Goals"
-                      : data?.today?.isWeeklyReflection ? "Record Weekly Reflection"
-                        : data?.today?.isStorySummary ? "Record Story Summary"
-                          : data?.today?.isPictureDescription ? "Record Picture Description"
-                            : "Record Video Now"}
+                      : data?.today?.isStorySummary ? "Record Story Summary"
+                        : data?.today?.isPictureDescription ? "Record Picture Description"
+                        : "Record Video Now"}
               </span>
             </button>
             {!isGuest && (
@@ -1641,15 +1616,14 @@ export default function UserDashboard() {
             streak={profile?.streak || 0}
             navigate={navigate}
           />
-          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals || data?.today?.isWeeklyReflection)
+          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals)
             ? <SubmitNudge
               name={profile?.name}
               streak={profile?.streak || 0}
               navigate={navigate}
               specialDay={
-                data?.today?.isWeeklyReflection ? "weekly"
-                  : data?.today?.isMonthlyGoals ? "goals"
-                    : "reflection"
+                data?.today?.isMonthlyGoals ? "goals"
+                  : "reflection"
               }
             />
             : <SubmitNudge
