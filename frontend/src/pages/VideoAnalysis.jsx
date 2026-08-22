@@ -1090,16 +1090,13 @@ function compressVideo(file, onProgress) {
     const blobUrl = URL.createObjectURL(file);
     video.src = blobUrl;
 
-    // Timeout: Original duration + 2 minutes buffer
-    // (We compress at 1× speed now, so a 5-min video takes ~5 min to compress)
-    const timeoutMs = Math.max(3 * 60 * 1000, (duration + 120) * 1000);
-    const hardTimeout = setTimeout(() => {
+    let hardTimeout = setTimeout(() => {
       cleanup();
       reject(new Error("Compression timed out — uploading original"));
-    }, timeoutMs);
+    }, 5 * 60 * 1000);
 
     const cleanup = () => {
-      clearTimeout(hardTimeout);
+      if (hardTimeout) clearTimeout(hardTimeout);
       URL.revokeObjectURL(blobUrl);
       // Force cleanup of canvas/context to free memory
       if (canvas) {
@@ -1120,6 +1117,15 @@ function compressVideo(file, onProgress) {
     video.onloadedmetadata = () => {
       const duration = video.duration;
       if (!duration || !isFinite(duration)) { cleanup(); reject(new Error("Unknown duration")); return; }
+
+      // Timeout: Original duration + 2 minutes buffer
+      // (We compress at 1× speed now, so a 5-min video takes ~5 min to compress)
+      clearTimeout(hardTimeout);
+      const timeoutMs = Math.max(3 * 60 * 1000, (duration + 120) * 1000);
+      hardTimeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("Compression timed out — uploading original"));
+      }, timeoutMs);
 
       // Scale to max 720p (reduce memory usage)
       let w = video.videoWidth, h = video.videoHeight;

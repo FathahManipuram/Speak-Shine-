@@ -22,6 +22,17 @@ const MOTIVATIONAL = [
   "Speak with confidence. The world is ready to listen. 🌍",
 ];
 
+const CELEBRATION_MESSAGES = [
+  "You're unstoppable! Another day, another victory! 🏆",
+  "Consistency is your superpower! Keep shining! ✨",
+  "You showed up today — that's what champions do! 💪",
+  "Your dedication is inspiring! Tomorrow awaits! 🌟",
+  "Another brick in your success story! Well done! 🎯",
+  "You're building something amazing, one day at a time! 🚀",
+  "Excellence is a habit, and you're mastering it! 💎",
+  "Your commitment today shapes your fluency tomorrow! 🔥",
+];
+
 const SCORES = { fluency: "#7c6fff", grammar: "#4ade80", confidence: "#fbbf24", vocabulary: "#ff6b9d" };
 
 function QuestionCountdown({ posterSendTime, name, streak }) {
@@ -325,7 +336,10 @@ function BadgeCatalogModal({ badges, earnedBadges, onClose }) {
 }
 
 function CelebrationCard({ name, streak, navigate }) {
-  const [quote] = useState(() => CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]);
+  const [quote] = useState(() => (Array.isArray(CELEBRATION_MESSAGES) && CELEBRATION_MESSAGES.length > 0)
+    ? CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]
+    : "Great job completing today's challenge! Keep shining! ✨"
+  );
 
   return (
     <div style={{
