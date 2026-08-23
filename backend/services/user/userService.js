@@ -386,6 +386,63 @@ export async function adjustUserPoints(phone, { amount, mode = "add", reason = "
 }
 
 /**
+ * Adjust user daily streak count (admin/trainer)
+ */
+export async function adjustUserStreak(phone, { amount, mode = "add" } = {}, io = null) {
+  let user = await User.findOne({ phone });
+  if (!user) {
+    user = await User.findOne({ 
+      userId: { $regex: `^${escapeRegex(phone)}(@|:)` } 
+    });
+  }
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const numAmount = parseInt(amount, 10);
+  if (isNaN(numAmount)) {
+    const error = new Error("Valid streak count is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const oldStreak = Number(user.streak || 0);
+  let newStreak = oldStreak;
+
+  if (mode === "set") {
+    newStreak = Math.max(0, numAmount);
+  } else if (mode === "remove") {
+    newStreak = Math.max(0, oldStreak - Math.abs(numAmount));
+  } else if (mode === "reset") {
+    newStreak = 0;
+  } else {
+    newStreak = Math.max(0, oldStreak + numAmount);
+  }
+
+  user.streak = newStreak;
+  await user.save();
+
+  if (io) {
+    io.emit("user:streak_updated", {
+      phone: user.phone || phone,
+      streak: newStreak,
+      userId: user.userId,
+    });
+  }
+
+  return {
+    success: true,
+    phone: user.phone || phone,
+    name: user.name,
+    streak: newStreak,
+    previousStreak: oldStreak,
+    change: newStreak - oldStreak,
+  };
+}
+
+/**
  * Adjust user streak freeze shields (admin/trainer)
  */
 export async function adjustUserFreeze(phone, { amount, mode = "add" } = {}, io = null) {

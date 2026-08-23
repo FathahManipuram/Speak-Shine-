@@ -161,6 +161,26 @@ export async function adjustUserPoints(req, res) {
 }
 
 /**
+ * PATCH /api/users/:phone/streak
+ * Adjust user streak days (admin/trainer)
+ * Body: { amount: number, mode?: "add" | "remove" | "set" | "reset" }
+ */
+export async function adjustUserStreak(req, res) {
+  try {
+    const { amount, mode } = req.body || {};
+    const io = req.app?.get("io");
+    const result = await userService.adjustUserStreak(req.params.phone, { amount, mode }, io);
+    res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("[AdjustUserStreak] Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
  * PATCH /api/users/:phone/freeze
  * Adjust user streak freeze shields (admin/trainer)
  * Body: { amount: number, mode?: "add" | "remove" | "set" }

@@ -596,15 +596,37 @@ export default function AdminDashboard() {
       });
     };
 
+    const onStreakUpdated = (data) => {
+      if (!data?.phone) return;
+      const strippedPhone = String(data.phone).replace(/^(\+91|91)/, "");
+      setUsers(prev => prev.map(u => {
+        const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+        if (uPhone === strippedPhone || u.phone === data.phone || (data.userId && u.userId === data.userId)) {
+          return { ...u, streak: data.streak };
+        }
+        return u;
+      }));
+      setSelectedStudent(s => {
+        if (!s) return null;
+        const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+        if (sPhone === strippedPhone || s.phone === data.phone || (data.userId && s.userId === data.userId)) {
+          return { ...s, streak: data.streak };
+        }
+        return s;
+      });
+    };
+
     socket.on("user:paid_status", onUserPaidStatus);
     socket.on("payment:recorded", onPaymentRecorded);
     socket.on("user:score_updated", onScoreUpdated);
+    socket.on("user:streak_updated", onStreakUpdated);
     socket.on("user:freeze_updated", onFreezeUpdated);
 
     return () => {
       socket.off("user:paid_status", onUserPaidStatus);
       socket.off("payment:recorded", onPaymentRecorded);
       socket.off("user:score_updated", onScoreUpdated);
+      socket.off("user:streak_updated", onStreakUpdated);
       socket.off("user:freeze_updated", onFreezeUpdated);
     };
   }, [tab]);
@@ -1320,13 +1342,23 @@ export default function AdminDashboard() {
     });
   };
 
-  const openPointsModal = (u, defaultMode = "add") => {
+  const openPointsModal = (u, defaultMode = "add", targetType = "points") => {
     if (!u) return;
+    let initialAmount = 50;
+    if (targetType === "streak") {
+      initialAmount = defaultMode === "set" ? (u.streak || 0) : 1;
+    } else if (targetType === "freeze") {
+      initialAmount = defaultMode === "set" ? (u.streakFreeze || 0) : 1;
+    } else {
+      initialAmount = defaultMode === "set" ? Math.round(u.monthlyScore || 0) : 50;
+    }
+
     setPointsModal({
       isOpen: true,
       user: u,
+      targetType, // "points" | "streak" | "freeze"
       mode: defaultMode,
-      amount: defaultMode === "set" ? Math.round(u.monthlyScore || 0) : 50,
+      amount: initialAmount,
       reason: "",
     });
   };
@@ -1335,45 +1367,103 @@ export default function AdminDashboard() {
     if (!pointsModal?.user) return;
     const amount = Number(pointsModal.amount);
     if (isNaN(amount) || amount < 0) {
-      msg("Please enter a valid points amount", "danger");
+      msg("Please enter a valid amount", "danger");
       return;
     }
     setSavingPoints(true);
     try {
       const phone = pointsModal.user.phone;
-      const { data } = await api.patch(`/users/${encodeURIComponent(phone)}/points`, {
-        amount,
-        mode: pointsModal.mode,
-        reason: pointsModal.reason,
-      });
-
-      // Update in-memory users list
-      setUsers(prev => prev.map(u => {
-        const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
-        const targetPhone = String(phone).replace(/^(\+91|91)/, "");
-        if (uPhone === targetPhone || u.phone === phone || (pointsModal.user.userId && u.userId === pointsModal.user.userId)) {
-          return { ...u, monthlyScore: data.monthlyScore };
-        }
-        return u;
-      }));
-
-      // Update selectedStudent if open in modal/drawer
-      setSelectedStudent(s => {
-        if (!s) return null;
-        const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
-        const targetPhone = String(phone).replace(/^(\+91|91)/, "");
-        if (sPhone === targetPhone || s.phone === phone || (pointsModal.user.userId && s.userId === pointsModal.user.userId)) {
-          return { ...s, monthlyScore: data.monthlyScore };
-        }
-        return s;
-      });
-
+      const targetType = pointsModal.targetType || "points";
       const studentName = pointsModal.user.registeredName || pointsModal.user.name || phone;
-      const changeText = data.change >= 0 ? `+${data.change}` : `${data.change}`;
-      msg(`⭐ Updated points for ${studentName}: ${Math.round(data.previousScore)} → ${Math.round(data.monthlyScore)} (${changeText} pts)`);
+
+      if (targetType === "streak") {
+        const { data } = await api.patch(`/users/${encodeURIComponent(phone)}/streak`, {
+          amount,
+          mode: pointsModal.mode,
+        });
+
+        setUsers(prev => prev.map(u => {
+          const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+          const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+          if (uPhone === targetPhone || u.phone === phone || (pointsModal.user.userId && u.userId === pointsModal.user.userId)) {
+            return { ...u, streak: data.streak };
+          }
+          return u;
+        }));
+
+        setSelectedStudent(s => {
+          if (!s) return null;
+          const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+          const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+          if (sPhone === targetPhone || s.phone === phone || (pointsModal.user.userId && s.userId === pointsModal.user.userId)) {
+            return { ...s, streak: data.streak };
+          }
+          return s;
+        });
+
+        const changeText = data.change >= 0 ? `+${data.change}` : `${data.change}`;
+        msg(`🔥 Updated streak for ${studentName}: ${data.previousStreak} → ${data.streak} (${changeText} days)`);
+      } else if (targetType === "freeze") {
+        const { data } = await api.patch(`/users/${encodeURIComponent(phone)}/freeze`, {
+          amount,
+          mode: pointsModal.mode,
+        });
+
+        setUsers(prev => prev.map(u => {
+          const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+          const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+          if (uPhone === targetPhone || u.phone === phone || (pointsModal.user.userId && u.userId === pointsModal.user.userId)) {
+            return { ...u, streakFreeze: data.streakFreeze };
+          }
+          return u;
+        }));
+
+        setSelectedStudent(s => {
+          if (!s) return null;
+          const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+          const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+          if (sPhone === targetPhone || s.phone === phone || (pointsModal.user.userId && s.userId === pointsModal.user.userId)) {
+            return { ...s, streakFreeze: data.streakFreeze };
+          }
+          return s;
+        });
+
+        msg(`🧊 Updated streak freeze for ${studentName}: ${data.previousFreeze} → ${data.streakFreeze} shields`);
+      } else {
+        const { data } = await api.patch(`/users/${encodeURIComponent(phone)}/points`, {
+          amount,
+          mode: pointsModal.mode,
+          reason: pointsModal.reason,
+        });
+
+        // Update in-memory users list
+        setUsers(prev => prev.map(u => {
+          const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+          const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+          if (uPhone === targetPhone || u.phone === phone || (pointsModal.user.userId && u.userId === pointsModal.user.userId)) {
+            return { ...u, monthlyScore: data.monthlyScore };
+          }
+          return u;
+        }));
+
+        // Update selectedStudent if open in modal/drawer
+        setSelectedStudent(s => {
+          if (!s) return null;
+          const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+          const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+          if (sPhone === targetPhone || s.phone === phone || (pointsModal.user.userId && s.userId === pointsModal.user.userId)) {
+            return { ...s, monthlyScore: data.monthlyScore };
+          }
+          return s;
+        });
+
+        const changeText = data.change >= 0 ? `+${data.change}` : `${data.change}`;
+        msg(`⭐ Updated points for ${studentName}: ${Math.round(data.previousScore)} → ${Math.round(data.monthlyScore)} (${changeText} pts)`);
+      }
+
       setPointsModal(null);
     } catch (err) {
-      msg(err?.response?.data?.error || "Failed to update points", "danger");
+      msg(err?.response?.data?.error || "Failed to update ledger values", "danger");
     } finally {
       setSavingPoints(false);
     }
@@ -1443,7 +1533,7 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Points & Score Management Modal */}
+      {/* Points, Streak & Freeze Management Modal */}
       {pointsModal && (
         <div style={{
           position: "fixed",
@@ -1459,11 +1549,11 @@ export default function AdminDashboard() {
         }}>
           <div style={{
             background: "linear-gradient(180deg, #18192a 0%, #0f101c 100%)",
-            border: "1px solid rgba(167, 139, 250, 0.35)",
-            boxShadow: "0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(124, 111, 255, 0.2)",
+            border: `1px solid ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.4)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.4)" : "rgba(167, 139, 250, 0.4)"}`,
+            boxShadow: `0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.2)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.2)" : "rgba(124, 111, 255, 0.2)"}`,
             borderRadius: 20,
             width: "100%",
-            maxWidth: 480,
+            maxWidth: 490,
             overflow: "hidden",
           }}>
             {/* Modal Header */}
@@ -1479,18 +1569,18 @@ export default function AdminDashboard() {
                   width: 38,
                   height: 38,
                   borderRadius: 10,
-                  background: "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))",
-                  border: "1px solid rgba(168, 85, 247, 0.4)",
+                  background: pointsModal.targetType === "streak" ? "linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(234, 88, 12, 0.3))" : pointsModal.targetType === "freeze" ? "linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.3))" : "linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3))",
+                  border: `1px solid ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.5)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.5)" : "rgba(168, 85, 247, 0.5)"}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "1.2rem",
                 }}>
-                  ⭐
+                  {pointsModal.targetType === "streak" ? "🔥" : pointsModal.targetType === "freeze" ? "🧊" : "⭐"}
                 </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff" }}>
-                    Manage Student Points
+                    {pointsModal.targetType === "streak" ? "Manage Daily Streak" : pointsModal.targetType === "freeze" ? "Manage Streak Freezes" : "Manage Monthly Points"}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
                     {pointsModal.user?.registeredName || pointsModal.user?.name || "Student"} ({pointsModal.user?.phone})
@@ -1518,18 +1608,83 @@ export default function AdminDashboard() {
               </button>
             </div>
 
+            {/* Target Category Switcher (Points / Streak / Freeze) */}
+            <div style={{ padding: "0.85rem 1.4rem 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.4rem" }}>
+              {[
+                { id: "points", label: "⭐ Points", color: "#c4b5fd" },
+                { id: "streak", label: "🔥 Streak", color: "#fdba74" },
+                { id: "freeze", label: "🧊 Freeze", color: "#7dd3fc" },
+              ].map(cat => {
+                const isActive = (pointsModal.targetType || "points") === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      let defaultAmt = 50;
+                      if (cat.id === "streak") defaultAmt = 1;
+                      else if (cat.id === "freeze") defaultAmt = 1;
+                      else defaultAmt = 50;
+
+                      setPointsModal(prev => ({
+                        ...prev,
+                        targetType: cat.id,
+                        mode: "add",
+                        amount: defaultAmt,
+                      }));
+                    }}
+                    style={{
+                      padding: "0.5rem 0.4rem",
+                      borderRadius: 10,
+                      fontSize: "0.82rem",
+                      fontWeight: 800,
+                      border: isActive ? `1px solid ${cat.color}` : "1px solid rgba(255, 255, 255, 0.06)",
+                      background: isActive ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.25)",
+                      color: isActive ? cat.color : "var(--muted)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Modal Body */}
-            <div style={{ padding: "1.4rem", display: "flex", flexDirection: "column", gap: "1.15rem" }}>
+            <div style={{ padding: "1.2rem 1.4rem 1.4rem", display: "flex", flexDirection: "column", gap: "1.15rem" }}>
               
-              {/* Score Comparison Display */}
+              {/* Value Comparison Display */}
               {(() => {
-                const currentScore = Number(pointsModal.user?.monthlyScore || 0);
+                const target = pointsModal.targetType || "points";
+                let currentVal = 0;
+                let unit = "pts";
+                let icon = "⭐";
+                let activeColor = "#c4b5fd";
+
+                if (target === "streak") {
+                  currentVal = Number(pointsModal.user?.streak || 0);
+                  unit = "days";
+                  icon = "🔥";
+                  activeColor = "#f97316";
+                } else if (target === "freeze") {
+                  currentVal = Number(pointsModal.user?.streakFreeze || 0);
+                  unit = "shields";
+                  icon = "🧊";
+                  activeColor = "#38bdf8";
+                } else {
+                  currentVal = Number(pointsModal.user?.monthlyScore || 0);
+                  unit = "pts";
+                  icon = "⭐";
+                  activeColor = "#c4b5fd";
+                }
+
                 const inputVal = Number(pointsModal.amount || 0);
-                const projectedScore = pointsModal.mode === "set"
+                const projectedVal = pointsModal.mode === "set"
                   ? Math.max(0, inputVal)
                   : pointsModal.mode === "remove"
-                  ? Math.max(0, currentScore - Math.abs(inputVal))
-                  : Math.max(0, currentScore + inputVal);
+                  ? Math.max(0, currentVal - Math.abs(inputVal))
+                  : Math.max(0, currentVal + inputVal);
 
                 return (
                   <div style={{
@@ -1543,19 +1698,19 @@ export default function AdminDashboard() {
                   }}>
                     <div>
                       <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                        Current Score
+                        Current {target === "streak" ? "Streak" : target === "freeze" ? "Freezes" : "Score"}
                       </div>
-                      <div style={{ fontSize: "1.25rem", fontWeight: 800, color: "#c4b5fd", marginTop: "0.15rem" }}>
-                        ⭐ {Math.round(currentScore).toLocaleString()} <span style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>pts</span>
+                      <div style={{ fontSize: "1.25rem", fontWeight: 800, color: activeColor, marginTop: "0.15rem" }}>
+                        {icon} {Math.round(currentVal).toLocaleString()} <span style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>{unit}</span>
                       </div>
                     </div>
                     <div style={{ fontSize: "1.2rem", color: "var(--muted)" }}>➔</div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                        Projected Score
+                        Projected {target === "streak" ? "Streak" : target === "freeze" ? "Freezes" : "Score"}
                       </div>
-                      <div style={{ fontSize: "1.25rem", fontWeight: 800, color: projectedScore >= currentScore ? "#4ade80" : "#f87171", marginTop: "0.15rem" }}>
-                        ⭐ {Math.round(projectedScore).toLocaleString()} <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>pts</span>
+                      <div style={{ fontSize: "1.25rem", fontWeight: 800, color: projectedVal >= currentVal ? "#4ade80" : "#f87171", marginTop: "0.15rem" }}>
+                        {icon} {Math.round(projectedVal).toLocaleString()} <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>{unit}</span>
                       </div>
                     </div>
                   </div>
@@ -1573,18 +1728,30 @@ export default function AdminDashboard() {
                 border: "1px solid rgba(255, 255, 255, 0.07)",
               }}>
                 {[
-                  { id: "add", label: "➕ Add Points", color: "#4ade80" },
-                  { id: "remove", label: "➖ Deduct Points", color: "#f87171" },
-                  { id: "set", label: "✏️ Set Score", color: "#a78bfa" },
+                  { id: "add", label: `➕ Add ${pointsModal.targetType === "streak" ? "Days" : pointsModal.targetType === "freeze" ? "Freezes" : "Points"}`, color: "#4ade80" },
+                  { id: "remove", label: `➖ Deduct ${pointsModal.targetType === "streak" ? "Days" : pointsModal.targetType === "freeze" ? "Freezes" : "Points"}`, color: "#f87171" },
+                  { id: "set", label: `✏️ Set Exact`, color: "#a78bfa" },
                 ].map(m => (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => setPointsModal(prev => ({ ...prev, mode: m.id, amount: m.id === "set" ? Math.round(pointsModal.user?.monthlyScore || 0) : 50 }))}
+                    onClick={() => {
+                      const target = pointsModal.targetType || "points";
+                      let curr = 0;
+                      if (target === "streak") curr = pointsModal.user?.streak || 0;
+                      else if (target === "freeze") curr = pointsModal.user?.streakFreeze || 0;
+                      else curr = Math.round(pointsModal.user?.monthlyScore || 0);
+
+                      setPointsModal(prev => ({
+                        ...prev,
+                        mode: m.id,
+                        amount: m.id === "set" ? curr : (target === "points" ? 50 : 1),
+                      }));
+                    }}
                     style={{
-                      padding: "0.55rem 0.5rem",
+                      padding: "0.55rem 0.3rem",
                       borderRadius: 8,
-                      fontSize: "0.78rem",
+                      fontSize: "0.76rem",
                       fontWeight: 700,
                       border: "none",
                       cursor: "pointer",
@@ -1599,10 +1766,14 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Points Amount Input & Quick Chips */}
+              {/* Amount Input & Quick Chips */}
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.45rem" }}>
-                  {pointsModal.mode === "add" ? "Points to Add (+)" : pointsModal.mode === "remove" ? "Points to Deduct (-)" : "Set Exact Monthly Points"}
+                  {(() => {
+                    const target = pointsModal.targetType || "points";
+                    const noun = target === "streak" ? "Streak Days" : target === "freeze" ? "Streak Freeze Shields" : "Monthly Points";
+                    return pointsModal.mode === "add" ? `${noun} to Add (+)` : pointsModal.mode === "remove" ? `${noun} to Deduct (-)` : `Set Exact ${noun}`;
+                  })()}
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.65rem" }}>
                   <input
@@ -1611,7 +1782,7 @@ export default function AdminDashboard() {
                     step="1"
                     value={pointsModal.amount}
                     onChange={e => setPointsModal(prev => ({ ...prev, amount: e.target.value }))}
-                    placeholder="e.g. 50"
+                    placeholder="e.g. 5"
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -1630,30 +1801,44 @@ export default function AdminDashboard() {
 
                 {/* Quick Preset Buttons */}
                 <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                  {(pointsModal.mode === "add" ? [10, 25, 50, 100, 250, 500] : pointsModal.mode === "remove" ? [10, 25, 50, 100, 200, 500] : [0, 50, 100, 500, 1000, 2000]).map(val => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setPointsModal(prev => ({ ...prev, amount: val }))}
-                      style={{
-                        padding: "0.3rem 0.65rem",
-                        borderRadius: 8,
-                        fontSize: "0.74rem",
-                        fontWeight: 700,
-                        background: Number(pointsModal.amount) === val ? "rgba(124, 111, 255, 0.3)" : "rgba(255, 255, 255, 0.04)",
-                        border: Number(pointsModal.amount) === val ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.08)",
-                        color: Number(pointsModal.amount) === val ? "#fff" : "var(--muted)",
-                        cursor: "pointer",
-                        transition: "all 0.12s ease",
-                      }}
-                    >
-                      {pointsModal.mode === "add" ? `+${val}` : pointsModal.mode === "remove" ? `-${val}` : `${val} pts`}
-                    </button>
-                  ))}
+                  {(() => {
+                    const target = pointsModal.targetType || "points";
+                    let presets = [];
+                    if (target === "streak") {
+                      presets = pointsModal.mode === "add" ? [1, 2, 3, 5, 7, 14, 30] : pointsModal.mode === "remove" ? [1, 2, 3, 5, 7, 14] : [0, 7, 14, 30, 50, 100];
+                    } else if (target === "freeze") {
+                      presets = pointsModal.mode === "add" ? [1, 2, 3, 5, 10] : pointsModal.mode === "remove" ? [1, 2, 3, 5] : [0, 1, 2, 3, 5, 10];
+                    } else {
+                      presets = pointsModal.mode === "add" ? [10, 25, 50, 100, 250, 500] : pointsModal.mode === "remove" ? [10, 25, 50, 100, 200, 500] : [0, 50, 100, 500, 1000, 2000];
+                    }
+
+                    const unitSuffix = target === "streak" ? "d" : target === "freeze" ? " shields" : " pts";
+
+                    return presets.map(val => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setPointsModal(prev => ({ ...prev, amount: val }))}
+                        style={{
+                          padding: "0.3rem 0.65rem",
+                          borderRadius: 8,
+                          fontSize: "0.74rem",
+                          fontWeight: 700,
+                          background: Number(pointsModal.amount) === val ? "rgba(124, 111, 255, 0.3)" : "rgba(255, 255, 255, 0.04)",
+                          border: Number(pointsModal.amount) === val ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.08)",
+                          color: Number(pointsModal.amount) === val ? "#fff" : "var(--muted)",
+                          cursor: "pointer",
+                          transition: "all 0.12s ease",
+                        }}
+                      >
+                        {pointsModal.mode === "add" ? `+${val}` : pointsModal.mode === "remove" ? `-${val}` : `${val}${unitSuffix}`}
+                      </button>
+                    ));
+                  })()}
                 </div>
               </div>
 
-              {/* Reason / Note Input */}
+              {/* Reason / Note Input (for points/streak tracking) */}
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.45rem" }}>
                   Reason / Audit Note <span style={{ color: "var(--muted)", fontWeight: 500, fontSize: "0.74rem" }}>(optional)</span>
@@ -1662,7 +1847,7 @@ export default function AdminDashboard() {
                   type="text"
                   value={pointsModal.reason || ""}
                   onChange={e => setPointsModal(prev => ({ ...prev, reason: e.target.value }))}
-                  placeholder="e.g. Bonus for outstanding speaking session"
+                  placeholder="e.g. Verified challenge participation"
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
@@ -1711,7 +1896,7 @@ export default function AdminDashboard() {
                 style={{
                   padding: "0.55rem 1.3rem",
                   borderRadius: 10,
-                  background: pointsModal.mode === "remove" ? "linear-gradient(135deg, #ef4444, #dc2626)" : pointsModal.mode === "set" ? "linear-gradient(135deg, #8b5cf6, #7c6fff)" : "linear-gradient(135deg, #10b981, #059669)",
+                  background: pointsModal.mode === "remove" ? "linear-gradient(135deg, #ef4444, #dc2626)" : pointsModal.mode === "set" ? "linear-gradient(135deg, #8b5cf6, #7c6fff)" : pointsModal.targetType === "streak" ? "linear-gradient(135deg, #f97316, #ea580c)" : pointsModal.targetType === "freeze" ? "linear-gradient(135deg, #0284c7, #0369a1)" : "linear-gradient(135deg, #10b981, #059669)",
                   border: "none",
                   color: "#fff",
                   fontWeight: 800,
@@ -1721,7 +1906,7 @@ export default function AdminDashboard() {
                   boxShadow: "0 4px 14px rgba(0, 0, 0, 0.4)",
                 }}
               >
-                {savingPoints ? "Saving..." : pointsModal.mode === "remove" ? "➖ Deduct Points" : pointsModal.mode === "set" ? "✏️ Update Score" : "➕ Add Points"}
+                {savingPoints ? "Saving..." : pointsModal.mode === "remove" ? "➖ Deduct" : pointsModal.mode === "set" ? "✏️ Update Value" : "➕ Add / Award"}
               </button>
             </div>
           </div>
@@ -2723,14 +2908,24 @@ export default function AdminDashboard() {
 
                           {/* Streak */}
                           <td>
-                            <span className={`streak-badge-pill${streak === 0 ? " dead" : ""}`}>
+                            <span
+                              className={`streak-badge-pill${streak === 0 ? " dead" : ""}`}
+                              onClick={() => openPointsModal(u, "add", "streak")}
+                              title="Click to adjust streak days (+ / - / set)"
+                              style={{ cursor: "pointer" }}
+                            >
                               {streak > 0 ? "🔥" : "❄️"} {streak} {streak === 1 ? "day" : "days"}
                             </span>
                           </td>
 
                           {/* Streak Freeze */}
                           <td>
-                            <span className="freeze-badge-pill">
+                            <span
+                              className="freeze-badge-pill"
+                              onClick={() => openPointsModal(u, "add", "freeze")}
+                              title="Click to adjust streak freeze shields (+ / - / set)"
+                              style={{ cursor: "pointer" }}
+                            >
                               🧊 {u.streakFreeze || 0}
                             </span>
                           </td>
@@ -2957,7 +3152,7 @@ export default function AdminDashboard() {
                     <th>🧊 Freeze</th>
                     <th>⭐ Monthly Score</th>
                     <th>📅 Submissions</th>
-                    <th style={{ textAlign: "right", paddingRight: "1.2rem" }}>⚙️ Manage Points</th>
+                    <th style={{ textAlign: "right", paddingRight: "1.2rem" }}>⚙️ Manage Ledger</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2970,16 +3165,48 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td style={{color:"var(--muted)",fontSize:"0.8rem",fontFamily:"monospace"}}>{u.phone}</td>
-                      <td style={{color:"#f97316",fontWeight:700}}>🔥 {u.streak||0}</td>
-                      <td style={{color:"#38bdf8",fontWeight:700,fontSize:"0.95rem"}}>
-                        {(u.streakFreeze||0) > 0
-                          ? <span>🧊 {u.streakFreeze}</span>
-                          : <span style={{color:"var(--muted)"}}>—</span>}
+                      <td style={{fontWeight:700}}>
+                        <span
+                          style={{
+                            cursor: "pointer",
+                            background: "rgba(249, 115, 22, 0.12)",
+                            color: "#f97316",
+                            padding: "0.2rem 0.6rem",
+                            borderRadius: 8,
+                            border: "1px solid rgba(249, 115, 22, 0.25)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                          }}
+                          onClick={() => openPointsModal(u, "add", "streak")}
+                          title="Click to adjust streak days (+ / - / set)"
+                        >
+                          🔥 {u.streak || 0}
+                        </span>
+                      </td>
+                      <td style={{fontWeight:700}}>
+                        <span
+                          style={{
+                            cursor: "pointer",
+                            background: (u.streakFreeze || 0) > 0 ? "rgba(56, 189, 248, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                            color: "#38bdf8",
+                            padding: "0.2rem 0.6rem",
+                            borderRadius: 8,
+                            border: (u.streakFreeze || 0) > 0 ? "1px solid rgba(56, 189, 248, 0.25)" : "1px solid rgba(255, 255, 255, 0.06)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.25rem",
+                          }}
+                          onClick={() => openPointsModal(u, "add", "freeze")}
+                          title="Click to adjust streak freeze shields (+ / - / set)"
+                        >
+                          {(u.streakFreeze || 0) > 0 ? `🧊 ${u.streakFreeze}` : <span style={{ color: "var(--muted)" }}>🧊 0</span>}
+                        </span>
                       </td>
                       <td style={{fontWeight:800}}>
                         <span
                           className="score-badge-pill"
-                          onClick={() => openPointsModal(u, "add")}
+                          onClick={() => openPointsModal(u, "add", "points")}
                           title="Click to adjust student points"
                           style={{ cursor: "pointer", transition: "transform 0.12s ease" }}
                         >
@@ -3002,17 +3229,17 @@ export default function AdminDashboard() {
                               borderRadius: 8,
                               gap: "0.25rem",
                             }}
-                            onClick={() => openPointsModal(u, "add")}
+                            onClick={() => openPointsModal(u, "add", "points")}
                             title="Add bonus points to student"
                           >
-                            ➕ Add
+                            ⭐ +Pts
                           </button>
                           <button
                             className="act-icon-btn"
                             style={{
-                              color: "#f87171",
-                              background: "rgba(248, 113, 113, 0.1)",
-                              borderColor: "rgba(248, 113, 113, 0.28)",
+                              color: "#f97316",
+                              background: "rgba(249, 115, 22, 0.1)",
+                              borderColor: "rgba(249, 115, 22, 0.28)",
                               width: "auto",
                               padding: "0.28rem 0.65rem",
                               fontSize: "0.76rem",
@@ -3020,16 +3247,34 @@ export default function AdminDashboard() {
                               borderRadius: 8,
                               gap: "0.25rem",
                             }}
-                            onClick={() => openPointsModal(u, "remove")}
-                            title="Deduct points from student"
+                            onClick={() => openPointsModal(u, "add", "streak")}
+                            title="Add streak days"
                           >
-                            ➖ Deduct
+                            🔥 +Streak
+                          </button>
+                          <button
+                            className="act-icon-btn"
+                            style={{
+                              color: "#38bdf8",
+                              background: "rgba(56, 189, 248, 0.1)",
+                              borderColor: "rgba(56, 189, 248, 0.28)",
+                              width: "auto",
+                              padding: "0.28rem 0.65rem",
+                              fontSize: "0.76rem",
+                              fontWeight: 700,
+                              borderRadius: 8,
+                              gap: "0.25rem",
+                            }}
+                            onClick={() => openPointsModal(u, "add", "freeze")}
+                            title="Add streak freeze shields"
+                          >
+                            🧊 +Shield
                           </button>
                           <button
                             className="act-icon-btn"
                             style={{ width: 28, height: 28, borderRadius: 8 }}
-                            onClick={() => openPointsModal(u, "set")}
-                            title="Set exact score or manage points"
+                            onClick={() => openPointsModal(u, "set", "points")}
+                            title="Open full Ledger Management modal"
                           >
                             ⚙️
                           </button>
@@ -6338,7 +6583,23 @@ export default function AdminDashboard() {
             <div className="admin-kpi-card" style={{ "--kpi-accent": "#f97316" }}>
               <div className="admin-kpi-top">
                 <span className="admin-kpi-label">CURRENT STREAK</span>
-                <span className="admin-kpi-trend up">🔥 Active</span>
+                <button
+                  type="button"
+                  onClick={() => openPointsModal(selectedStudent, "add", "streak")}
+                  style={{
+                    background: "rgba(249, 115, 22, 0.2)",
+                    border: "1px solid rgba(249, 115, 22, 0.4)",
+                    color: "#fdba74",
+                    borderRadius: 6,
+                    padding: "2px 8px",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                  title="Add, deduct or set streak days"
+                >
+                  ⚙️ Adjust
+                </button>
               </div>
               <div className="admin-kpi-value" style={{ color: "#f97316" }}>
                 {selectedStudent.streak || 0} <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>days</span>
@@ -6349,10 +6610,26 @@ export default function AdminDashboard() {
             <div className="admin-kpi-card" style={{ "--kpi-accent": "#38bdf8" }}>
               <div className="admin-kpi-top">
                 <span className="admin-kpi-label">STREAK FREEZES</span>
-                <span className="admin-kpi-trend neu">🧊 Shields</span>
+                <button
+                  type="button"
+                  onClick={() => openPointsModal(selectedStudent, "add", "freeze")}
+                  style={{
+                    background: "rgba(56, 189, 248, 0.2)",
+                    border: "1px solid rgba(56, 189, 248, 0.4)",
+                    color: "#7dd3fc",
+                    borderRadius: 6,
+                    padding: "2px 8px",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                  title="Add or remove streak freeze shields"
+                >
+                  ⚙️ Adjust
+                </button>
               </div>
               <div className="admin-kpi-value" style={{ color: "#38bdf8" }}>
-                {selectedStudent.streakFreeze || 0}
+                {selectedStudent.streakFreeze || 0} <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>shields</span>
               </div>
               <div className="admin-kpi-sub">Available freeze passes</div>
             </div>
@@ -6362,7 +6639,7 @@ export default function AdminDashboard() {
                 <span className="admin-kpi-label">MONTHLY SCORE</span>
                 <button
                   type="button"
-                  onClick={() => openPointsModal(selectedStudent, "add")}
+                  onClick={() => openPointsModal(selectedStudent, "add", "points")}
                   style={{
                     background: "rgba(168, 85, 247, 0.2)",
                     border: "1px solid rgba(168, 85, 247, 0.4)",
@@ -6373,7 +6650,7 @@ export default function AdminDashboard() {
                     fontWeight: 700,
                     cursor: "pointer",
                   }}
-                  title="Add or remove points for this student"
+                  title="Add, deduct or set monthly score"
                 >
                   ⚙️ Adjust
                 </button>
