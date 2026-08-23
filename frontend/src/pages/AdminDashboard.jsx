@@ -372,6 +372,8 @@ export default function AdminDashboard() {
   const [qActionBusy, setQActionBusy] = useState(""); // "generating" | "cleaning" | ""
   const [qCat, setQCat] = useState("");
   const [modal, setModal] = useState(null);
+  const [pointsModal, setPointsModal] = useState(null); // { isOpen: true, user, mode: "add"|"remove"|"set", amount: 50, reason: "" }
+  const [savingPoints, setSavingPoints] = useState(false);
   const [fineInput, setFineInput] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [waStatus, setWaStatus] = useState(null);
@@ -554,12 +556,56 @@ export default function AdminDashboard() {
       loadPayments();
     };
 
+    const onScoreUpdated = (data) => {
+      if (!data?.phone) return;
+      const strippedPhone = String(data.phone).replace(/^(\+91|91)/, "");
+      setUsers(prev => prev.map(u => {
+        const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+        if (uPhone === strippedPhone || u.phone === data.phone || (data.userId && u.userId === data.userId)) {
+          return { ...u, monthlyScore: data.monthlyScore };
+        }
+        return u;
+      }));
+      setSelectedStudent(s => {
+        if (!s) return null;
+        const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+        if (sPhone === strippedPhone || s.phone === data.phone || (data.userId && s.userId === data.userId)) {
+          return { ...s, monthlyScore: data.monthlyScore };
+        }
+        return s;
+      });
+    };
+
+    const onFreezeUpdated = (data) => {
+      if (!data?.phone) return;
+      const strippedPhone = String(data.phone).replace(/^(\+91|91)/, "");
+      setUsers(prev => prev.map(u => {
+        const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+        if (uPhone === strippedPhone || u.phone === data.phone || (data.userId && u.userId === data.userId)) {
+          return { ...u, streakFreeze: data.streakFreeze };
+        }
+        return u;
+      }));
+      setSelectedStudent(s => {
+        if (!s) return null;
+        const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+        if (sPhone === strippedPhone || s.phone === data.phone || (data.userId && s.userId === data.userId)) {
+          return { ...s, streakFreeze: data.streakFreeze };
+        }
+        return s;
+      });
+    };
+
     socket.on("user:paid_status", onUserPaidStatus);
     socket.on("payment:recorded", onPaymentRecorded);
+    socket.on("user:score_updated", onScoreUpdated);
+    socket.on("user:freeze_updated", onFreezeUpdated);
 
     return () => {
       socket.off("user:paid_status", onUserPaidStatus);
       socket.off("payment:recorded", onPaymentRecorded);
+      socket.off("user:score_updated", onScoreUpdated);
+      socket.off("user:freeze_updated", onFreezeUpdated);
     };
   }, [tab]);
 
@@ -1274,6 +1320,65 @@ export default function AdminDashboard() {
     });
   };
 
+  const openPointsModal = (u, defaultMode = "add") => {
+    if (!u) return;
+    setPointsModal({
+      isOpen: true,
+      user: u,
+      mode: defaultMode,
+      amount: defaultMode === "set" ? Math.round(u.monthlyScore || 0) : 50,
+      reason: "",
+    });
+  };
+
+  const savePointsAdjustment = async () => {
+    if (!pointsModal?.user) return;
+    const amount = Number(pointsModal.amount);
+    if (isNaN(amount) || amount < 0) {
+      msg("Please enter a valid points amount", "danger");
+      return;
+    }
+    setSavingPoints(true);
+    try {
+      const phone = pointsModal.user.phone;
+      const { data } = await api.patch(`/users/${encodeURIComponent(phone)}/points`, {
+        amount,
+        mode: pointsModal.mode,
+        reason: pointsModal.reason,
+      });
+
+      // Update in-memory users list
+      setUsers(prev => prev.map(u => {
+        const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+        const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+        if (uPhone === targetPhone || u.phone === phone || (pointsModal.user.userId && u.userId === pointsModal.user.userId)) {
+          return { ...u, monthlyScore: data.monthlyScore };
+        }
+        return u;
+      }));
+
+      // Update selectedStudent if open in modal/drawer
+      setSelectedStudent(s => {
+        if (!s) return null;
+        const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+        const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+        if (sPhone === targetPhone || s.phone === phone || (pointsModal.user.userId && s.userId === pointsModal.user.userId)) {
+          return { ...s, monthlyScore: data.monthlyScore };
+        }
+        return s;
+      });
+
+      const studentName = pointsModal.user.registeredName || pointsModal.user.name || phone;
+      const changeText = data.change >= 0 ? `+${data.change}` : `${data.change}`;
+      msg(`⭐ Updated points for ${studentName}: ${Math.round(data.previousScore)} → ${Math.round(data.monthlyScore)} (${changeText} pts)`);
+      setPointsModal(null);
+    } catch (err) {
+      msg(err?.response?.data?.error || "Failed to update points", "danger");
+    } finally {
+      setSavingPoints(false);
+    }
+  };
+
   const filteredUsers = useMemo(()=>{
     const s = search.toLowerCase();
     const bySearch = users.filter(u => (u.registeredName||u.name||"").toLowerCase().includes(s)||(u.phone||"").includes(s));
@@ -1336,6 +1441,291 @@ export default function AdminDashboard() {
           transaction={selectedAdminInvoiceTx}
           onClose={() => setSelectedAdminInvoiceTx(null)}
         />
+      )}
+
+      {/* Points & Score Management Modal */}
+      {pointsModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0, 0, 0, 0.8)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1rem",
+        }}>
+          <div style={{
+            background: "linear-gradient(180deg, #18192a 0%, #0f101c 100%)",
+            border: "1px solid rgba(167, 139, 250, 0.35)",
+            boxShadow: "0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(124, 111, 255, 0.2)",
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 480,
+            overflow: "hidden",
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: "1.25rem 1.5rem",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))",
+                  border: "1px solid rgba(168, 85, 247, 0.4)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.2rem",
+                }}>
+                  ⭐
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff" }}>
+                    Manage Student Points
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                    {pointsModal.user?.registeredName || pointsModal.user?.name || "Student"} ({pointsModal.user?.phone})
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPointsModal(null)}
+                style={{
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#94a3b8",
+                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.1rem",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "1.4rem", display: "flex", flexDirection: "column", gap: "1.15rem" }}>
+              
+              {/* Score Comparison Display */}
+              {(() => {
+                const currentScore = Number(pointsModal.user?.monthlyScore || 0);
+                const inputVal = Number(pointsModal.amount || 0);
+                const projectedScore = pointsModal.mode === "set"
+                  ? Math.max(0, inputVal)
+                  : pointsModal.mode === "remove"
+                  ? Math.max(0, currentScore - Math.abs(inputVal))
+                  : Math.max(0, currentScore + inputVal);
+
+                return (
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0.85rem 1.1rem",
+                    borderRadius: 12,
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.07)",
+                  }}>
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                        Current Score
+                      </div>
+                      <div style={{ fontSize: "1.25rem", fontWeight: 800, color: "#c4b5fd", marginTop: "0.15rem" }}>
+                        ⭐ {Math.round(currentScore).toLocaleString()} <span style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>pts</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: "1.2rem", color: "var(--muted)" }}>➔</div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                        Projected Score
+                      </div>
+                      <div style={{ fontSize: "1.25rem", fontWeight: 800, color: projectedScore >= currentScore ? "#4ade80" : "#f87171", marginTop: "0.15rem" }}>
+                        ⭐ {Math.round(projectedScore).toLocaleString()} <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>pts</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Action Mode Tabs */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "0.35rem",
+                background: "rgba(0, 0, 0, 0.35)",
+                padding: "4px",
+                borderRadius: 12,
+                border: "1px solid rgba(255, 255, 255, 0.07)",
+              }}>
+                {[
+                  { id: "add", label: "➕ Add Points", color: "#4ade80" },
+                  { id: "remove", label: "➖ Deduct Points", color: "#f87171" },
+                  { id: "set", label: "✏️ Set Score", color: "#a78bfa" },
+                ].map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPointsModal(prev => ({ ...prev, mode: m.id, amount: m.id === "set" ? Math.round(pointsModal.user?.monthlyScore || 0) : 50 }))}
+                    style={{
+                      padding: "0.55rem 0.5rem",
+                      borderRadius: 8,
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      background: pointsModal.mode === m.id ? "rgba(255, 255, 255, 0.12)" : "transparent",
+                      color: pointsModal.mode === m.id ? (m.id === "add" ? "#4ade80" : m.id === "remove" ? "#f87171" : "#c4b5fd") : "var(--muted)",
+                      boxShadow: pointsModal.mode === m.id ? "0 2px 8px rgba(0, 0, 0, 0.4)" : "none",
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Points Amount Input & Quick Chips */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.45rem" }}>
+                  {pointsModal.mode === "add" ? "Points to Add (+)" : pointsModal.mode === "remove" ? "Points to Deduct (-)" : "Set Exact Monthly Points"}
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.65rem" }}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pointsModal.amount}
+                    onChange={e => setPointsModal(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="e.g. 50"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "0.65rem 1rem",
+                      borderRadius: 10,
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      color: "#fff",
+                      fontSize: "1.15rem",
+                      fontWeight: 800,
+                      outline: "none",
+                    }}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Quick Preset Buttons */}
+                <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                  {(pointsModal.mode === "add" ? [10, 25, 50, 100, 250, 500] : pointsModal.mode === "remove" ? [10, 25, 50, 100, 200, 500] : [0, 50, 100, 500, 1000, 2000]).map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setPointsModal(prev => ({ ...prev, amount: val }))}
+                      style={{
+                        padding: "0.3rem 0.65rem",
+                        borderRadius: 8,
+                        fontSize: "0.74rem",
+                        fontWeight: 700,
+                        background: Number(pointsModal.amount) === val ? "rgba(124, 111, 255, 0.3)" : "rgba(255, 255, 255, 0.04)",
+                        border: Number(pointsModal.amount) === val ? "1px solid #7c6fff" : "1px solid rgba(255, 255, 255, 0.08)",
+                        color: Number(pointsModal.amount) === val ? "#fff" : "var(--muted)",
+                        cursor: "pointer",
+                        transition: "all 0.12s ease",
+                      }}
+                    >
+                      {pointsModal.mode === "add" ? `+${val}` : pointsModal.mode === "remove" ? `-${val}` : `${val} pts`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reason / Note Input */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.45rem" }}>
+                  Reason / Audit Note <span style={{ color: "var(--muted)", fontWeight: 500, fontSize: "0.74rem" }}>(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={pointsModal.reason || ""}
+                  onChange={e => setPointsModal(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="e.g. Bonus for outstanding speaking session"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "0.55rem 0.85rem",
+                    borderRadius: 10,
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    color: "var(--text)",
+                    fontSize: "0.82rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: "1rem 1.5rem",
+              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+              background: "rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "0.75rem",
+            }}>
+              <button
+                type="button"
+                onClick={() => setPointsModal(null)}
+                style={{
+                  padding: "0.55rem 1.1rem",
+                  borderRadius: 10,
+                  background: "rgba(255, 255, 255, 0.06)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  color: "var(--text)",
+                  fontWeight: 700,
+                  fontSize: "0.84rem",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingPoints}
+                onClick={savePointsAdjustment}
+                style={{
+                  padding: "0.55rem 1.3rem",
+                  borderRadius: 10,
+                  background: pointsModal.mode === "remove" ? "linear-gradient(135deg, #ef4444, #dc2626)" : pointsModal.mode === "set" ? "linear-gradient(135deg, #8b5cf6, #7c6fff)" : "linear-gradient(135deg, #10b981, #059669)",
+                  border: "none",
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "0.84rem",
+                  cursor: savingPoints ? "not-allowed" : "pointer",
+                  opacity: savingPoints ? 0.7 : 1,
+                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.4)",
+                }}
+              >
+                {savingPoints ? "Saving..." : pointsModal.mode === "remove" ? "➖ Deduct Points" : pointsModal.mode === "set" ? "✏️ Update Score" : "➕ Add Points"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Mobile Drawer Backdrop */}
@@ -2363,7 +2753,12 @@ export default function AdminDashboard() {
 
                           {/* Score / Points */}
                           <td>
-                            <span className="score-badge-pill">
+                            <span
+                              className="score-badge-pill"
+                              onClick={() => openPointsModal(u, "add")}
+                              title="Click to add or remove points for this user"
+                              style={{ cursor: "pointer" }}
+                            >
                               ⭐ {Math.round(u.monthlyScore || 0).toLocaleString()}
                             </span>
                           </td>
@@ -2537,31 +2932,112 @@ export default function AdminDashboard() {
           )}
 
           <div className="card">
-            <div className="section-title">⭐ Points & Streak Freeze Ledger</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div>
+                <div className="section-title" style={{ margin: 0 }}>⭐ Points &amp; Streak Freeze Ledger</div>
+                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                  Real-time leaderboard rankings with live manual point awards and deductions.
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontSize: "0.75rem", padding: "4px 10px", borderRadius: 20, background: "rgba(168, 85, 247, 0.12)", color: "#c4b5fd", fontWeight: 700 }}>
+                  ⭐ {users.filter(u => (u.monthlyScore || 0) > 0).length} Active Scorers
+                </span>
+              </div>
+            </div>
+
             <div className="table-wrap">
               <table className="data-table">
-                <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>🔥 Streak</th><th>🧊 Freeze</th><th>⭐ Monthly Score</th><th>📅 Submissions</th></tr></thead>
-                <tbody>{[...users].sort((a,b)=>(b.monthlyScore||0)-(a.monthlyScore||0)).map((u,i)=>(
-                  <tr key={u.userId||i}>
-                    <td style={{color:"var(--muted)",fontWeight:600}}>{i+1}</td>
-                    <td style={{fontWeight:500}}>{u.registeredName||u.name||"—"}</td>
-                    <td style={{color:"var(--muted)",fontSize:"0.82rem"}}>{u.phone}</td>
-                    <td style={{color:"#f97316",fontWeight:600}}>🔥 {u.streak||0}</td>
-                    <td style={{color:"#38bdf8",fontWeight:700,fontSize:"1rem"}}>
-                      {(u.streakFreeze||0) > 0
-                        ? <span>🧊 {u.streakFreeze}</span>
-                        : <span style={{color:"var(--muted)"}}>—</span>}
-                    </td>
-                    <td style={{fontWeight:700}}>
-                      <span style={{
-                        color: (u.monthlyScore||0)>=80?"#4ade80":(u.monthlyScore||0)>=50?"#a78bfa":"var(--text)",
-                        background: (u.monthlyScore||0)>=80?"rgba(74,222,128,0.1)":(u.monthlyScore||0)>=50?"rgba(167,139,250,0.1)":"transparent",
-                        padding:"0.15rem 0.5rem",borderRadius:6,
-                      }}>⭐ {u.monthlyScore||0}</span>
-                    </td>
-                    <td style={{color:"var(--muted)",fontSize:"0.85rem"}}>{u.monthlySubmissions||0} this month</td>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>🔥 Streak</th>
+                    <th>🧊 Freeze</th>
+                    <th>⭐ Monthly Score</th>
+                    <th>📅 Submissions</th>
+                    <th style={{ textAlign: "right", paddingRight: "1.2rem" }}>⚙️ Manage Points</th>
                   </tr>
-                ))}</tbody>
+                </thead>
+                <tbody>
+                  {[...users].sort((a,b)=>(b.monthlyScore||0)-(a.monthlyScore||0)).map((u,i)=>(
+                    <tr key={u.userId||i}>
+                      <td style={{color:"var(--muted)",fontWeight:700}}>{i+1}</td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: "#f8fafc" }}>
+                          {u.registeredName || u.name || "—"}
+                        </div>
+                      </td>
+                      <td style={{color:"var(--muted)",fontSize:"0.8rem",fontFamily:"monospace"}}>{u.phone}</td>
+                      <td style={{color:"#f97316",fontWeight:700}}>🔥 {u.streak||0}</td>
+                      <td style={{color:"#38bdf8",fontWeight:700,fontSize:"0.95rem"}}>
+                        {(u.streakFreeze||0) > 0
+                          ? <span>🧊 {u.streakFreeze}</span>
+                          : <span style={{color:"var(--muted)"}}>—</span>}
+                      </td>
+                      <td style={{fontWeight:800}}>
+                        <span
+                          className="score-badge-pill"
+                          onClick={() => openPointsModal(u, "add")}
+                          title="Click to adjust student points"
+                          style={{ cursor: "pointer", transition: "transform 0.12s ease" }}
+                        >
+                          ⭐ {Math.round(u.monthlyScore || 0).toLocaleString()} <span style={{ fontSize: "0.7rem", opacity: 0.85 }}>pts</span>
+                        </span>
+                      </td>
+                      <td style={{color:"var(--muted)",fontSize:"0.82rem"}}>{u.monthlySubmissions||0} this month</td>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap", paddingRight: "1rem" }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                          <button
+                            className="act-icon-btn"
+                            style={{
+                              color: "#4ade80",
+                              background: "rgba(74, 222, 128, 0.1)",
+                              borderColor: "rgba(74, 222, 128, 0.28)",
+                              width: "auto",
+                              padding: "0.28rem 0.65rem",
+                              fontSize: "0.76rem",
+                              fontWeight: 700,
+                              borderRadius: 8,
+                              gap: "0.25rem",
+                            }}
+                            onClick={() => openPointsModal(u, "add")}
+                            title="Add bonus points to student"
+                          >
+                            ➕ Add
+                          </button>
+                          <button
+                            className="act-icon-btn"
+                            style={{
+                              color: "#f87171",
+                              background: "rgba(248, 113, 113, 0.1)",
+                              borderColor: "rgba(248, 113, 113, 0.28)",
+                              width: "auto",
+                              padding: "0.28rem 0.65rem",
+                              fontSize: "0.76rem",
+                              fontWeight: 700,
+                              borderRadius: 8,
+                              gap: "0.25rem",
+                            }}
+                            onClick={() => openPointsModal(u, "remove")}
+                            title="Deduct points from student"
+                          >
+                            ➖ Deduct
+                          </button>
+                          <button
+                            className="act-icon-btn"
+                            style={{ width: 28, height: 28, borderRadius: 8 }}
+                            onClick={() => openPointsModal(u, "set")}
+                            title="Set exact score or manage points"
+                          >
+                            ⚙️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
           </div>
@@ -5884,10 +6360,26 @@ export default function AdminDashboard() {
             <div className="admin-kpi-card" style={{ "--kpi-accent": "#a78bfa" }}>
               <div className="admin-kpi-top">
                 <span className="admin-kpi-label">MONTHLY SCORE</span>
-                <span className="admin-kpi-trend up">⭐ Points</span>
+                <button
+                  type="button"
+                  onClick={() => openPointsModal(selectedStudent, "add")}
+                  style={{
+                    background: "rgba(168, 85, 247, 0.2)",
+                    border: "1px solid rgba(168, 85, 247, 0.4)",
+                    color: "#d8b4fe",
+                    borderRadius: 6,
+                    padding: "2px 8px",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                  title="Add or remove points for this student"
+                >
+                  ⚙️ Adjust
+                </button>
               </div>
               <div className="admin-kpi-value" style={{ color: "#c4b5fd" }}>
-                {(selectedStudent.monthlyScore || 0).toLocaleString()}
+                {Math.round(selectedStudent.monthlyScore || 0).toLocaleString()} <span style={{ fontSize: "0.85rem", color: "var(--muted)", fontWeight: 600 }}>pts</span>
               </div>
               <div className="admin-kpi-sub">Accumulated points this month</div>
             </div>

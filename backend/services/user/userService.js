@@ -312,6 +312,133 @@ export async function adjustUserFine(phone, amount) {
 }
 
 /**
+ * Adjust user monthly score / points (admin/trainer)
+ */
+export async function adjustUserPoints(phone, { amount, mode = "add", reason = "" } = {}, io = null) {
+  let user = await User.findOne({ phone });
+  if (!user) {
+    user = await User.findOne({ 
+      userId: { $regex: `^${escapeRegex(phone)}(@|:)` } 
+    });
+  }
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const numAmount = Number(amount);
+  if (isNaN(numAmount)) {
+    const error = new Error("Valid points amount is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const oldScore = Number(user.monthlyScore || 0);
+  let newScore = oldScore;
+
+  if (mode === "set") {
+    newScore = Math.max(0, numAmount);
+  } else if (mode === "remove") {
+    newScore = Math.max(0, oldScore - Math.abs(numAmount));
+  } else {
+    // default "add"
+    newScore = Math.max(0, oldScore + numAmount);
+  }
+
+  // Clean rounding to max 2 decimal places
+  newScore = Math.round(newScore * 100) / 100;
+  user.monthlyScore = newScore;
+
+  // Record in feedback scores history if not 0 change
+  const delta = newScore - oldScore;
+  if (delta !== 0) {
+    user.feedbackScores = user.feedbackScores || [];
+    user.feedbackScores.push({
+      fluency: 100,
+      grammar: 100,
+      confidence: 100,
+      vocabulary: 100,
+      points: delta,
+      date: new Date(),
+    });
+  }
+
+  await user.save();
+
+  // Real-time WebSocket broadcast
+  if (io) {
+    io.emit("user:score_updated", {
+      phone: user.phone || phone,
+      monthlyScore: newScore,
+      userId: user.userId,
+    });
+  }
+
+  return {
+    success: true,
+    phone: user.phone || phone,
+    name: user.name,
+    monthlyScore: newScore,
+    previousScore: oldScore,
+    change: delta,
+  };
+}
+
+/**
+ * Adjust user streak freeze shields (admin/trainer)
+ */
+export async function adjustUserFreeze(phone, { amount, mode = "add" } = {}, io = null) {
+  let user = await User.findOne({ phone });
+  if (!user) {
+    user = await User.findOne({ 
+      userId: { $regex: `^${escapeRegex(phone)}(@|:)` } 
+    });
+  }
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const numAmount = parseInt(amount, 10);
+  if (isNaN(numAmount)) {
+    const error = new Error("Valid freeze count is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const oldFreeze = Number(user.streakFreeze || 0);
+  let newFreeze = oldFreeze;
+
+  if (mode === "set") {
+    newFreeze = Math.max(0, numAmount);
+  } else if (mode === "remove") {
+    newFreeze = Math.max(0, oldFreeze - Math.abs(numAmount));
+  } else {
+    newFreeze = Math.max(0, oldFreeze + numAmount);
+  }
+
+  user.streakFreeze = newFreeze;
+  await user.save();
+
+  if (io) {
+    io.emit("user:freeze_updated", {
+      phone: user.phone || phone,
+      streakFreeze: newFreeze,
+      userId: user.userId,
+    });
+  }
+
+  return {
+    success: true,
+    phone: user.phone || phone,
+    streakFreeze: newFreeze,
+    previousFreeze: oldFreeze,
+  };
+}
+
+/**
  * Reset weekly submissions for all users
  */
 export async function resetWeeklySubmissions() {

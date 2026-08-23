@@ -215,7 +215,7 @@ export default function TrainerDashboard() {
                 <div className="avatar">{(u.registeredName||u.name||"?")[0].toUpperCase()}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div className="user-name">{u.registeredName||u.name||u.phone}</div>
-                  <div className="user-meta">🔥 {u.streak||0} · {u.weeklySubmissions||0}/7 · 🧊 {u.streakFreeze||0} · ⭐ {u.monthlyScore||0}</div>
+                  <div className="user-meta">🔥 {u.streak||0} · {u.weeklySubmissions||0}/7 · 🧊 {u.streakFreeze||0} · ⭐ {Math.round(u.monthlyScore||0)}</div>
                 </div>
                 <span style={{color:u.completed?"var(--success)":"var(--danger)",fontSize:"1.1rem"}}>{u.completed?"✅":"⏳"}</span>
               </div>
@@ -565,7 +565,7 @@ export default function TrainerDashboard() {
           <div className="stat-grid">
             <StatCard icon="🔥" label="Streak"       value={`${selected.streak||0} days`}         color="#f97316"/>
             <StatCard icon="🧊" label="Freeze"        value={selected.streakFreeze||0}               color="#38bdf8"/>
-            <StatCard icon="⭐" label="Monthly Score" value={selected.monthlyScore||0}               color="#a78bfa"/>
+            <StatCard icon="⭐" label="Monthly Score" value={Math.round(selected.monthlyScore||0)}               color="#a78bfa"/>
             <StatCard icon="📹" label="Sessions"      value={selScores.length}                       color="#7c6fff"/>
             <StatCard icon="📅" label="This Week"     value={`${selected.weeklySubmissions||0}/7`}   color="#4ade80"/>
           </div>

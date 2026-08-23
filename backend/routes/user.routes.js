@@ -20,6 +20,8 @@ router.patch("/:phone/toggle", authMiddleware, requireRole("admin", "admins"), u
 router.patch("/:phone/toggle-submitted", authMiddleware, requireRole("admin", "admins", "trainer"), userController.toggleSubmissionStatus);
 router.delete("/:phone", authMiddleware, requireRole("admin", "admins"), userController.deleteUser);
 router.patch("/:phone/fine", authMiddleware, requireRole("admin", "admins"), userController.adjustUserFine);
+router.patch("/:phone/points", authMiddleware, requireRole("admin", "admins", "trainer"), userController.adjustUserPoints);
+router.patch("/:phone/freeze", authMiddleware, requireRole("admin", "admins", "trainer"), userController.adjustUserFreeze);
 
 // ── Bulk Reset Operations (Admin/Trainer) ────────────────────────────────────
 router.post("/reset/weekly", authMiddleware, requireRole("admin", "admins", "trainer"), userController.resetWeeklySubmissions);

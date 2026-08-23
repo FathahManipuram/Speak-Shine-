@@ -141,6 +141,46 @@ export async function adjustUserFine(req, res) {
 }
 
 /**
+ * PATCH /api/users/:phone/points
+ * Adjust user monthly score/points (admin/trainer)
+ * Body: { amount: number, mode?: "add" | "remove" | "set", reason?: string }
+ */
+export async function adjustUserPoints(req, res) {
+  try {
+    const { amount, mode, reason } = req.body || {};
+    const io = req.app?.get("io");
+    const result = await userService.adjustUserPoints(req.params.phone, { amount, mode, reason }, io);
+    res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("[AdjustUserPoints] Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * PATCH /api/users/:phone/freeze
+ * Adjust user streak freeze shields (admin/trainer)
+ * Body: { amount: number, mode?: "add" | "remove" | "set" }
+ */
+export async function adjustUserFreeze(req, res) {
+  try {
+    const { amount, mode } = req.body || {};
+    const io = req.app?.get("io");
+    const result = await userService.adjustUserFreeze(req.params.phone, { amount, mode }, io);
+    res.json(result);
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("[AdjustUserFreeze] Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
  * POST /api/users/reset/weekly
  * Reset weekly submissions (admin/trainer)
  */
