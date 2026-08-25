@@ -328,8 +328,8 @@ async function processJob(job) {
       const status = await Status.findOne().lean();
       challengeType = challengeType || (
         status?.isMonthlyReflectionDay ? "monthly_reflection"
-        : status?.isPictureDescriptionDay ? "picture_description"
-        : status?.isStorySummaryDay ? "story_summary"
+        : (status?.todayContentType === "picture_description" || status?.isPictureDescriptionDay) ? "picture_description"
+        : (status?.todayContentType === "story_audio" || status?.isStorySummaryDay) ? "story_summary"
         : status?.isMonthlyGoalsDay ? "monthly_goals"
         : "topic"
       );
@@ -363,6 +363,7 @@ async function processJob(job) {
         topicRelevance:     result.analysis?.topicRelevance ?? null,
         analysis:           result.analysis,
         isPictureDescription: gateFlags.isPictureDescription || false,
+        isStorySummary:     gateFlags.isStorySummary || false,
       });
       compositeScore = score;
       // Attach breakdown + maxes to analysis so the report UI can show it

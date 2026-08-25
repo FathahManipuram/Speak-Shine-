@@ -375,6 +375,16 @@ export async function analyzeSpeech(transcript, durationSeconds, words = [], que
   const topicRelevanceGuide = !hasTopic
     ? `- topicRelevance: null (no topic was provided)
 - topicFeedback: null`
+    : challengeType === "story_summary"
+    ? `- topicRelevance: how accurately, coherently, and thoroughly the speaker summarized the audio story (characters, sequence of events, conflict, resolution, and main lesson/takeaway)
+    10 = comprehensive, accurate summary capturing all key story elements, main characters, sequence of events, problem and resolution in clear chronological flow
+    8-9 = good summary covering most major plot points and the ending; minor omissions of secondary details
+    6-7 = basic summary; captures the general gist or main idea but misses key events, resolution, or character details
+    4-5 = fragmented attempt; mentions only 1-2 isolated elements from the story, is very vague or confusing
+    2-3 = minimal relevance; barely refers to the story, mostly filler or unrelated commentary
+    1 = does not attempt to summarize the story at all or completely off-topic
+    IMPORTANT: Credit any genuine attempt to retell what happened in the story. Evaluate listening comprehension and narrative retelling.
+- topicFeedback: 1-2 sentences explaining specifically which story plot points/characters the student summarized well and which key story events or details they missed or could have explained more clearly.`
     : challengeType === "picture_description"
     ? `- topicRelevance: how thoroughly the speaker described the image and followed the task instructions
     10 = rich, vivid description covering people/objects/setting/mood/actions, clear inferences, personal thoughts expressed fluently
@@ -400,7 +410,17 @@ export async function analyzeSpeech(transcript, durationSeconds, words = [], que
   // ---------------------------------------------------------------------------
   const buildPrompt = (transcriptChunk, partLabel = null) => {
     const partNote = partLabel ? `\nNOTE: This is ${partLabel} of the full transcript. Score accordingly.\n` : "";
-    const challengeContext = challengeType === "picture_description"
+    const challengeContext = challengeType === "story_summary"
+      ? `\nCHALLENGE TYPE: Story Summary (Listening & Retelling Practice)
+The student listened to an audio story and was asked to record a summary in their own words. This is a listening comprehension and storytelling task — prioritise evaluation of:
+• Narrative flow and sequencing (e.g., "In the beginning", "After that", "Finally", "Consequently")
+• Accuracy of retelling: did they understand the characters, setting, problem/conflict, key events, and resolution?
+• Paraphrasing & vocabulary: ability to explain the story in their own words rather than just repeating isolated words
+• Coherence & structure: beginning → middle → climax → ending
+• Fluency and confidence in recounting a story
+When writing suggestions, provide concrete storytelling/summary tips (e.g. "Include the resolution/moral of the story", "Use time transitions like 'meanwhile' and 'eventually'").
+When writing overallComment, mention their story comprehension and summarization ability alongside speaking fluency.\n`
+      : challengeType === "picture_description"
       ? `\nCHALLENGE TYPE: Picture Description
 The student was shown an image and asked to describe it. This is a spontaneous speaking task — prioritise evaluation of:
 • Fluency and natural delivery under unprepared conditions

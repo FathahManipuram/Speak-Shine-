@@ -218,13 +218,16 @@ export function calculateCompositeScore({
   topicRelevance = null,
   analysis = {},
   isPictureDescription = false,
+  isStorySummary = false,
 }) {
+  const challengeType = analysis?.challengeType || null;
+  const isStoryTask = Boolean(isStorySummary || challengeType === "story_summary");
 
   // ── Picture Description: four-category weighted formula ──────────────────
   // Communication & Fluency 30 | Content & Relevance 40 |
   // Vocabulary 10 | Duration 20 = 100.
   // Keep this branch isolated so TOPIC/STORY_SUMMARY scoring below is unchanged.
-  if (isPictureDescription) {
+  if (isPictureDescription || challengeType === "picture_description") {
     const statsObj = analysis._stats || analysis.stats || {};
     const rawSpeechRatio = statsObj?.rhythm?.speechRatio;
     const wpm = statsObj?.wpm;
@@ -314,12 +317,27 @@ export function calculateCompositeScore({
         maxDuration:      20,
         speechMultiplier: Math.round(speechMult * 100),
         isPictureDescription: true,
+        isStorySummary: false,
         isSpecialDay: false,
       },
     };
   }
 
-  const isSpecialDay = topicRelevance == null;
+  // ── Derive effective topic relevance ─────────────────────────────────────
+  let effectiveTopicRelevance = typeof topicRelevance === "number" && !Number.isNaN(topicRelevance)
+    ? topicRelevance
+    : (typeof analysis?.topicRelevance === "number" && !Number.isNaN(analysis.topicRelevance) ? analysis.topicRelevance : null);
+
+  // If this is a Story Summary task, it MUST have topic relevance scoring (never 0/null special day).
+  // Fall back to coherence / communication averages if the raw analysis missed it.
+  if (isStoryTask && effectiveTopicRelevance == null) {
+    const coherence = typeof analysis.coherence === "number" && !Number.isNaN(analysis.coherence) ? analysis.coherence : null;
+    const commFallbacks = [analysis.fluency, analysis.vocabulary, analysis.confidence].filter(n => typeof n === "number" && !Number.isNaN(n));
+    const fallbackScore = coherence ?? (commFallbacks.length ? (commFallbacks.reduce((a, b) => a + b, 0) / commFallbacks.length) : 7.0);
+    effectiveTopicRelevance = Math.round(fallbackScore * 10) / 10;
+  }
+
+  const isSpecialDay = !isStoryTask && effectiveTopicRelevance == null;
 
   // ── Part 1: Effective speaking time ─────────────────────────────────────
   // speechRatio: % of video time actually speaking (0–100), from Whisper timestamps.
@@ -349,7 +367,7 @@ export function calculateCompositeScore({
     speechMultiplier = 0;
   }
 
-  const maxDur = maxDurationSeconds || 300;
+  const maxDur = maxDurationSeconds || (isStoryTask ? 180 : 300);
   const minDur = 60;
   const actualDur = Math.min(durationSeconds || 0, maxDur);
   const rangeScore = maxDur > minDur
@@ -406,8 +424,8 @@ export function calculateCompositeScore({
     // 3-part: comm gets the remaining 33.34
     commScore = (commAvg / 10) * 33.34;
   } else {
-    // 4-part
-    topicScore = (Math.max(0, Math.min(10, topicRelevance)) / 10) * 16.67;
+    // 4-part (including Story Summary tasks)
+    topicScore = (Math.max(0, Math.min(10, effectiveTopicRelevance)) / 10) * 16.67;
     commScore  = (commAvg / 10) * 16.67;
   }
 
@@ -426,6 +444,12 @@ export function calculateCompositeScore({
       requiredVocabWords: required,
       totalVocabWords: total,
       isSpecialDay,
+      isStorySummary:  isStoryTask,
+      isPictureDescription: false,
+      maxLength:       33.33,
+      maxVocab:        33.33,
+      maxTopic:        isSpecialDay ? 0 : 16.67,
+      maxComm:         isSpecialDay ? 33.34 : 16.67,
     },
   };
 }

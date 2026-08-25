@@ -1040,20 +1040,76 @@ async function prepareReportAnalysis(report) {
   // fields were persisted. Do not change the stored score; only hydrate the
   // display payload exactly as the individual report endpoint does.
   const status = analysis ? await Status.findOne().lean() : null;
-  if (!challengeType && analysis && status?.isPictureDescriptionDay) {
+  const isPicTask = challengeType === "picture_description" || status?.isPictureDescriptionDay;
+  const isStoryTask = challengeType === "story_summary" || status?.isStorySummaryDay || status?.todayContentType === "story_audio";
+
+  if (!challengeType && analysis) {
+    if (isPicTask) {
+      challengeType = "picture_description";
+    } else if (isStoryTask) {
+      challengeType = "story_summary";
+    }
+  }
+
+  if (analysis && isPicTask && (!analysis.scoreBreakdown || !analysis.scoreBreakdown.isPictureDescription)) {
     const source = analysis.toObject ? analysis.toObject() : { ...analysis };
     const { breakdown } = calculateCompositeScore({
       durationSeconds: report.videoDuration || 0,
-      maxDurationSeconds: status.durationPictureFull ?? 180,
+      maxDurationSeconds: status?.durationPictureFull ?? 180,
       vocabularyUsed: source.vocabularyUsed || [],
-      totalVocabWords: status.todayVocabulary?.length || status.vocabWordCount || 5,
-      requiredVocabWords: Math.min(status.vocabRequiredCount ?? 3, status.todayVocabulary?.length || status.vocabWordCount || 5),
+      totalVocabWords: status?.todayVocabulary?.length || status?.vocabWordCount || 5,
+      requiredVocabWords: Math.min(status?.vocabRequiredCount ?? 3, status?.todayVocabulary?.length || status?.vocabWordCount || 5),
       topicRelevance: source.topicRelevance ?? null,
       analysis: source,
       isPictureDescription: true,
     });
     analysis = { ...source, scoreBreakdown: breakdown };
-    challengeType = "picture_description";
+  }
+
+  // Self-heal story summary tasks if they were missing topic relevance or marked as special day
+  if (analysis && isStoryTask && (analysis.scoreBreakdown?.isSpecialDay || analysis.topicRelevance == null || analysis.scoreBreakdown?.maxTopic === 0)) {
+    const source = analysis.toObject ? analysis.toObject() : { ...analysis };
+    const todayVocab = status?.todayVocabulary || [];
+    const configuredWordCount = status?.vocabStoryWordCount ?? status?.vocabWordCount ?? 5;
+    const configuredRequiredCount = status?.vocabStoryRequiredCount ?? status?.vocabRequiredCount ?? 3;
+    const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
+    const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
+
+    const { score, breakdown } = calculateCompositeScore({
+      durationSeconds: report.videoDuration || 0,
+      maxDurationSeconds: status?.durationStoryFull ?? 180,
+      vocabularyUsed: source.vocabularyUsed || [],
+      totalVocabWords: effectiveTotalWords,
+      requiredVocabWords: effectiveRequiredWords,
+      topicRelevance: source.topicRelevance ?? null,
+      analysis: source,
+      isStorySummary: true,
+    });
+
+    source.compositeScore = score;
+    source.scoreBreakdown = {
+      ...breakdown,
+      maxLength: 33.33,
+      maxVocab: 33.33,
+      maxTopic: 16.67,
+      maxComm: 16.67,
+    };
+    if (source.topicRelevance == null) {
+      source.topicRelevance = typeof breakdown.topic === "number" ? Math.round((breakdown.topic / 16.67) * 10 * 10) / 10 : 7.0;
+    }
+
+    // Persist self-healed story score
+    VideoReport.findByIdAndUpdate(report._id, {
+      $set: {
+        "analysis.compositeScore": score,
+        "analysis.scoreBreakdown": source.scoreBreakdown,
+        "analysis.topicRelevance": source.topicRelevance,
+        challengeType: "story_summary",
+        "analysis.challengeType": "story_summary",
+      }
+    }).catch(err => console.warn("[VideoService] Failed to persist self-healed story score:", err.message));
+
+    analysis = source;
   }
 
   // Self-heal vocabulary matching if transcript exists and today's vocabulary has words
@@ -1067,7 +1123,7 @@ async function prepareReportAnalysis(report) {
       source.vocabularyUsed = rechecked;
       
       const isPic = challengeType === "picture_description" || status?.isPictureDescriptionDay;
-      const isStory = challengeType === "story_summary" || status?.isStorySummaryDay;
+      const isStory = challengeType === "story_summary" || status?.isStorySummaryDay || status?.todayContentType === "story_audio";
       const configuredWordCount = isPic
         ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
         : isStory
@@ -1083,13 +1139,14 @@ async function prepareReportAnalysis(report) {
 
       const { score, breakdown } = calculateCompositeScore({
         durationSeconds: report.videoDuration || 0,
-        maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : (status?.durationDefaultFull ?? 300),
+        maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : isStory ? (status?.durationStoryFull ?? 180) : (status?.durationDefaultFull ?? 300),
         vocabularyUsed: rechecked,
         totalVocabWords: effectiveTotalWords,
         requiredVocabWords: effectiveRequiredWords,
         topicRelevance: source.topicRelevance ?? null,
         analysis: source,
         isPictureDescription: isPic || false,
+        isStorySummary: isStory || false,
       });
 
       source.compositeScore = score;
@@ -1579,7 +1636,7 @@ export async function reEvaluateReport(reportId, userId, userRole = "user") {
   );
 
   const isPic = challengeType === "picture_description" || status?.isPictureDescriptionDay;
-  const isStory = challengeType === "story_summary" || status?.isStorySummaryDay;
+  const isStory = challengeType === "story_summary" || status?.isStorySummaryDay || status?.todayContentType === "story_audio";
   const configuredWordCount = isPic
     ? (status?.vocabPictureWordCount ?? status?.vocabWordCount ?? 5)
     : isStory
@@ -1595,14 +1652,19 @@ export async function reEvaluateReport(reportId, userId, userRole = "user") {
 
   const { score, breakdown } = calculateCompositeScore({
     durationSeconds: report.videoDuration || 0,
-    maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : (status?.durationDefaultFull ?? 300),
+    maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : isStory ? (status?.durationStoryFull ?? 180) : (status?.durationDefaultFull ?? 300),
     vocabularyUsed: matchedWords,
     totalVocabWords: effectiveTotalWords,
     requiredVocabWords: effectiveRequiredWords,
     topicRelevance: report.analysis.topicRelevance ?? null,
     analysis: report.analysis,
     isPictureDescription: isPic || false,
+    isStorySummary: isStory || false,
   });
+
+  if (isStory && report.analysis.topicRelevance == null) {
+    report.analysis.topicRelevance = typeof breakdown.topic === "number" ? Math.round((breakdown.topic / 16.67) * 10 * 10) / 10 : 7.0;
+  }
 
   const updatedBreakdown = isPic ? {
     ...breakdown,
