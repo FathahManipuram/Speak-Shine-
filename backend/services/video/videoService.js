@@ -15,7 +15,7 @@ import { getVideoDuration } from "../ai/videoProcessor.js";
 import { scanFile } from "../ai/virusScanner.js";
 import { validateVideoCodecs } from "../ai/videoValidator.js";
 import { moderateVideo } from "../ai/contentModerator.js";
-import { calculateCompositeScore, matchVocabularyInTranscript } from "./submitGate.js";
+import { calculateCompositeScore, matchVocabularyInTranscript, getDurationLimits, evaluateSubmitGate } from "./submitGate.js";
 import { checkSecurityCache, saveSecurityCache } from "../ai/securityCache.js";
 import { fileTypeFromBuffer, fileTypeFromFile } from "file-type";
 import fs from "fs";
@@ -551,6 +551,7 @@ export async function confirmDirectUpload(key, publicUrl, mimeType, isPublic, us
       fileSizeBytes: contentLength > 0 ? contentLength : null,
       frameCount: Array.isArray(frames) ? frames.length : null,
       flags: gateFlags,
+      settings: status || {},
     });
     if (!gate.passed) {
       try { await deleteFromR2(key); } catch {}
@@ -818,24 +819,17 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
     
     // Dynamic duration limits based on question type
     const status = await Status.findOne().lean();
-    const isMonthlyReflection = status?.isMonthlyReflectionDay || false;
-    const isMonthlyGoals = status?.isMonthlyGoalsDay || false;
-    const isStorySummary = status?.isStorySummaryDay || false;
-    const isPictureDescription = status?.isPictureDescriptionDay || false;
+    const gateFlags = {
+      isMonthlyReflection: status?.isMonthlyReflectionDay || false,
+      isMonthlyGoals: status?.isMonthlyGoalsDay || false,
+      isStorySummary: isActiveStoryTask(status),
+      isPictureDescription: isActivePictureTask(status),
+    };
     
-    const maxDuration = isMonthlyReflection
-      ? (status?.durationMonthlyReflectionMax ?? 420) + 5
-      : isMonthlyGoals
-      ? (status?.durationMonthlyGoalsMax ?? 600) + 5
-      : isStorySummary
-      ? (status?.durationStoryMax ?? 180) + 5
-      : isPictureDescription
-      ? (status?.durationPictureMax ?? 180) + 5
-      : (status?.durationDefaultMax ?? 300) + 5;
+    const { minSeconds, maxSeconds, minLabel, maxLabel } = getDurationLimits(gateFlags, status || {});
+    const maxDurationWithTolerance = maxSeconds + 5;
     
-    const maxMinutes = Math.floor((maxDuration - 5) / 60);
-    
-    if (duration > maxDuration) {
+    if (duration > maxDurationWithTolerance) {
       securityFlags.push('duration_invalid');
       await UploadAudit.logUpload({
         userId: authId, phone, uploadType: 'direct',
@@ -850,7 +844,7 @@ export async function uploadVideo(file, user, isPublic, ipAddress, userAgent) {
       });
       
       if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
-      const error = new Error(`Video is too long (${duration}s). Maximum is ${maxMinutes} minutes.`);
+      const error = new Error(`Video is too long (${duration}s). Maximum is ${maxLabel}.`);
       error.statusCode = 400;
       throw error;
     }
@@ -1137,9 +1131,17 @@ async function prepareReportAnalysis(report) {
       const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
       const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
 
+      const scoreGateFlags = {
+        isPictureDescription: isPic || false,
+        isStorySummary: isStory || false,
+        isMonthlyReflection: status?.isMonthlyReflectionDay || false,
+        isMonthlyGoals: status?.isMonthlyGoalsDay || false,
+      };
+      const { fullScoreSeconds } = getDurationLimits(scoreGateFlags, status || {});
+
       const { score, breakdown } = calculateCompositeScore({
         durationSeconds: report.videoDuration || 0,
-        maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : isStory ? (status?.durationStoryFull ?? 180) : (status?.durationDefaultFull ?? 300),
+        maxDurationSeconds: fullScoreSeconds,
         vocabularyUsed: rechecked,
         totalVocabWords: effectiveTotalWords,
         requiredVocabWords: effectiveRequiredWords,
@@ -1650,9 +1652,17 @@ export async function reEvaluateReport(reportId, userId, userRole = "user") {
   const effectiveTotalWords = todayVocab.length > 0 ? todayVocab.length : configuredWordCount;
   const effectiveRequiredWords = Math.min(configuredRequiredCount, effectiveTotalWords);
 
+  const scoreGateFlags = {
+    isPictureDescription: isPic || false,
+    isStorySummary: isStory || false,
+    isMonthlyReflection: status?.isMonthlyReflectionDay || false,
+    isMonthlyGoals: status?.isMonthlyGoalsDay || false,
+  };
+  const { fullScoreSeconds } = getDurationLimits(scoreGateFlags, status || {});
+
   const { score, breakdown } = calculateCompositeScore({
     durationSeconds: report.videoDuration || 0,
-    maxDurationSeconds: isPic ? (status?.durationPictureFull ?? 180) : isStory ? (status?.durationStoryFull ?? 180) : (status?.durationDefaultFull ?? 300),
+    maxDurationSeconds: fullScoreSeconds,
     vocabularyUsed: matchedWords,
     totalVocabWords: effectiveTotalWords,
     requiredVocabWords: effectiveRequiredWords,

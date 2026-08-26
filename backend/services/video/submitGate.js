@@ -65,9 +65,14 @@ function fmtDuration(sec) {
  * @param {number|null} input.frameCount
  * @param {boolean} input.hasAudioTrack - optional hint from client
  * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isStorySummary?: boolean, isPictureDescription?: boolean }} input.flags
+ * @param {object} [input.settings] - database settings from Status document
+ * @param {object} [input.customLimits] - pre-computed limits object
+ * @param {object} [settings] - optional fallback settings object
  */
-export function evaluateSubmitGate(input) {
-  const { minSeconds, maxSeconds, minLabel, maxLabel } = getDurationLimits(input.flags || {});
+export function evaluateSubmitGate(input, settings = {}) {
+  const effectiveSettings = input?.settings || settings || {};
+  const limits = input?.customLimits || getDurationLimits(input?.flags || {}, effectiveSettings);
+  const { minSeconds, maxSeconds, fullScoreSeconds, minLabel, maxLabel, fullScoreLabel } = limits;
   /** @type {{ id: string, label: string, status: GateStatus, message: string }[]} */
   const checks = [];
 
@@ -114,48 +119,50 @@ export function evaluateSubmitGate(input) {
         id: "size",
         label: "File size",
         status: "fail",
-        message: `${mb} MB exceeds 110 MB limit.`,
-      });
-    } else if (size > 80 * 1024 * 1024) {
-      checks.push({
-        id: "size",
-        label: "File size",
-        status: "warn",
-        message: `${mb} MB — large file; upload may be slow.`,
+        message: `File is ${mb} MB (maximum is 110 MB). Please record a shorter video.`,
       });
     } else {
       checks.push({
         id: "size",
         label: "File size",
         status: "pass",
-        message: `${mb} MB — OK.`,
+        message: `${mb} MB — within limit.`,
       });
     }
   }
 
   const frames = input.frameCount;
-  if (frames != null) {
+  if (frames != null && typeof frames === "number") {
     if (frames < GATE_FRAME_MIN) {
       checks.push({
         id: "frames",
-        label: "Preview frames",
+        label: "Frames extracted",
+        status: "fail",
+        message: `Only ${frames} frames extracted. Minimum is ${GATE_FRAME_MIN}.`,
+      });
+    } else if (frames < GATE_FRAME_IDEAL) {
+      checks.push({
+        id: "frames",
+        label: "Frames extracted",
         status: "warn",
-        message: `Only ${frames} frames captured — visual scores may be less accurate.`,
+        message: `${frames} frames extracted (ideal is ${GATE_FRAME_IDEAL}+). Analysis may be less detailed.`,
       });
     } else {
       checks.push({
         id: "frames",
-        label: "Preview frames",
+        label: "Frames extracted",
         status: "pass",
-        message: `${frames} frames ready for AI (faster analysis).`,
+        message: `${frames} frames ready for AI analysis.`,
       });
     }
-  } else {
+  }
+
+  if (input.hasAudioTrack === false) {
     checks.push({
-      id: "frames",
-      label: "Preview frames",
-      status: "warn",
-      message: "No browser frames — server will extract (slower).",
+      id: "audio",
+      label: "Audio track",
+      status: "fail",
+      message: "No audio detected. Please enable your microphone.",
     });
   }
 

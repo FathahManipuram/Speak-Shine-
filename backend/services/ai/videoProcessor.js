@@ -95,9 +95,8 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
     }
 
     if (duration < 60) throw new Error(`Video is too short (${duration}s). Minimum is 1 minute.`);
-    // Add 5-second tolerance to account for recording timer drift
-    // Default: 305s (5 min + 5s), but can be 425s (7 min) or 605s (10 min) for special days
-    if (duration > 605) throw new Error(`Video is too long (${duration}s). Maximum is 10 minutes.`);
+    // Add 5-second tolerance to account for recording timer drift (max configurable is 1200s / 20 min)
+    if (duration > 1205) throw new Error(`Video is too long (${duration}s). Maximum is 20 minutes.`);
 
     await onProgress("Extracting audio…");
 
