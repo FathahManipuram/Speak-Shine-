@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import Modal from "./Modal.jsx";
-import NotificationBell from "./NotificationBell.jsx";
 import { io } from "socket.io-client";
+
+const Modal = lazy(() => import("./Modal.jsx"));
+const NotificationBell = lazy(() => import("./NotificationBell.jsx"));
 
 // ── Live session banner (shown on all pages when a session goes live) ────────
 function LiveSessionBanner() {
@@ -155,15 +156,17 @@ export default function Layout({ children, title }) {
   return (
     <div className="app-shell">
       {showLogoutModal && (
-        <Modal
-          type="danger"
-          title="Log Out"
-          message="Are you sure you want to log out?"
-          confirmText="Log Out"
-          cancelText="Stay"
-          onConfirm={doLogout}
-          onCancel={() => setShowLogoutModal(false)}
-        />
+        <Suspense fallback={null}>
+          <Modal
+            type="danger"
+            title="Log Out"
+            message="Are you sure you want to log out?"
+            confirmText="Log Out"
+            cancelText="Stay"
+            onConfirm={doLogout}
+            onCancel={() => setShowLogoutModal(false)}
+          />
+        </Suspense>
       )}
 
       {/* ── Custom PWA install modal ── */}
@@ -376,7 +379,11 @@ export default function Layout({ children, title }) {
             </div>
           )}
 
-          {user && <NotificationBell token={localStorage.getItem("token")} />}
+          {user && (
+            <Suspense fallback={<div style={{ width: 36, height: 36 }} />}>
+              <NotificationBell token={localStorage.getItem("token")} />
+            </Suspense>
+          )}
           {user && <span className={`role-badge ${user?.role}`}>{user?.role}</span>}
           {user && <span className="header-name">{user?.name}</span>}
           {user && <button className="logout-btn" onClick={handleLogout}>Logout</button>}

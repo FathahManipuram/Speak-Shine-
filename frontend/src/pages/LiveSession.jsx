@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import Layout from "../components/Layout.jsx";
-import LiveRoom from "../components/LiveRoom.jsx";
 import api from "../api/client.js";
+
+const LiveRoom = lazy(() => import("../components/LiveRoom.jsx"));
 
 export default function LiveSession() {
   const { id } = useParams();
@@ -128,12 +129,19 @@ export default function LiveSession() {
   // When in room — render full-screen with NO Layout wrapper
   if (inRoom) {
     return (
-      <LiveRoom
-        sessionId={id}
-        userRole={user.role}
-        onLeave={handleLeave}
-        onSessionEnded={handleLeave}
-      />
+      <Suspense fallback={
+        <div className="spinner-wrap" style={{ height: "100vh" }}>
+          <div className="spinner" />
+          <p style={{ color: "var(--muted)", marginTop: "1rem" }}>Connecting to live room…</p>
+        </div>
+      }>
+        <LiveRoom
+          sessionId={id}
+          userRole={user.role}
+          onLeave={handleLeave}
+          onSessionEnded={handleLeave}
+        />
+      </Suspense>
     );
   }
 }

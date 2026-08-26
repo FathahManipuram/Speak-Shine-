@@ -3,10 +3,11 @@
  * Shows the logged-in user's payment transactions and current access status.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import Layout from "../components/Layout.jsx";
 import api from "../api/client.js";
-import InvoiceModal from "../components/InvoiceModal.jsx";
+
+const InvoiceModal = lazy(() => import("../components/InvoiceModal.jsx"));
 
 function statusBadge(status) {
   const map = {
@@ -56,11 +57,13 @@ export default function PaymentHistory() {
     <Layout title="Payment History">
       {/* Invoice / Receipt Modal */}
       {selectedInvoiceTx && (
-        <InvoiceModal
-          transaction={selectedInvoiceTx}
-          user={user}
-          onClose={() => setSelectedInvoiceTx(null)}
-        />
+        <Suspense fallback={null}>
+          <InvoiceModal
+            transaction={selectedInvoiceTx}
+            user={user}
+            onClose={() => setSelectedInvoiceTx(null)}
+          />
+        </Suspense>
       )}
 
       <div style={{ maxWidth: 760, margin: "1.5rem auto", padding: "0 1rem" }}>
