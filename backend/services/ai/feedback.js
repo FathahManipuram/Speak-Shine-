@@ -130,7 +130,8 @@ export async function generateFeedback(
             questionTopic,
             questionText,
             t.pronunciationIssues || [],
-            t.rhythm || null
+            t.rhythm || null,
+            opts.challengeType || null
           ),
           speechTimeout,
           "speech"

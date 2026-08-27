@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getSharedSocket } from "../hooks/useSocket";
 import api from "../api/client";
-import Chat from "./Chat";
-import GroupChat from "./GroupChat";
+
+const Chat = lazy(() => import("./Chat"));
+const GroupChat = lazy(() => import("./GroupChat"));
 
 const API_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace("/api", "")
@@ -82,10 +83,16 @@ export default function ChatLauncher() {
   return (
     <>
       {showGroup && (
-        <GroupChat onClose={closeAll} onUnread={() => setUnread((n) => n + 1)} />
+        <Suspense fallback={null}>
+          <GroupChat onClose={closeAll} onUnread={() => setUnread((n) => n + 1)} />
+        </Suspense>
       )}
 
-      {activePeer && <Chat peer={activePeer} onClose={closeAll} />}
+      {activePeer && (
+        <Suspense fallback={null}>
+          <Chat peer={activePeer} onClose={closeAll} />
+        </Suspense>
+      )}
 
       {/* Peer list dropdown */}
       {showList && !isOpen && (

@@ -5,12 +5,13 @@
  * Features instant verification, success confirmation, and 1-click invoice download.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client.js";
 import Layout from "../components/Layout.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import InvoiceModal from "../components/InvoiceModal.jsx";
+
+const InvoiceModal = lazy(() => import("../components/InvoiceModal.jsx"));
 
 // ── Load Razorpay checkout.js script once ────────────────────────────────────
 function loadRazorpayScript() {
@@ -237,11 +238,13 @@ export default function PaymentWall({ onSuccess }) {
       <Layout title="Payment Successful">
         {/* Printable Official Invoice Modal */}
         {showInvoiceModal && (
-          <InvoiceModal
-            transaction={successTx}
-            user={user}
-            onClose={() => setShowInvoiceModal(false)}
-          />
+          <Suspense fallback={null}>
+            <InvoiceModal
+              transaction={successTx}
+              user={user}
+              onClose={() => setShowInvoiceModal(false)}
+            />
+          </Suspense>
         )}
 
         <div style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>

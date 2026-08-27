@@ -47,16 +47,24 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
     status = await Status.findOne().lean();
     questionTopic = status?.todayTopic || null;
     questionText  = status?.todayQuestion || null;
-    if (status?.isStorySummaryDay) {
+    const isStory = status?.todayContentType === "story_audio"
+      || (status?.isStorySummaryDay && status?.todayContentType !== "picture_description");
+    const isPicture = status?.todayContentType === "picture_description"
+      || (status?.isPictureDescriptionDay && status?.todayContentType !== "story_audio");
+
+    if (isStory) {
+      if (!questionTopic) questionTopic = status?.todayTopic || "Story Summary";
       const storyContext = [
-        "This is a story summary task. Evaluate whether the speaker understood and summarized the audio story accurately.",
+        "This is a Story Summary speaking task. The student listened to an audio story and was asked to summarize it in their own words.",
+        status?.todayTopic ? `Story Topic: ${status.todayTopic}` : null,
         status?.todayStoryTranscript ? `Story transcript: ${status.todayStoryTranscript}` : null,
-        status?.todaySummaryGuide ? `Expected key points / summary guide: ${status.todaySummaryGuide}` : null,
-      ].filter(Boolean).join("\n");
+        status?.todaySummaryGuide ? `Expected key points / summary guide:\n${status.todaySummaryGuide}` : null,
+        "Judge topic relevance (1–10) based on how thoroughly and accurately they summarized the audio story (plot, characters, key events, and resolution)."
+      ].filter(Boolean).join("\n\n");
       questionText = [questionText, storyContext].filter(Boolean).join("\n\n");
     }
 
-    if (status?.todayContentType === "picture_description" || status?.isPictureDescriptionDay) {
+    if (isPicture) {
       const pictureContext = [
         "This is a Picture Description task. The student was shown an image and asked to describe it in detail.",
         "Evaluate how well the speaker described: the people, objects, setting, mood, and actions visible in the image.",
@@ -87,9 +95,8 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
     }
 
     if (duration < 60) throw new Error(`Video is too short (${duration}s). Minimum is 1 minute.`);
-    // Add 5-second tolerance to account for recording timer drift
-    // Default: 305s (5 min + 5s), but can be 425s (7 min) or 605s (10 min) for special days
-    if (duration > 605) throw new Error(`Video is too long (${duration}s). Maximum is 10 minutes.`);
+    // Add 5-second tolerance to account for recording timer drift (max configurable is 1200s / 20 min)
+    if (duration > 1205) throw new Error(`Video is too long (${duration}s). Maximum is 20 minutes.`);
 
     await onProgress("Extracting audio…");
 
@@ -143,18 +150,23 @@ export async function processWebVideo(videoPath, displayName = "User", onProgres
       await onProgress("Scoring your speech…");
 
       const speechStage = startStage("analyzeSpeech");
+      const isStoryActive = status?.todayContentType === "story_audio"
+        || (status?.isStorySummaryDay && status?.todayContentType !== "picture_description");
+      const isPictureActive = status?.todayContentType === "picture_description"
+        || (status?.isPictureDescriptionDay && status?.todayContentType !== "story_audio");
+      const challengeType = isPictureActive ? "picture_description" : isStoryActive ? "story_summary" : null;
+
       try {
         speechResult = await withTimeout(
           analyzeSpeech(
             t.text,
             t.duration > 0 ? t.duration : duration,
             t.words,
-            questionTopic,
+            questionTopic || (isStoryActive ? "Story Summary" : null),
             questionText,
             t.pronunciationIssues || [],
             t.rhythm || null,
-            (status?.todayContentType === "picture_description" || status?.isPictureDescriptionDay)
-              ? "picture_description" : null
+            challengeType
           ),
           Number(process.env.SPEECH_TIMEOUT_MS) || SPEECH_TIMEOUT_MS,
           "speech"

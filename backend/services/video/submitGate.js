@@ -65,9 +65,14 @@ function fmtDuration(sec) {
  * @param {number|null} input.frameCount
  * @param {boolean} input.hasAudioTrack - optional hint from client
  * @param {{ isMonthlyReflection?: boolean, isMonthlyGoals?: boolean, isStorySummary?: boolean, isPictureDescription?: boolean }} input.flags
+ * @param {object} [input.settings] - database settings from Status document
+ * @param {object} [input.customLimits] - pre-computed limits object
+ * @param {object} [settings] - optional fallback settings object
  */
-export function evaluateSubmitGate(input) {
-  const { minSeconds, maxSeconds, minLabel, maxLabel } = getDurationLimits(input.flags || {});
+export function evaluateSubmitGate(input, settings = {}) {
+  const effectiveSettings = input?.settings || settings || {};
+  const limits = input?.customLimits || getDurationLimits(input?.flags || {}, effectiveSettings);
+  const { minSeconds, maxSeconds, fullScoreSeconds, minLabel, maxLabel, fullScoreLabel } = limits;
   /** @type {{ id: string, label: string, status: GateStatus, message: string }[]} */
   const checks = [];
 
@@ -114,48 +119,50 @@ export function evaluateSubmitGate(input) {
         id: "size",
         label: "File size",
         status: "fail",
-        message: `${mb} MB exceeds 110 MB limit.`,
-      });
-    } else if (size > 80 * 1024 * 1024) {
-      checks.push({
-        id: "size",
-        label: "File size",
-        status: "warn",
-        message: `${mb} MB — large file; upload may be slow.`,
+        message: `File is ${mb} MB (maximum is 110 MB). Please record a shorter video.`,
       });
     } else {
       checks.push({
         id: "size",
         label: "File size",
         status: "pass",
-        message: `${mb} MB — OK.`,
+        message: `${mb} MB — within limit.`,
       });
     }
   }
 
   const frames = input.frameCount;
-  if (frames != null) {
+  if (frames != null && typeof frames === "number") {
     if (frames < GATE_FRAME_MIN) {
       checks.push({
         id: "frames",
-        label: "Preview frames",
+        label: "Frames extracted",
+        status: "fail",
+        message: `Only ${frames} frames extracted. Minimum is ${GATE_FRAME_MIN}.`,
+      });
+    } else if (frames < GATE_FRAME_IDEAL) {
+      checks.push({
+        id: "frames",
+        label: "Frames extracted",
         status: "warn",
-        message: `Only ${frames} frames captured — visual scores may be less accurate.`,
+        message: `${frames} frames extracted (ideal is ${GATE_FRAME_IDEAL}+). Analysis may be less detailed.`,
       });
     } else {
       checks.push({
         id: "frames",
-        label: "Preview frames",
+        label: "Frames extracted",
         status: "pass",
-        message: `${frames} frames ready for AI (faster analysis).`,
+        message: `${frames} frames ready for AI analysis.`,
       });
     }
-  } else {
+  }
+
+  if (input.hasAudioTrack === false) {
     checks.push({
-      id: "frames",
-      label: "Preview frames",
-      status: "warn",
-      message: "No browser frames — server will extract (slower).",
+      id: "audio",
+      label: "Audio track",
+      status: "fail",
+      message: "No audio detected. Please enable your microphone.",
     });
   }
 
@@ -218,13 +225,16 @@ export function calculateCompositeScore({
   topicRelevance = null,
   analysis = {},
   isPictureDescription = false,
+  isStorySummary = false,
 }) {
+  const challengeType = analysis?.challengeType || null;
+  const isStoryTask = Boolean(isStorySummary || challengeType === "story_summary");
 
   // ── Picture Description: four-category weighted formula ──────────────────
   // Communication & Fluency 30 | Content & Relevance 40 |
   // Vocabulary 10 | Duration 20 = 100.
   // Keep this branch isolated so TOPIC/STORY_SUMMARY scoring below is unchanged.
-  if (isPictureDescription) {
+  if (isPictureDescription || challengeType === "picture_description") {
     const statsObj = analysis._stats || analysis.stats || {};
     const rawSpeechRatio = statsObj?.rhythm?.speechRatio;
     const wpm = statsObj?.wpm;
@@ -314,12 +324,27 @@ export function calculateCompositeScore({
         maxDuration:      20,
         speechMultiplier: Math.round(speechMult * 100),
         isPictureDescription: true,
+        isStorySummary: false,
         isSpecialDay: false,
       },
     };
   }
 
-  const isSpecialDay = topicRelevance == null;
+  // ── Derive effective topic relevance ─────────────────────────────────────
+  let effectiveTopicRelevance = typeof topicRelevance === "number" && !Number.isNaN(topicRelevance)
+    ? topicRelevance
+    : (typeof analysis?.topicRelevance === "number" && !Number.isNaN(analysis.topicRelevance) ? analysis.topicRelevance : null);
+
+  // If this is a Story Summary task, it MUST have topic relevance scoring (never 0/null special day).
+  // Fall back to coherence / communication averages if the raw analysis missed it.
+  if (isStoryTask && effectiveTopicRelevance == null) {
+    const coherence = typeof analysis.coherence === "number" && !Number.isNaN(analysis.coherence) ? analysis.coherence : null;
+    const commFallbacks = [analysis.fluency, analysis.vocabulary, analysis.confidence].filter(n => typeof n === "number" && !Number.isNaN(n));
+    const fallbackScore = coherence ?? (commFallbacks.length ? (commFallbacks.reduce((a, b) => a + b, 0) / commFallbacks.length) : 7.0);
+    effectiveTopicRelevance = Math.round(fallbackScore * 10) / 10;
+  }
+
+  const isSpecialDay = !isStoryTask && effectiveTopicRelevance == null;
 
   // ── Part 1: Effective speaking time ─────────────────────────────────────
   // speechRatio: % of video time actually speaking (0–100), from Whisper timestamps.
@@ -349,7 +374,7 @@ export function calculateCompositeScore({
     speechMultiplier = 0;
   }
 
-  const maxDur = maxDurationSeconds || 300;
+  const maxDur = maxDurationSeconds || (isStoryTask ? 180 : 300);
   const minDur = 60;
   const actualDur = Math.min(durationSeconds || 0, maxDur);
   const rangeScore = maxDur > minDur
@@ -406,8 +431,8 @@ export function calculateCompositeScore({
     // 3-part: comm gets the remaining 33.34
     commScore = (commAvg / 10) * 33.34;
   } else {
-    // 4-part
-    topicScore = (Math.max(0, Math.min(10, topicRelevance)) / 10) * 16.67;
+    // 4-part (including Story Summary tasks)
+    topicScore = (Math.max(0, Math.min(10, effectiveTopicRelevance)) / 10) * 16.67;
     commScore  = (commAvg / 10) * 16.67;
   }
 
@@ -426,6 +451,12 @@ export function calculateCompositeScore({
       requiredVocabWords: required,
       totalVocabWords: total,
       isSpecialDay,
+      isStorySummary:  isStoryTask,
+      isPictureDescription: false,
+      maxLength:       33.33,
+      maxVocab:        33.33,
+      maxTopic:        isSpecialDay ? 0 : 16.67,
+      maxComm:         isSpecialDay ? 33.34 : 16.67,
     },
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout.jsx";
 import StatCard from "../components/StatCard.jsx";
@@ -11,8 +11,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/client.js";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import StreakBadge from "../components/StreakBadge.jsx";
-import InvoiceModal from "../components/InvoiceModal.jsx";
 import { getSharedSocket } from "../hooks/useSocket.js";
+
+const InvoiceModal = lazy(() => import("../components/InvoiceModal.jsx"));
 
 const CATS = ["Daily Life","Opinion","Personal Experience","English Growth","Future Goals","Fun Topic","Free Talk"];
 const PIE_COLORS = ["#7c6fff","#4ade80","#fbbf24","#ff6b9d","#38bdf8","#fb923c","#a78bfa"];
@@ -1527,10 +1528,12 @@ export default function AdminDashboard() {
       
       {/* Official Invoice / Receipt Modal */}
       {selectedAdminInvoiceTx && (
-        <InvoiceModal
-          transaction={selectedAdminInvoiceTx}
-          onClose={() => setSelectedAdminInvoiceTx(null)}
-        />
+        <Suspense fallback={null}>
+          <InvoiceModal
+            transaction={selectedAdminInvoiceTx}
+            onClose={() => setSelectedAdminInvoiceTx(null)}
+          />
+        </Suspense>
       )}
 
       {/* Points, Streak & Freeze Management Modal */}

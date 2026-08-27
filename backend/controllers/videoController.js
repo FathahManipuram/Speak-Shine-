@@ -128,17 +128,26 @@ export async function uploadFrames(req, res) {
 export async function preCheckSubmit(req, res) {
   try {
     const { evaluateSubmitGate } = await import("../services/video/submitGate.js");
+    const Status = (await import("../../models/statusSchema.js")).default;
+    const status = await Status.findOne().lean();
+    const isStory = req.body?.isStorySummary !== undefined
+      ? !!req.body.isStorySummary
+      : (status?.todayContentType === "story_audio" || (status?.isStorySummaryDay && status?.todayContentType !== "picture_description"));
+    const isPicture = req.body?.isPictureDescription !== undefined
+      ? !!req.body.isPictureDescription
+      : (status?.todayContentType === "picture_description" || (status?.isPictureDescriptionDay && status?.todayContentType !== "story_audio"));
     const flags = {
-      isMonthlyReflection: !!req.body?.isMonthlyReflection,
-      isMonthlyGoals: !!req.body?.isMonthlyGoals,
-      isStorySummary: !!req.body?.isStorySummary,
-      isPictureDescription: !!req.body?.isPictureDescription,
+      isMonthlyReflection: req.body?.isMonthlyReflection !== undefined ? !!req.body.isMonthlyReflection : (status?.isMonthlyReflectionDay || false),
+      isMonthlyGoals: req.body?.isMonthlyGoals !== undefined ? !!req.body.isMonthlyGoals : (status?.isMonthlyGoalsDay || false),
+      isStorySummary: isStory,
+      isPictureDescription: isPicture,
     };
     const gate = evaluateSubmitGate({
       durationSeconds: req.body?.durationSeconds ?? null,
       fileSizeBytes: req.body?.fileSizeBytes ?? null,
       frameCount: req.body?.frameCount ?? null,
       flags,
+      settings: status || {},
     });
     res.json(gate);
   } catch (err) {

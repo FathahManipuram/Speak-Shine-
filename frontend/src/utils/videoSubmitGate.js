@@ -2,9 +2,27 @@
  * Client-side submit gate — mirrors backend submitGate.js for instant feedback.
  */
 
-export function getDurationLimits({ isMonthlyReflection, isMonthlyGoals, isStorySummary, isPictureDescription } = {}) {
-  const maxSeconds = isMonthlyReflection ? 420 : isMonthlyGoals ? 600 : isStorySummary ? 180 : isPictureDescription ? 180 : 300;
-  const fullScoreSeconds = isMonthlyReflection ? 420 : isMonthlyGoals ? 420 : (isStorySummary || isPictureDescription) ? 180 : 300;
+export function getDurationLimits({ isMonthlyReflection, isMonthlyGoals, isStorySummary, isPictureDescription } = {}, settings = {}) {
+  const maxSeconds = isMonthlyReflection
+    ? (settings.durationMonthlyReflectionMax ?? 420)
+    : isMonthlyGoals
+    ? (settings.durationMonthlyGoalsMax ?? 600)
+    : isStorySummary
+    ? (settings.durationStoryMax ?? 180)
+    : isPictureDescription
+    ? (settings.durationPictureMax ?? 180)
+    : (settings.durationDefaultMax ?? 300);
+
+  const fullScoreSeconds = isMonthlyReflection
+    ? (settings.durationMonthlyReflectionFull ?? 420)
+    : isMonthlyGoals
+    ? (settings.durationMonthlyGoalsFull ?? 420)
+    : isStorySummary
+    ? (settings.durationStoryFull ?? 180)
+    : isPictureDescription
+    ? (settings.durationPictureFull ?? 180)
+    : (settings.durationDefaultFull ?? 300);
+
   const formatDurationLabel = (seconds) => {
     const value = Math.max(0, Math.round(Number(seconds) || 0));
     const minutes = Math.floor(value / 60);

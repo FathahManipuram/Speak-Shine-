@@ -3584,6 +3584,7 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl, rep
   const cs = a.compositeScore ?? a._compositeScore ?? null;
   // Detect picture description from challengeType (new reports) OR bd flag (processed after scoring change)
   const isPictureBd = a.challengeType === "picture_description" || bd?.isPictureDescription === true;
+  const isStoryBd = a.challengeType === "story_summary" || bd?.isStorySummary === true;
 
   // Generate improvement tips based on what's missing from full score
   const improvementTips = [];
@@ -3602,7 +3603,7 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl, rep
       if (vocGap > 2)  improvementTips.push({ icon: "📚", label: "Richer vocabulary",  detail: `+${vocGap.toFixed(1)} pts possible — use more varied and precise words`, gap: vocGap });
       if (durGap > 0.5) improvementTips.push({ icon: "⏱️", label: "Make a complete attempt", detail: `+${durGap.toFixed(1)} pts possible — speak for a reasonable amount of time`, gap: durGap });
     } else {
-      // Normal / standard tips
+      // Normal / Story summary tips
       const lenGap  = (bd.maxLength  || 33.33) - (bd.length   || 0);
       const vocGap  = (bd.maxVocab   || 33.33) - (bd.vocabUsed || 0);
       const topGap  = (bd.maxTopic   || 16.67) - (bd.topic     || 0);
@@ -3617,7 +3618,16 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl, rep
         const totalVocabWords = bd.totalVocabWords || 5;
         improvementTips.push({ icon: "📚", label: "Use more vocab words", detail: `+${vocGap.toFixed(1)} pts possible — use at least ${requiredVocabWords} of today's ${totalVocabWords} vocabulary words`, gap: vocGap });
       }
-      if (!bd.isSpecialDay && topGap > 1) improvementTips.push({ icon: "🎯", label: "Stay on topic", detail: `+${topGap.toFixed(1)} pts possible — answer the question more directly`, gap: topGap });
+      if (!bd.isSpecialDay && topGap > 1) {
+        improvementTips.push({
+          icon: isStoryBd ? "📖" : "🎯",
+          label: isStoryBd ? "Cover key story points" : "Stay on topic",
+          detail: isStoryBd
+            ? `+${topGap.toFixed(1)} pts possible — retell the story plot, characters, key events, and resolution`
+            : `+${topGap.toFixed(1)} pts possible — answer the question more directly`,
+          gap: topGap,
+        });
+      }
       if (comGap > 2)  improvementTips.push({ icon: "🗣️", label: "Improve communication", detail: `+${comGap.toFixed(1)} pts possible — work on fluency, grammar, confidence & eye contact`, gap: comGap });
     }
     improvementTips.sort((x, y) => y.gap - x.gap);
@@ -3825,7 +3835,7 @@ function ReportView({ analysis: a, expiresAt, formatTimeRemaining, videoUrl, rep
               ] : [
                 { label: bd.speechRatio != null ? `⏱️ Duration (${bd.speechRatio}% speaking)` : "⏱️ Duration", earned: bd.length || 0, max: bd.maxLength || 33.33, color: "#60a5fa" },
                 { label: "📚 Vocab used",    earned: bd.vocabUsed || 0, max: bd.maxVocab   || 33.33, color: "#a78bfa" },
-                ...(!bd.isSpecialDay ? [{ label: "🎯 Topic relevance", earned: bd.topic || 0, max: bd.maxTopic || 16.67, color: "#34d399" }] : []),
+                ...(!bd.isSpecialDay ? [{ label: isStoryBd ? "🎯 Story relevance" : "🎯 Topic relevance", earned: bd.topic || 0, max: bd.maxTopic || 16.67, color: "#34d399" }] : []),
                 { label: "🗣️ Communication", earned: bd.comm     || 0, max: bd.maxComm    || 16.67, color: "#fbbf24" },
               ]).map(({ label, earned, max, color }) => (
                 <div key={label}>
