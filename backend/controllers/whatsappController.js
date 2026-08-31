@@ -149,8 +149,12 @@ export async function sendSlotReport(req, res) {
 
 export async function reconnectWhatsApp(req, res) {
   try {
-    await restartWhatsAppBot();
-    return res.json({ success: true, message: "Reconnection started. QR code refreshed." });
+    const { force } = req.body || req.query || {};
+    await restartWhatsAppBot(!!force);
+    return res.json({
+      success: true,
+      message: force ? "Session reset triggered. Generating fresh QR code..." : "Reconnection started.",
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

@@ -379,6 +379,8 @@ export default function AdminDashboard() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [waStatus, setWaStatus] = useState(null);
   const [waLoading, setWaLoading] = useState(false);
+  const [waReconnecting, setWaReconnecting] = useState(false);
+  const [waUnlinking, setWaUnlinking] = useState(false);
   const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [waSendingReport, setWaSendingReport] = useState(false);
   const [waPreviewTab, setWaPreviewTab] = useState("report");
@@ -1054,24 +1056,30 @@ export default function AdminDashboard() {
     );
   };
 
-  const handleReconnectWhatsApp = async () => {
+  const handleReconnectWhatsApp = async (force = false) => {
     try {
-      await api.post("/whatsapp/reconnect");
-      msg("🔄 Generating fresh WhatsApp QR code...", "info");
-      loadWhatsAppStatus();
+      setWaReconnecting(true);
+      const res = await api.post("/whatsapp/reconnect", { force });
+      msg(force ? "⚡ Session reset. Generating fresh QR code..." : "🔄 Reconnecting WhatsApp socket...", "info");
+      await loadWhatsAppStatus();
     } catch (err) {
       msg("Failed to trigger reconnect", "danger");
+    } finally {
+      setWaReconnecting(false);
     }
   };
 
   const handleLogoutWhatsApp = async () => {
     if (!window.confirm("Are you sure you want to disconnect WhatsApp and clear credentials?")) return;
     try {
+      setWaUnlinking(true);
       await api.post("/whatsapp/logout");
-      msg("🚪 Disconnected from WhatsApp.", "info");
-      loadWhatsAppStatus();
+      msg("🚪 Disconnected & unlinked WhatsApp device.", "info");
+      await loadWhatsAppStatus();
     } catch (err) {
       msg("Failed to log out from WhatsApp", "danger");
+    } finally {
+      setWaUnlinking(false);
     }
   };
 
@@ -4449,18 +4457,33 @@ export default function AdminDashboard() {
               <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
                 <button 
                   className="btn-secondary" 
-                  onClick={handleReconnectWhatsApp}
+                  onClick={() => handleReconnectWhatsApp(false)}
+                  disabled={waReconnecting || waUnlinking}
                   style={{ flex: 1, padding: "0.6rem 1rem", fontSize: "0.82rem", fontWeight: 700 }}
                 >
-                  🔄 {waStatus?.hasSavedCredentials ? "Reconnect Socket" : "Refresh QR"}
+                  {waReconnecting ? "⏳ Reconnecting..." : `🔄 ${waStatus?.hasSavedCredentials ? "Reconnect Socket" : "Refresh QR"}`}
                 </button>
+
+                {waStatus?.hasSavedCredentials && !waStatus?.isConnected && (
+                  <button 
+                    className="btn-secondary" 
+                    onClick={() => handleReconnectWhatsApp(true)}
+                    disabled={waReconnecting || waUnlinking}
+                    style={{ padding: "0.6rem 1rem", fontSize: "0.82rem", border: "1px solid rgba(251, 191, 36, 0.4)", color: "#fbbf24", background: "rgba(251, 191, 36, 0.1)", fontWeight: 700 }}
+                    title="Force clear stale saved session & generate new QR Code"
+                  >
+                    ⚡ Reset &amp; Scan QR
+                  </button>
+                )}
+
                 {(waStatus?.isConnected || waStatus?.hasSavedCredentials) && (
                   <button 
                     className="paid-toggle-btn unpaid" 
                     onClick={handleLogoutWhatsApp}
+                    disabled={waUnlinking || waReconnecting}
                     style={{ padding: "0.6rem 1rem", fontSize: "0.82rem" }}
                   >
-                    🚪 Unlink Device
+                    {waUnlinking ? "⏳ Unlinking..." : "🚪 Unlink Device"}
                   </button>
                 )}
               </div>

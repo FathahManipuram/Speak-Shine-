@@ -40,7 +40,7 @@ let userPhone = null;
 let userJid = null;
 let reconnectTimer = null;
 let socketIoInstance = null;
-let isFirstBootConnection = true;
+let reconnectAttempts = 0;
 
 export function setSocketIo(io) {
   socketIoInstance = io;
@@ -303,6 +303,7 @@ export async function initWhatsAppBot() {
         connectingStartedAt = null;
         currentQR = null;
         currentQRDataUrl = null;
+        reconnectAttempts = 0;
 
         const rawJid = sock.user?.id || "";
         userJid = rawJid;
@@ -330,23 +331,32 @@ export async function initWhatsAppBot() {
         isConnected = false;
         isConnecting = false;
         connectingStartedAt = null;
+        reconnectAttempts++;
         
         const statusCode = lastDisconnect?.error instanceof Boom
           ? lastDisconnect.error.output?.statusCode
           : lastDisconnect?.error?.statusCode;
 
         const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-        console.log(`[WhatsApp] ⚠️ Connection closed. Status code: ${statusCode || "unknown"}. Reconnect: ${!isLoggedOut}`);
+        const isTerminalDisconnect = isLoggedOut ||
+          statusCode === DisconnectReason.badSession ||
+          statusCode === DisconnectReason.forbidden ||
+          statusCode === DisconnectReason.multideviceMismatch ||
+          statusCode === DisconnectReason.connectionReplaced ||
+          reconnectAttempts >= 4;
 
-        if (isLoggedOut) {
-          console.log("[WhatsApp] 🚪 Logged out from WhatsApp. Resetting auth credentials...");
+        console.log(`[WhatsApp] ⚠️ Connection closed. Status code: ${statusCode || "unknown"} (Attempt ${reconnectAttempts}). Terminal: ${isTerminalDisconnect}`);
+
+        if (isTerminalDisconnect) {
+          console.log(`[WhatsApp] 🚪 Session invalid or failed after ${reconnectAttempts} attempts. Resetting auth credentials to generate new QR code...`);
           currentQR = null;
           currentQRDataUrl = null;
           userPhone = null;
           userJid = null;
+          reconnectAttempts = 0;
           await clearAuthDir();
           broadcastStatus();
-          scheduleReconnect(2000);
+          scheduleReconnect(1500);
         } else {
           // Restart required (515) or temporary socket drop
           broadcastStatus();
@@ -378,8 +388,20 @@ async function clearAuthDir() {
   try {
     await clearMongoAuth();
     if (fs.existsSync(AUTH_DIR)) {
-      fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-      fs.mkdirSync(AUTH_DIR, { recursive: true });
+      try {
+        fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+      } catch (err) {
+        // Fallback for Windows file lock (EBUSY)
+        try {
+          const files = fs.readdirSync(AUTH_DIR);
+          for (const file of files) {
+            try { fs.unlinkSync(path.join(AUTH_DIR, file)); } catch {}
+          }
+        } catch {}
+      }
+      if (!fs.existsSync(AUTH_DIR)) {
+        fs.mkdirSync(AUTH_DIR, { recursive: true });
+      }
     }
   } catch (err) {
     console.warn("[WhatsApp] Could not clear auth folder:", err.message);
@@ -406,13 +428,21 @@ export function getStatus() {
     // Only supply QR code if we do not already have an authenticated saved session
     qrCodeDataUrl: isConnected || (hasCreds && !currentQR) ? null : currentQRDataUrl,
     authDirExists: hasCreds,
+    reconnectAttempts,
   };
 }
 
 /**
  * Manually reconnect / refresh QR code.
+ * @param {boolean} [forceReset=false] - If true, clears saved credentials and forces fresh QR generation
  */
-export async function restartWhatsAppBot() {
+export async function restartWhatsAppBot(forceReset = false) {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
+
   if (sock) {
     try {
       sock.ev?.removeAllListeners();
@@ -424,6 +454,13 @@ export async function restartWhatsAppBot() {
   isConnecting = false;
   currentQR = null;
   currentQRDataUrl = null;
+
+  if (forceReset) {
+    userPhone = null;
+    userJid = null;
+    await clearAuthDir();
+  }
+
   return await initWhatsAppBot();
 }
 
@@ -431,14 +468,25 @@ export async function restartWhatsAppBot() {
  * Log out and remove credentials.
  */
 export async function logoutWhatsAppBot() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
+
   if (sock) {
     try {
-      await sock.logout();
-    } catch {
-      // Ignore
+      // Race sock.logout() with a 2-second timeout to prevent hanging when offline
+      await Promise.race([
+        sock.logout(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Logout timeout")), 2000)),
+      ]);
+    } catch (e) {
+      console.warn("[WhatsApp] sock.logout() skipped or timed out:", e.message);
     }
     try {
-      sock.end(new Error("User logout"));
+      sock.ev?.removeAllListeners();
+      sock.end?.(new Error("User logout"));
     } catch {
       // Ignore
     }
@@ -450,8 +498,12 @@ export async function logoutWhatsAppBot() {
   currentQRDataUrl = null;
   userPhone = null;
   userJid = null;
+
   await clearAuthDir();
   broadcastStatus();
+
+  // Schedule immediate init to generate a fresh QR code right away
+  scheduleReconnect(800);
   return { success: true };
 }
 
