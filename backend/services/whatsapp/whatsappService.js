@@ -41,6 +41,7 @@ let userJid = null;
 let reconnectTimer = null;
 let socketIoInstance = null;
 let reconnectAttempts = 0;
+let isFirstBootConnection = true;
 
 export function setSocketIo(io) {
   socketIoInstance = io;
