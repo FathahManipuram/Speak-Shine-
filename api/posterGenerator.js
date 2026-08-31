@@ -17,7 +17,7 @@ const THEMES = {
   "Picture Description": { primary: "#38bdf8", secondary: "#818cf8", glow: "99,102,241",   badgeBg: "rgba(99,102,241,0.18)" },
   "Story Summary":       { primary: "#a78bfa", secondary: "#7c3aed", glow: "167,139,250", badgeBg: "rgba(167,139,250,0.18)" },
   "Monthly Goals":       { primary: "#34d399", secondary: "#059669", glow: "52,211,153",  badgeBg: "rgba(52,211,153,0.18)" },
-  "Monthly Reflection":  { primary: "#f59e0b", secondary: "#d97706", glow: "245,158,11",  badgeBg: "rgba(245,158,11,0.18)" },
+  "Monthly Reflection":  { primary: "#a78bfa", secondary: "#8b5cf6", glow: "167,139,250", badgeBg: "rgba(167,139,250,0.18)" },
   "default":             { primary: "#c084fc", secondary: "#9333ea", glow: "192,132,252", badgeBg: "rgba(192,132,252,0.18)" },
 };
 
@@ -26,11 +26,13 @@ const KEYWORD_MAP = [
   { keywords: ["english", "grammar", "language", "vocab", "speak"], theme: "English Growth" },
   { keywords: ["free", "talk", "chat", "casual"],                   theme: "Free Talk" },
   { keywords: ["fun", "funny", "humor", "joke"],                    theme: "Fun Topic" },
-  { keywords: ["future", "goal", "dream", "plan", "ambition", "retire"], theme: "Future Goals" },
+  { keywords: ["future", "ambition", "retire"],                     theme: "Future Goals" },
   { keywords: ["opinion", "think", "view", "perspective", "believe"], theme: "Opinion" },
   { keywords: ["personal", "experience", "story", "memory"],        theme: "Personal Experience" },
   { keywords: ["picture", "image", "photo", "describe"],            theme: "Picture Description" },
   { keywords: ["story", "listen", "audio"],                         theme: "Story Summary" },
+  { keywords: ["monthly reflection", "reflection", "end of month"], theme: "Monthly Reflection" },
+  { keywords: ["monthly goals", "monthly goal", "goal setting"],    theme: "Monthly Goals" },
 ];
 
 function getTheme(category, contentType) {
@@ -76,6 +78,41 @@ function wrapLines(text, maxChars) {
   return lines;
 }
 
+function parseQuestionItems(rawText) {
+  if (!rawText) return [];
+  const text = String(rawText).trim();
+  
+  // 1. Check if there are explicit newlines
+  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (rawLines.length > 1) {
+    return rawLines.map((line, idx) => {
+      const match = line.match(/^(\d+)[\.\)]\s*(.*)$/);
+      if (match) return { num: match[1], text: match[2].trim() };
+      const bulletMatch = line.match(/^[•\-\*]\s*(.*)$/);
+      if (bulletMatch) return { num: String(idx + 1), text: bulletMatch[1].trim() };
+      return { num: String(idx + 1), text: line };
+    });
+  }
+
+  // 2. Check if single line has embedded numbered items e.g. "1. ... 2. ... 3. ..."
+  const numberedPattern = /(?:^|\s)(\d+)[\.\)]\s+/g;
+  const matches = [...text.matchAll(numberedPattern)];
+  if (matches.length > 1) {
+    const items = [];
+    for (let i = 0; i < matches.length; i++) {
+      const num = matches[i][1];
+      const startIndex = matches[i].index + matches[i][0].length;
+      const endIndex = (i + 1 < matches.length) ? matches[i + 1].index : text.length;
+      const itemText = text.substring(startIndex, endIndex).trim();
+      if (itemText) items.push({ num, text: itemText });
+    }
+    if (items.length > 1) return items;
+  }
+
+  // 3. Otherwise single question prompt
+  return [{ num: null, text: text.replace(/^1[\.\)]\s*/, "").trim() || text }];
+}
+
 /**
  * Generate an SVG poster that matches the Speak & Shine HD challenge design.
  */
@@ -88,6 +125,8 @@ export function generateSVGPoster({
   vocabRequiredCount = 3,
 }) {
   const theme = getTheme(category || topic, contentType);
+  const isMonthlyReflection = (category && category.toLowerCase().includes("reflection")) || (topic && topic.toLowerCase().includes("reflection"));
+  const isMonthlyGoals = (category && category.toLowerCase().includes("goal")) || (topic && topic.toLowerCase().includes("goal setting"));
 
   const W = 900;
   const PAD = 48;
@@ -113,6 +152,18 @@ export function generateSVGPoster({
     actionButtonLabel = "Listen & submit your story summary →";
     topicLabel = "STORY TITLE";
     promptLabel = "SUMMARY ASSIGNMENT";
+  } else if (isMonthlyReflection) {
+    badgeTitle = "Monthly Reflection";
+    challengeTypeLabel = "MONTHLY REFLECTION CHALLENGE";
+    actionButtonLabel = "Record your reflection video →";
+    topicLabel = "CHALLENGE TOPIC";
+    promptLabel = "📋 REFLECTION QUESTIONS (Answer all in your video)";
+  } else if (isMonthlyGoals) {
+    badgeTitle = "Monthly Goal Setting";
+    challengeTypeLabel = "MONTHLY GOALS CHALLENGE";
+    actionButtonLabel = "Record your goals video →";
+    topicLabel = "CHALLENGE TOPIC";
+    promptLabel = "🎯 GOAL SETTING QUESTIONS (Answer all in your video)";
   }
 
   // 1. TOPIC Card
@@ -122,11 +173,78 @@ export function generateSVGPoster({
   const TOPIC_CARD_H = 46 + topicLines.length * TOPIC_LINE_H + 16;
 
   // 2. QUESTION Card
-  const qLen = (question || "").length;
-  const Q_FONT = qLen > 140 ? 24 : qLen > 80 ? 26 : 28;
-  const Q_LINE_H = Q_FONT + 14;
-  const qLines = wrapLines(question || "", 36);
-  const Q_CARD_H = 48 + qLines.length * Q_LINE_H + 20;
+  const qItems = parseQuestionItems(question || "");
+  const isMultiQuestion = qItems.length > 1;
+
+  let Q_CARD_H = 0;
+  let qContentSvg = "";
+
+  if (isMultiQuestion) {
+    const ITEM_FONT = qItems.length >= 6 ? 15.5 : 17;
+    const ITEM_LINE_H = qItems.length >= 6 ? 21 : 24;
+    const MAX_CHARS_PER_LINE = qItems.length >= 6 ? 64 : 58;
+    const ITEM_GAP = 8;
+    
+    let totalItemsH = 0;
+    const processedItems = qItems.map((item, idx) => {
+      const lines = wrapLines(item.text, MAX_CHARS_PER_LINE);
+      const itemH = Math.max(46, 20 + lines.length * ITEM_LINE_H + 6);
+      totalItemsH += itemH;
+      if (idx > 0) totalItemsH += ITEM_GAP;
+      return { ...item, lines, itemH };
+    });
+
+    Q_CARD_H = 56 + totalItemsH + 18;
+
+    let curItemY = 0;
+    qContentSvg = processedItems.map((item, idx) => {
+      const yOffset = curItemY;
+      curItemY += item.itemH + ITEM_GAP;
+      const numLabel = item.num || String(idx + 1);
+
+      const circleCy = Math.floor(item.itemH / 2);
+      const startY = Math.round((item.itemH - (item.lines.length - 1) * ITEM_LINE_H) / 2) + 5;
+
+      return `
+      <g transform="translate(16, ${50 + yOffset})">
+        <!-- Sub-item card container -->
+        <rect width="${INNER - 32}" height="${item.itemH}" rx="10"
+          fill="rgba(255,255,255,0.035)" stroke="${theme.primary}" stroke-opacity="0.22" stroke-width="1"/>
+        
+        <!-- Number circle badge -->
+        <g transform="translate(26, ${circleCy})">
+          <circle cx="0" cy="0" r="13"
+            fill="${theme.badgeBg || 'rgba(167,139,250,0.18)'}"
+            stroke="${theme.primary}" stroke-width="1.2"/>
+          <text x="0" y="4.5" text-anchor="middle"
+            font-size="13" font-weight="800" fill="${theme.primary}"
+            font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(numLabel)}</text>
+        </g>
+        
+        <!-- Question text lines -->
+        ${item.lines.map((line, li) => `
+          <text x="52" y="${startY + li * ITEM_LINE_H}"
+            font-size="${ITEM_FONT}" fill="#f8fafc" font-weight="600"
+            font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(line)}</text>
+        `).join("")}
+      </g>`;
+    }).join("\n");
+
+  } else {
+    // Single question prompt
+    const singleText = qItems[0]?.text || question || "";
+    const qLen = singleText.length;
+    const Q_FONT = qLen > 140 ? 23 : qLen > 80 ? 25 : 27;
+    const Q_LINE_H = Q_FONT + 13;
+    const qLines = wrapLines(singleText, Q_FONT <= 23 ? 44 : 38);
+    Q_CARD_H = 48 + qLines.length * Q_LINE_H + 20;
+
+    qContentSvg = qLines.map((line, i) =>
+      `<text x="28" y="${58 + i * Q_LINE_H}"
+        font-size="${Q_FONT}" fill="#ffffff" font-weight="700"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(line)}</text>`
+    ).join("\n    ");
+  }
 
   // 3. VOCABULARY Card
   const hasVocab = Array.isArray(vocabulary) && vocabulary.length > 0;
@@ -163,13 +281,6 @@ export function generateSVGPoster({
       font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(line)}</text>`
   ).join("\n  ");
 
-  // Question Rows
-  const qRows = qLines.map((line, i) =>
-    `<text x="${PAD + 28}" y="${qCardY + 58 + i * Q_LINE_H}"
-      font-size="${Q_FONT}" fill="#ffffff" font-weight="700"
-      font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(line)}</text>`
-  ).join("\n  ");
-
   // Vocabulary Items
   let vocabRows = "";
   if (hasVocab) {
@@ -198,6 +309,9 @@ export function generateSVGPoster({
     }).join("\n");
   }
 
+  // Dynamic pill badge calculation
+  const badgeWidth = Math.max(180, Math.min(360, badgeTitle.length * 11 + 40));
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <!-- Background Gradient (Deep Navy Night) -->
@@ -208,17 +322,17 @@ export function generateSVGPoster({
       <stop offset="100%" stop-color="#05050e"/>
     </linearGradient>
 
-    <!-- Title Gradient (Bright Cyan to Light Purple) -->
+    <!-- Title Gradient (Bright Cyan to Theme Primary) -->
     <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%"   stop-color="#ffffff"/>
       <stop offset="45%"  stop-color="#e0f2fe"/>
-      <stop offset="100%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="${theme.primary}"/>
     </linearGradient>
 
     <!-- Button Gradient -->
     <linearGradient id="btnGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#7c6fff"/>
-      <stop offset="50%"  stop-color="#6366f1"/>
+      <stop offset="0%"   stop-color="${theme.secondary || '#7c6fff'}"/>
+      <stop offset="50%"  stop-color="${theme.primary || '#6366f1'}"/>
       <stop offset="100%" stop-color="#38bdf8"/>
     </linearGradient>
 
@@ -257,10 +371,10 @@ export function generateSVGPoster({
 
   <!-- Category Badge Pill -->
   <g transform="translate(${W / 2}, 132)">
-    <rect x="-110" y="-15" width="220" height="30" rx="15"
-      fill="rgba(56, 189, 248, 0.1)" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.2"/>
+    <rect x="${-badgeWidth / 2}" y="-15" width="${badgeWidth}" height="30" rx="15"
+      fill="${theme.badgeBg || 'rgba(56, 189, 248, 0.1)'}" stroke="${theme.primary}" stroke-opacity="0.4" stroke-width="1.2"/>
     <text x="0" y="5" text-anchor="middle"
-      font-size="13" font-weight="600" fill="#38bdf8" letter-spacing="0.5"
+      font-size="13" font-weight="600" fill="${theme.primary}" letter-spacing="0.5"
       font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(badgeTitle)}</text>
   </g>
 
@@ -273,12 +387,14 @@ export function generateSVGPoster({
   ${topicRows}
 
   <!-- ═══ QUESTION CARD ═══ -->
-  <rect x="${PAD}" y="${qCardY}" width="${INNER}" height="${Q_CARD_H}" rx="16"
-    fill="rgba(14, 18, 38, 0.85)" stroke="rgba(56, 189, 248, 0.22)" stroke-width="1.2"/>
-  <text x="${PAD + 28}" y="${qCardY + 30}"
-    font-size="11" fill="#f43f5e" font-weight="800" letter-spacing="1.5"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(promptLabel)}</text>
-  ${qRows}
+  <g transform="translate(${PAD}, ${qCardY})">
+    <rect x="0" y="0" width="${INNER}" height="${Q_CARD_H}" rx="16"
+      fill="rgba(14, 18, 38, 0.85)" stroke="${theme.primary}" stroke-opacity="0.25" stroke-width="1.2"/>
+    <text x="28" y="30"
+      font-size="11" fill="${isMultiQuestion ? theme.primary : '#f43f5e'}" font-weight="800" letter-spacing="1.5"
+      font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">${esc(promptLabel)}</text>
+    ${qContentSvg}
+  </g>
 
   <!-- ═══ VOCABULARY CHALLENGE CONTAINER CARD ═══ -->
   ${hasVocab ? `
@@ -388,4 +504,3 @@ export async function generatePNGPosterBuffer(options = {}) {
 
   return pngBuffer;
 }
-

@@ -7,6 +7,7 @@ import {
   sendDailyPosterToGroup,
   sendDailySubmissionReportToGroup,
   getSubmissionReportSummary,
+  getParticipatingGroups,
   restartWhatsAppBot,
   logoutWhatsAppBot,
 } from "../services/whatsapp/whatsappService.js";
@@ -188,3 +189,14 @@ export async function sendTestAdminAlert(req, res) {
     return res.status(400).json({ success: false, error: err.message });
   }
 }
+
+export async function getGroups(req, res) {
+  try {
+    const groups = await getParticipatingGroups();
+    return res.json({ success: true, groups });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+

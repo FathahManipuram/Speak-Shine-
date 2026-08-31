@@ -629,17 +629,38 @@ export async function sendDailyPosterToGroup(options = {}) {
     vocabRequiredCount: vocabReq,
   });
 
+  const isReflection = category?.toLowerCase().includes("reflection") || topic?.toLowerCase().includes("reflection") || status?.isMonthlyReflectionDay;
+  const isGoals = category?.toLowerCase().includes("goal") || topic?.toLowerCase().includes("goal") || status?.isMonthlyGoalsDay;
+
+  const headerTitle = isReflection
+    ? `🌟 *SPEAK & SHINE — MONTHLY REFLECTION CHALLENGE* 🌟`
+    : isGoals
+    ? `🎯 *SPEAK & SHINE — MONTHLY GOALS CHALLENGE* 🎯`
+    : `🌟 *SPEAK & SHINE — DAILY SPEAKING CHALLENGE* 🌟`;
+
+  const questionHeader = isReflection
+    ? `📋 *REFLECTION QUESTIONS:*`
+    : isGoals
+    ? `🎯 *GOAL SETTING QUESTIONS:*`
+    : `❓ *TODAY'S QUESTION:*`;
+
+  const taskPrompt = isReflection
+    ? `🎥 *TASK:* Record & submit your monthly reflection video!`
+    : isGoals
+    ? `🎥 *TASK:* Record & submit your monthly goals video!`
+    : `🎥 *TASK:* Record & submit your 1-minute speaking video!`;
+
   const caption = [
-    `🌟 *SPEAK & SHINE — DAILY SPEAKING CHALLENGE* 🌟`,
+    headerTitle,
     `━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `🏷️ *Topic:* ${topic}`,
     `📂 *Category:* ${category}`,
     ``,
-    `❓ *TODAY'S QUESTION:*`,
+    questionHeader,
     `${question}`,
     vocabSection,
     `━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `🎥 *TASK:* Record & submit your 1-minute speaking video!`,
+    taskPrompt,
     `🚀 *Submit here:* ${frontendUrl}`,
   ].filter(Boolean).join("\n");
 
@@ -922,6 +943,20 @@ export async function sendAdminDirectMessage(text, options = {}) {
   console.log(`[WhatsApp] ✅ Personal admin message sent successfully to ${recipientJid}!`);
 
   return { success: true, recipient: cleanPhone, jid: recipientJid, sentAt: new Date() };
+}
+
+/**
+ * Fetch all groups the connected WhatsApp account is participating in.
+ */
+export async function getParticipatingGroups() {
+  await ensureWhatsAppConnected(15000);
+  if (!sock) throw new Error("WhatsApp bot not connected");
+  const groups = await sock.groupFetchAllParticipating();
+  return Object.values(groups).map(g => ({
+    id: g.id,
+    subject: g.subject,
+    participantsCount: g.participants?.length || 0,
+  }));
 }
 
 /**

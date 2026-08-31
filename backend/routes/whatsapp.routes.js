@@ -9,6 +9,7 @@ import {
   sendSubmissionReport,
   sendSlotReport,
   sendTestAdminAlert,
+  getGroups,
   reconnectWhatsApp,
   logoutWhatsApp,
 } from "../controllers/whatsappController.js";
@@ -18,6 +19,7 @@ const router = express.Router();
 
 // Admin only routes
 router.get("/status", authMiddleware, requireRole("admin", "admins"), getWhatsAppStatus);
+router.get("/groups", authMiddleware, requireRole("admin", "admins"), getGroups);
 router.post("/send-poster", authMiddleware, requireRole("admin", "admins"), sendPoster);
 router.post("/send-submission-report", authMiddleware, requireRole("admin", "admins"), sendSubmissionReport);
 router.post("/send-slot-report", authMiddleware, requireRole("admin", "admins"), sendSlotReport);

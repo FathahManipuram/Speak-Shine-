@@ -1033,13 +1033,29 @@ export async function enableMonthlyReflection() {
       todayAudioUrl: null,
       todayStoryTranscript: null,
       todaySummaryGuide: null,
+      todayImageUrl: null,
+      todayPosterImage: null,
       todayTopic: MONTHLY_REFLECTION_TOPIC,
       todayQuestion: reflectionText,
       todayCategory: MONTHLY_REFLECTION_CATEGORY,
     }
   }, { upsert: true });
+
+  const { ensureTodayVocabulary } = await import("../ai/vocabularyGenerator.js");
+  await ensureTodayVocabulary().catch(err => console.warn("[Dashboard] Vocabulary generation failed:", err.message));
+
+  try {
+    const { sendDailyPosterToGroup } = await import("../whatsapp/whatsappService.js");
+    await sendDailyPosterToGroup({
+      topic: MONTHLY_REFLECTION_TOPIC,
+      question: reflectionText,
+      category: MONTHLY_REFLECTION_CATEGORY,
+    });
+  } catch (waErr) {
+    console.warn("[Dashboard] WhatsApp poster auto-send skipped/failed:", waErr.message);
+  }
   
-  return { success: true, message: "Monthly reflection mode activated — refresh the app to see it" };
+  return { success: true, message: "Monthly reflection mode activated and poster sent to WhatsApp" };
 }
 
 /**
@@ -1060,13 +1076,29 @@ export async function enableMonthlyGoals() {
       todayAudioUrl: null,
       todayStoryTranscript: null,
       todaySummaryGuide: null,
+      todayImageUrl: null,
+      todayPosterImage: null,
       todayTopic: MONTHLY_GOALS_TOPIC,
       todayQuestion: goalsText,
       todayCategory: MONTHLY_GOALS_CATEGORY,
     }
   }, { upsert: true });
+
+  const { ensureTodayVocabulary } = await import("../ai/vocabularyGenerator.js");
+  await ensureTodayVocabulary().catch(err => console.warn("[Dashboard] Vocabulary generation failed:", err.message));
+
+  try {
+    const { sendDailyPosterToGroup } = await import("../whatsapp/whatsappService.js");
+    await sendDailyPosterToGroup({
+      topic: MONTHLY_GOALS_TOPIC,
+      question: goalsText,
+      category: MONTHLY_GOALS_CATEGORY,
+    });
+  } catch (waErr) {
+    console.warn("[Dashboard] WhatsApp poster auto-send skipped/failed:", waErr.message);
+  }
   
-  return { success: true, message: "Monthly goal-setting mode activated — refresh the app to see it" };
+  return { success: true, message: "Monthly goal-setting mode activated and poster sent to WhatsApp" };
 }
 
 
