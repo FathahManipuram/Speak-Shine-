@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 
 const MONGO_OPTIONS = {
-  serverSelectionTimeoutMS: 10000,  // 10s to find a server
-  socketTimeoutMS: 45000,           // 45s socket timeout
-  heartbeatFrequencyMS: 10000,      // check connection every 10s
+  serverSelectionTimeoutMS: 30000,  // 30s to find a server (tolerates brief network drops)
+  socketTimeoutMS: 60000,           // 60s socket timeout
+  heartbeatFrequencyMS: 30000,      // check connection every 30s (less aggressive)
+  connectTimeoutMS: 30000,          // 30s to establish initial connection
   maxPoolSize: 10,
   retryWrites: true,
   retryReads: true,
@@ -20,18 +21,14 @@ export const connectDB = async () => {
   }
 };
 
-// Auto-reconnect on disconnect
+// Mongoose handles reconnection automatically — just log events, don't call connectDB() again
+// as that creates duplicate connections and causes the connect/disconnect loop.
 mongoose.connection.on("disconnected", () => {
-  console.log("⚠️ MongoDB disconnected — reconnecting in 5s...");
-  setTimeout(connectDB, 5000);
+  console.log("⚠️ MongoDB disconnected — Mongoose will reconnect automatically...");
 });
 
 mongoose.connection.on("error", (err) => {
   console.log("❌ MongoDB error:", err.message);
-  if (err.name === "MongoTopologyClosedError" || err.name === "MongoNetworkError") {
-    console.log("🔄 Attempting reconnect...");
-    setTimeout(connectDB, 5000);
-  }
 });
 
 mongoose.connection.on("reconnected", () => {
