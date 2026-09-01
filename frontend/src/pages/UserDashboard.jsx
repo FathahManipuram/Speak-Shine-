@@ -1109,8 +1109,19 @@ export default function UserDashboard() {
 
   return (
     <Layout title="My Dashboard">
-      {celebrationQueue[0] && <BadgeCelebration badge={celebrationQueue[0]} onClose={() => setCelebrationQueue(queue => queue.slice(1))} />}
-      {showBadgeCatalog && <BadgeCatalogModal badges={profile?.availableBadges} earnedBadges={profile?.earnedBadges} onClose={() => setShowBadgeCatalog(false)} />}
+      {celebrationQueue[0] && (
+        <BadgeCelebration
+          badge={celebrationQueue[0]}
+          onClose={() => setCelebrationQueue((queue) => queue.slice(1))}
+        />
+      )}
+      {showBadgeCatalog && (
+        <BadgeCatalogModal
+          badges={profile?.availableBadges}
+          earnedBadges={profile?.earnedBadges}
+          onClose={() => setShowBadgeCatalog(false)}
+        />
+      )}
       {/* Guest banner — shown to unauthenticated visitors */}
       {isGuest && <GuestBanner />}
 
@@ -1118,8 +1129,17 @@ export default function UserDashboard() {
       <div className="student-hero-banner">
         <div>
           <div className="student-hero-greeting">
-            <span>{getGreeting() === "morning" ? "🌅" : getGreeting() === "afternoon" ? "☀️" : "🌙"}</span>
-            <span>Good {getGreeting()}{profile?.name ? `, ${profile.name.split(" ")[0]}` : ""}!</span>
+            <span>
+              {getGreeting() === "morning"
+                ? "🌅"
+                : getGreeting() === "afternoon"
+                  ? "☀️"
+                  : "🌙"}
+            </span>
+            <span>
+              Good {getGreeting()}
+              {profile?.name ? `, ${profile.name.split(" ")[0]}` : ""}!
+            </span>
             <span style={{ fontSize: "1.15rem" }}>✨</span>
           </div>
           <div className="student-hero-sub">
@@ -1132,15 +1152,24 @@ export default function UserDashboard() {
         <div className="student-hero-stats">
           {profile && (
             <>
-              <div className="student-stat-pill flame" title="Current Daily Streak">
+              <div
+                className="student-stat-pill flame"
+                title="Current Daily Streak"
+              >
                 <span style={{ fontSize: "1rem" }}>🔥</span>
                 <span>{profile.streak || 0} Day Streak</span>
               </div>
-              <div className="student-stat-pill score" title="Monthly Leaderboard Points">
+              <div
+                className="student-stat-pill score"
+                title="Monthly Leaderboard Points"
+              >
                 <span style={{ fontSize: "1rem" }}>⭐</span>
                 <span>{Math.round(profile.monthlyScore || 0)} Pts</span>
               </div>
-              <div className="student-stat-pill freeze" title="Available Streak Freezes">
+              <div
+                className="student-stat-pill freeze"
+                title="Available Streak Freezes"
+              >
                 <span style={{ fontSize: "1rem" }}>🧊</span>
                 <span>{profile.streakFreeze || 0} Freezes</span>
               </div>
@@ -1150,15 +1179,30 @@ export default function UserDashboard() {
       </div>
 
       {data?.showReport && data?.dailyReport && (
-        <div className="daily-poster" style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)" }}>
+        <div
+          className="daily-poster"
+          style={{
+            background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+          }}
+        >
           <div className="daily-poster-header">
             <div className="daily-poster-brand">📊 Yesterday's Performance</div>
             <div className="daily-poster-sub">DAILY REPORT</div>
             {data.dailyReport.submitted && (
-              <div className="daily-poster-badge" style={{ background: "#4ade80" }}>✅ Submitted</div>
+              <div
+                className="daily-poster-badge"
+                style={{ background: "#4ade80" }}
+              >
+                ✅ Submitted
+              </div>
             )}
             {!data.dailyReport.submitted && (
-              <div className="daily-poster-badge" style={{ background: "#f87171" }}>❌ Missed</div>
+              <div
+                className="daily-poster-badge"
+                style={{ background: "#f87171" }}
+              >
+                ❌ Missed
+              </div>
             )}
           </div>
 
@@ -1169,15 +1213,62 @@ export default function UserDashboard() {
                 <div className="daily-poster-section-label">YOUR SCORES</div>
                 <div className="grid-cols-2" style={{ marginTop: "0.75rem" }}>
                   {[
-                    { label: "Fluency", value: data.dailyReport.fluency, icon: "🗣️" },
-                    { label: "Grammar", value: data.dailyReport.grammar, icon: "📝" },
-                    { label: "Confidence", value: data.dailyReport.confidence, icon: "💪" },
-                    { label: "Vocabulary", value: data.dailyReport.vocabulary, icon: "📚" },
+                    {
+                      label: "Fluency",
+                      value: data.dailyReport.fluency,
+                      icon: "🗣️",
+                    },
+                    {
+                      label: "Grammar",
+                      value: data.dailyReport.grammar,
+                      icon: "📝",
+                    },
+                    {
+                      label: "Confidence",
+                      value: data.dailyReport.confidence,
+                      icon: "💪",
+                    },
+                    {
+                      label: "Vocabulary",
+                      value: data.dailyReport.vocabulary,
+                      icon: "📚",
+                    },
                   ].map(({ label, value, icon }) => (
-                    <div key={label} style={{ background: "rgba(255,255,255,0.05)", padding: "0.75rem", borderRadius: "8px", textAlign: "center" }}>
-                      <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{icon}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#8888aa", marginBottom: "0.25rem" }}>{label}</div>
-                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: value >= 7 ? "#4ade80" : value >= 5 ? "#fbbf24" : "#f87171" }}>
+                    <div
+                      key={label}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        padding: "0.75rem",
+                        borderRadius: "8px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}
+                      >
+                        {icon}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#8888aa",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "1.5rem",
+                          fontWeight: "bold",
+                          color:
+                            value >= 7
+                              ? "#4ade80"
+                              : value >= 5
+                                ? "#fbbf24"
+                                : "#f87171",
+                        }}
+                      >
                         {value || "—"}/10
                       </div>
                     </div>
@@ -1189,7 +1280,16 @@ export default function UserDashboard() {
               {data.dailyReport.overallComment && (
                 <div style={{ marginTop: "1.5rem" }}>
                   <div className="daily-poster-section-label">💬 FEEDBACK</div>
-                  <div style={{ background: "rgba(255,255,255,0.05)", padding: "1rem", borderRadius: "8px", marginTop: "0.75rem", fontSize: "0.9rem", lineHeight: "1.6" }}>
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      padding: "1rem",
+                      borderRadius: "8px",
+                      marginTop: "0.75rem",
+                      fontSize: "0.9rem",
+                      lineHeight: "1.6",
+                    }}
+                  >
                     {data.dailyReport.overallComment}
                   </div>
                 </div>
@@ -1199,52 +1299,211 @@ export default function UserDashboard() {
               <div className="grid-cols-3" style={{ marginTop: "1.5rem" }}>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: "1.5rem" }}>🔥</div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: "bold", marginTop: "0.25rem" }}>{data.dailyReport.streak}</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa" }}>Streak</div>
+                  <div
+                    style={{
+                      fontSize: "1.25rem",
+                      fontWeight: "bold",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {data.dailyReport.streak}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#8888aa" }}>
+                    Streak
+                  </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: "1.5rem" }}>📅</div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: "bold", marginTop: "0.25rem" }}>{data.dailyReport.weeklySubmissions}/7</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa" }}>This Week</div>
+                  <div
+                    style={{
+                      fontSize: "1.25rem",
+                      fontWeight: "bold",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {data.dailyReport.weeklySubmissions}/7
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#8888aa" }}>
+                    This Week
+                  </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: "1.5rem" }}>📆</div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: "bold", marginTop: "0.25rem" }}>{data.dailyReport.monthlySubmissions}</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa" }}>This Month</div>
+                  <div
+                    style={{
+                      fontSize: "1.25rem",
+                      fontWeight: "bold",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {data.dailyReport.monthlySubmissions}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#8888aa" }}>
+                    This Month
+                  </div>
                 </div>
               </div>
 
               {/* Points & Freeze Information */}
               <div className="grid-cols-2" style={{ marginTop: "1.5rem" }}>
-                <div style={{ background: "rgba(56, 189, 248, 0.1)", padding: "0.75rem", borderRadius: "8px", textAlign: "center", border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>🧊</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa", marginBottom: "0.25rem" }}>Streak Freeze</div>
-                  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#38bdf8" }}>{data.dailyReport.streakFreeze || 0}</div>
+                <div
+                  style={{
+                    background: "rgba(56, 189, 248, 0.1)",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    border: "1px solid rgba(56, 189, 248, 0.2)",
+                  }}
+                >
+                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                    🧊
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#8888aa",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Streak Freeze
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color: "#38bdf8",
+                    }}
+                  >
+                    {data.dailyReport.streakFreeze || 0}
+                  </div>
                 </div>
-                <div style={{ background: "rgba(167, 139, 250, 0.1)", padding: "0.75rem", borderRadius: "8px", textAlign: "center", border: "1px solid rgba(167, 139, 250, 0.2)" }}>
-                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>⭐</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa", marginBottom: "0.25rem" }}>Monthly Score</div>
-                  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#a78bfa" }}>{data.dailyReport.monthlyScore || 0}</div>
+                <div
+                  style={{
+                    background: "rgba(167, 139, 250, 0.1)",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    border: "1px solid rgba(167, 139, 250, 0.2)",
+                  }}
+                >
+                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                    ⭐
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#8888aa",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Monthly Score
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color: "#a78bfa",
+                    }}
+                  >
+                    {data.dailyReport.monthlyScore || 0}
+                  </div>
                 </div>
               </div>
             </>
           ) : (
-            <div style={{ marginTop: "1.5rem", textAlign: "center", padding: "2rem" }}>
+            <div
+              style={{
+                marginTop: "1.5rem",
+                textAlign: "center",
+                padding: "2rem",
+              }}
+            >
               <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>😔</div>
-              <div style={{ fontSize: "1.1rem", fontWeight: "bold", marginBottom: "0.5rem" }}>You missed yesterday's challenge</div>
-              <div style={{ fontSize: "0.9rem", color: "#8888aa", marginBottom: "1rem" }}>Don't worry! Today is a new opportunity to shine.</div>
+              <div
+                style={{
+                  fontSize: "1.1rem",
+                  fontWeight: "bold",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                You missed yesterday's challenge
+              </div>
+              <div
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#8888aa",
+                  marginBottom: "1rem",
+                }}
+              >
+                Don't worry! Today is a new opportunity to shine.
+              </div>
 
               {/* Points & Freeze for Missed Day */}
-              <div className="grid-cols-2" style={{ maxWidth: "300px", margin: "1.5rem auto 0" }}>
-                <div style={{ background: "rgba(56, 189, 248, 0.1)", padding: "0.75rem", borderRadius: "8px", textAlign: "center", border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>🧊</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa", marginBottom: "0.25rem" }}>Streak Freeze</div>
-                  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#38bdf8" }}>{data.dailyReport.streakFreeze || 0}</div>
+              <div
+                className="grid-cols-2"
+                style={{ maxWidth: "300px", margin: "1.5rem auto 0" }}
+              >
+                <div
+                  style={{
+                    background: "rgba(56, 189, 248, 0.1)",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    border: "1px solid rgba(56, 189, 248, 0.2)",
+                  }}
+                >
+                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                    🧊
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#8888aa",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Streak Freeze
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color: "#38bdf8",
+                    }}
+                  >
+                    {data.dailyReport.streakFreeze || 0}
+                  </div>
                 </div>
-                <div style={{ background: "rgba(167, 139, 250, 0.1)", padding: "0.75rem", borderRadius: "8px", textAlign: "center", border: "1px solid rgba(167, 139, 250, 0.2)" }}>
-                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>⭐</div>
-                  <div style={{ fontSize: "0.75rem", color: "#8888aa", marginBottom: "0.25rem" }}>Monthly Score</div>
-                  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#a78bfa" }}>{Math.round(data.dailyReport.monthlyScore || 0)}</div>
+                <div
+                  style={{
+                    background: "rgba(167, 139, 250, 0.1)",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    textAlign: "center",
+                    border: "1px solid rgba(167, 139, 250, 0.2)",
+                  }}
+                >
+                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                    ⭐
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#8888aa",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Monthly Score
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color: "#a78bfa",
+                    }}
+                  >
+                    {Math.round(data.dailyReport.monthlyScore || 0)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1258,53 +1517,109 @@ export default function UserDashboard() {
 
       {/* Show Question (8 AM onwards) — hide if already completed */}
       {!data?.showReport && data?.today?.question && !profile?.completed && (
-        <div className="daily-poster" style={data?.today?.isMonthlyReflection ? {
-          background: "linear-gradient(135deg, #1a0a2e 0%, #2d1060 50%, #1a0a2e 100%)",
-          border: "2px solid rgba(167,139,250,0.5)",
-          boxShadow: "0 8px 40px rgba(139,92,246,0.25)",
-        } : data?.today?.isMonthlyGoals ? {
-          background: "linear-gradient(135deg, #0a1f0a 0%, #0d3d1a 50%, #0a2e12 100%)",
-          border: "2px solid rgba(74,222,128,0.45)",
-          boxShadow: "0 8px 40px rgba(34,197,94,0.2)",
-        } : data?.today?.isStorySummary ? {
-          background: "linear-gradient(135deg, #10231f 0%, #173d35 50%, #10231f 100%)",
-          border: "2px solid rgba(45,212,191,0.45)",
-          boxShadow: "0 8px 40px rgba(20,184,166,0.2)",
-        } : data?.today?.isPictureDescription ? {
-          background: "linear-gradient(135deg, #0f1a2e 0%, #1a2d4a 50%, #0f1a2e 100%)",
-          border: "2px solid rgba(99,179,237,0.45)",
-          boxShadow: "0 8px 40px rgba(66,153,225,0.2)",
-        } : {}}>
+        <div
+          className="daily-poster"
+          style={
+            data?.today?.isMonthlyReflection
+              ? {
+                  background:
+                    "linear-gradient(135deg, #1a0a2e 0%, #2d1060 50%, #1a0a2e 100%)",
+                  border: "2px solid rgba(167,139,250,0.5)",
+                  boxShadow: "0 8px 40px rgba(139,92,246,0.25)",
+                }
+              : data?.today?.isMonthlyGoals
+                ? {
+                    background:
+                      "linear-gradient(135deg, #0a1f0a 0%, #0d3d1a 50%, #0a2e12 100%)",
+                    border: "2px solid rgba(74,222,128,0.45)",
+                    boxShadow: "0 8px 40px rgba(34,197,94,0.2)",
+                  }
+                : data?.today?.isStorySummary
+                  ? {
+                      background:
+                        "linear-gradient(135deg, #10231f 0%, #173d35 50%, #10231f 100%)",
+                      border: "2px solid rgba(45,212,191,0.45)",
+                      boxShadow: "0 8px 40px rgba(20,184,166,0.2)",
+                    }
+                  : data?.today?.isPictureDescription
+                    ? {
+                        background:
+                          "linear-gradient(135deg, #0f1a2e 0%, #1a2d4a 50%, #0f1a2e 100%)",
+                        border: "2px solid rgba(99,179,237,0.45)",
+                        boxShadow: "0 8px 40px rgba(66,153,225,0.2)",
+                      }
+                    : {}
+          }
+        >
           {/* Header */}
           <div className="daily-poster-header">
             <div className="daily-poster-brand">
-              {data?.today?.isMonthlyReflection ? "🌟 Speak & Shine"
-                : data?.today?.isMonthlyGoals ? "🎯 Speak & Shine"
-                  : data?.today?.isStorySummary ? "🎧 Speak & Shine"
-                    : data?.today?.isPictureDescription ? "🖼️ Speak & Shine"
-                    : "✦ Speak & Shine"}
+              {data?.today?.isMonthlyReflection
+                ? "🌟 Speak & Shine"
+                : data?.today?.isMonthlyGoals
+                  ? "🎯 Speak & Shine"
+                  : data?.today?.isStorySummary
+                    ? "🎧 Speak & Shine"
+                    : data?.today?.isPictureDescription
+                      ? "🖼️ Speak & Shine"
+                      : "✦ Speak & Shine"}
             </div>
             <div className="daily-poster-sub">
-              {data?.today?.isMonthlyReflection ? "MONTHLY REFLECTION"
-                : data?.today?.isMonthlyGoals ? "MONTHLY GOAL SETTING"
-                  : data?.today?.isStorySummary ? "STORY SUMMARY"
-                    : data?.today?.isPictureDescription ? "PICTURE DESCRIPTION"
-                    : "DAILY SPEAKING CHALLENGE"}
+              {data?.today?.isMonthlyReflection
+                ? "MONTHLY REFLECTION"
+                : data?.today?.isMonthlyGoals
+                  ? "MONTHLY GOAL SETTING"
+                  : data?.today?.isStorySummary
+                    ? "STORY SUMMARY"
+                    : data?.today?.isPictureDescription
+                      ? "PICTURE DESCRIPTION"
+                      : "DAILY SPEAKING CHALLENGE"}
             </div>
             {/* Sunday bonus badge */}
             {new Date().getDay() === 0 && (
-              <div className="daily-poster-badge" style={{ background: "rgba(251,191,36,0.2)", border: "1px solid rgba(251,191,36,0.5)", color: "#fbbf24", marginTop: "0.35rem" }}>
+              <div
+                className="daily-poster-badge"
+                style={{
+                  background: "rgba(251,191,36,0.2)",
+                  border: "1px solid rgba(251,191,36,0.5)",
+                  color: "#fbbf24",
+                  marginTop: "0.35rem",
+                }}
+              >
                 🎉 Sunday Bonus — Double Points Today!
               </div>
             )}
             {data.today.category && (
-              <div className="daily-poster-badge" style={
-                data?.today?.isMonthlyReflection ? { background: "rgba(139,92,246,0.3)", border: "1px solid rgba(167,139,250,0.5)", color: "#c4b5fd" }
-                  : data?.today?.isMonthlyGoals ? { background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", color: "#4ade80" }
-                    : data?.today?.isStorySummary ? { background: "rgba(20,184,166,0.25)", border: "1px solid rgba(45,212,191,0.5)", color: "#5eead4" }
-                      : data?.today?.isPictureDescription ? { background: "rgba(66,153,225,0.25)", border: "1px solid rgba(99,179,237,0.5)", color: "#90cdf4" }
-                      : {}
-              }>
+              <div
+                className="daily-poster-badge"
+                style={
+                  data?.today?.isMonthlyReflection
+                    ? {
+                        background: "rgba(139,92,246,0.3)",
+                        border: "1px solid rgba(167,139,250,0.5)",
+                        color: "#c4b5fd",
+                      }
+                    : data?.today?.isMonthlyGoals
+                      ? {
+                          background: "rgba(34,197,94,0.25)",
+                          border: "1px solid rgba(74,222,128,0.5)",
+                          color: "#4ade80",
+                        }
+                      : data?.today?.isStorySummary
+                        ? {
+                            background: "rgba(20,184,166,0.25)",
+                            border: "1px solid rgba(45,212,191,0.5)",
+                            color: "#5eead4",
+                          }
+                        : data?.today?.isPictureDescription
+                          ? {
+                              background: "rgba(66,153,225,0.25)",
+                              border: "1px solid rgba(99,179,237,0.5)",
+                              color: "#90cdf4",
+                            }
+                          : {}
+                }
+              >
                 {data.today.category}
               </div>
             )}
@@ -1313,7 +1628,9 @@ export default function UserDashboard() {
           {/* Monthly Reflection questions */}
           {data?.today?.isPictureDescription ? (
             <div style={{ marginTop: "1rem" }}>
-              <div className="daily-poster-section-label">🖼️ PICTURE DESCRIPTION</div>
+              <div className="daily-poster-section-label">
+                🖼️ PICTURE DESCRIPTION
+              </div>
               {data.today.topic && (
                 <div className="daily-poster-topic-wrap">
                   <div className="daily-poster-section-label">SCENE</div>
@@ -1321,34 +1638,73 @@ export default function UserDashboard() {
                 </div>
               )}
               {data.today.imageUrl && (
-                <div style={{ margin: "0.75rem 0", borderRadius: 12, overflow: "hidden", position: "relative" }}>
+                <div
+                  style={{
+                    margin: "0.75rem 0",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
                   <img
                     src={data.today.imageUrl}
                     alt={data.today.topic || "Picture description challenge"}
-                    style={{ width: "100%", maxHeight: 300, objectFit: "contain", background: "#0a0a14", display: "block", borderRadius: 12 }}
+                    style={{
+                      width: "100%",
+                      maxHeight: 300,
+                      objectFit: "contain",
+                      background: "#0a0a14",
+                      display: "block",
+                      borderRadius: 12,
+                    }}
                     loading="lazy"
                   />
                   {data.today.imagePhotographer && (
-                    <div style={{
-                      position: "absolute", bottom: 0, left: 0, right: 0,
-                      padding: "0.4rem 0.65rem",
-                      background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)",
-                      borderBottomLeftRadius: 12, borderBottomRightRadius: 12,
-                      fontSize: "0.62rem", color: "rgba(255,255,255,0.75)",
-                    }}>
-                      📷 Photo by {data.today.imagePhotographer}{data.today.imageSource ? ` on ${data.today.imageSource}` : ""}
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: "0.4rem 0.65rem",
+                        background:
+                          "linear-gradient(to top, rgba(0,0,0,0.65), transparent)",
+                        borderBottomLeftRadius: 12,
+                        borderBottomRightRadius: 12,
+                        fontSize: "0.62rem",
+                        color: "rgba(255,255,255,0.75)",
+                      }}
+                    >
+                      📷 Photo by {data.today.imagePhotographer}
+                      {data.today.imageSource
+                        ? ` on ${data.today.imageSource}`
+                        : ""}
                     </div>
                   )}
                 </div>
               )}
-              <div style={{ marginTop: "0.75rem", background: "rgba(66,153,225,0.08)", border: "1px solid rgba(99,179,237,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.82rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
-                {data.today.imageInstructions || data.today.question || "Look at the image carefully. Describe what you see, what might be happening, and what you think about it."}
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  background: "rgba(66,153,225,0.08)",
+                  border: "1px solid rgba(99,179,237,0.25)",
+                  borderRadius: 10,
+                  padding: "0.65rem 0.85rem",
+                  fontSize: "0.82rem",
+                  color: "rgba(255,255,255,0.85)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {data.today.imageInstructions ||
+                  data.today.question ||
+                  "Look at the image carefully. Describe what you see, what might be happening, and what you think about it."}
               </div>
             </div>
-
           ) : data?.today?.isStorySummary ? (
             <div style={{ marginTop: "1rem" }}>
-              <div className="daily-poster-section-label">🎧 LISTENING PRACTICE</div>
+              <div className="daily-poster-section-label">
+                🎧 LISTENING PRACTICE
+              </div>
               {data.today.topic && (
                 <div className="daily-poster-topic-wrap">
                   <div className="daily-poster-section-label">STORY</div>
@@ -1356,47 +1712,187 @@ export default function UserDashboard() {
                 </div>
               )}
               {data.today.audioUrl && (
-                <audio controls controlsList="nodownload nofullscreen noremoteplayback" onContextMenu={e => e.preventDefault()} src={data.today.audioUrl} style={{ width: "100%", marginTop: "0.75rem" }} />
+                <audio
+                  controls
+                  controlsList="nodownload nofullscreen noremoteplayback"
+                  onContextMenu={(e) => e.preventDefault()}
+                  src={data.today.audioUrl}
+                  style={{ width: "100%", marginTop: "0.75rem" }}
+                />
               )}
-              <div style={{ marginTop: "0.85rem", background: "rgba(20,184,166,0.08)", border: "1px solid rgba(45,212,191,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.82rem", color: "rgba(255,255,255,0.82)", lineHeight: 1.5 }}>
-                {data.today.question || "Listen to the story audio. Then record a clear video summary in your own words."}
+              <div
+                style={{
+                  marginTop: "0.85rem",
+                  background: "rgba(20,184,166,0.08)",
+                  border: "1px solid rgba(45,212,191,0.25)",
+                  borderRadius: 10,
+                  padding: "0.65rem 0.85rem",
+                  fontSize: "0.82rem",
+                  color: "rgba(255,255,255,0.82)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {data.today.question ||
+                  "Listen to the story audio. Then record a clear video summary in your own words."}
               </div>
             </div>
-
           ) : data?.today?.isMonthlyReflection ? (
             <div style={{ marginTop: "1rem" }}>
-              <div className="daily-poster-section-label">📋 REFLECTION QUESTIONS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["How many reviews did you attend this month?", "How many reviews passed and how many failed? Why did you fail?", "How many extensions did you take this month?", "What is your current growth and progress in the program?", "What did you do this month to improve your communication skill?", "What is your communication skill level now compared to last month?"].map((q, i) => (
-                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
-                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(139,92,246,0.3)", border: "1px solid rgba(139,92,246,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#a78bfa", flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
+              <div className="daily-poster-section-label">
+                📋 REFLECTION QUESTIONS
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                  marginTop: "0.75rem",
+                }}
+              >
+                {[
+                  "How many reviews did you attend this month?",
+                  "How many reviews passed and how many failed? Why did you fail?",
+                  "How many extensions did you take this month?",
+                  "What is your current growth and progress in the program?",
+                  "What did you do this month to improve your communication skill?",
+                  "What is your communication skill level now compared to last month?",
+                ].map((q, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      gap: "0.75rem",
+                      alignItems: "flex-start",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(167,139,250,0.2)",
+                      borderRadius: 10,
+                      padding: "0.65rem 0.85rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        minWidth: 24,
+                        height: 24,
+                        borderRadius: "50%",
+                        background: "rgba(139,92,246,0.3)",
+                        border: "1px solid rgba(139,92,246,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "0.72rem",
+                        fontWeight: 800,
+                        color: "#a78bfa",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "rgba(255,255,255,0.9)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {q}
+                    </div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: "0.85rem", background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
-                💡 Record a video answering all 6 questions. Same rules apply — counts as your daily submission.
+              <div
+                style={{
+                  marginTop: "0.85rem",
+                  background: "rgba(139,92,246,0.1)",
+                  border: "1px solid rgba(139,92,246,0.25)",
+                  borderRadius: 10,
+                  padding: "0.65rem 0.85rem",
+                  fontSize: "0.78rem",
+                  color: "rgba(255,255,255,0.65)",
+                }}
+              >
+                💡 Record a video answering all 6 questions. Same rules apply —
+                counts as your daily submission.
               </div>
             </div>
-
-            /* Monthly Goals questions */
-          ) : data?.today?.isMonthlyGoals ? (
+          ) : /* Monthly Goals questions */
+          data?.today?.isMonthlyGoals ? (
             <div style={{ marginTop: "1rem" }}>
-              <div className="daily-poster-section-label">🎯 GOAL SETTING QUESTIONS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.75rem" }}>
-                {["What is your main goal for this month in the program?", "What is your dream or target you are working toward right now?", "What specific steps will you take this month to improve your communication?", "What was your biggest challenge last month and how will you overcome it this month?", "How many reviews are you planning to attend this month?", "What will you do differently this month to grow faster?"].map((q, i) => (
-                  <div key={i} style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 10, padding: "0.65rem 0.85rem" }}>
-                    <div style={{ minWidth: 24, height: 24, borderRadius: "50%", background: "rgba(34,197,94,0.25)", border: "1px solid rgba(74,222,128,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 800, color: "#4ade80", flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}>{q}</div>
+              <div className="daily-poster-section-label">
+                🎯 GOAL SETTING QUESTIONS
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                  marginTop: "0.75rem",
+                }}
+              >
+                {[
+                  "What is your main goal for this month in the program?",
+                  "What is your dream or target you are working toward right now?",
+                  "What specific steps will you take this month to improve your communication?",
+                  "What was your biggest challenge last month and how will you overcome it this month?",
+                  "How many reviews are you planning to attend this month?",
+                  "What will you do differently this month to grow faster?",
+                ].map((q, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      gap: "0.75rem",
+                      alignItems: "flex-start",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(74,222,128,0.2)",
+                      borderRadius: 10,
+                      padding: "0.65rem 0.85rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        minWidth: 24,
+                        height: 24,
+                        borderRadius: "50%",
+                        background: "rgba(34,197,94,0.25)",
+                        border: "1px solid rgba(74,222,128,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "0.72rem",
+                        fontWeight: 800,
+                        color: "#4ade80",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.85rem",
+                        color: "rgba(255,255,255,0.9)",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {q}
+                    </div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: "0.85rem", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, padding: "0.65rem 0.85rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)" }}>
-                💡 Be specific and speak from the heart. Your goals drive your growth — say them out loud with confidence!
+              <div
+                style={{
+                  marginTop: "0.85rem",
+                  background: "rgba(34,197,94,0.08)",
+                  border: "1px solid rgba(74,222,128,0.25)",
+                  borderRadius: 10,
+                  padding: "0.65rem 0.85rem",
+                  fontSize: "0.78rem",
+                  color: "rgba(255,255,255,0.65)",
+                }}
+              >
+                💡 Be specific and speak from the heart. Your goals drive your
+                growth — say them out loud with confidence!
               </div>
             </div>
-
-
           ) : (
             <>
               {data.today.topic && (
@@ -1406,15 +1902,28 @@ export default function UserDashboard() {
                 </div>
               )}
               <div className="daily-poster-question-wrap">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
-                  <div className="daily-poster-section-label">❓ QUESTION PROMPT</div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "0.4rem",
+                  }}
+                >
+                  <div className="daily-poster-section-label">
+                    ❓ QUESTION PROMPT
+                  </div>
                   <button
                     type="button"
                     onClick={() => handleCopyPrompt(data.today.question)}
                     style={{
-                      background: copiedPrompt ? "rgba(74, 222, 128, 0.2)" : "rgba(255, 255, 255, 0.08)",
+                      background: copiedPrompt
+                        ? "rgba(74, 222, 128, 0.2)"
+                        : "rgba(255, 255, 255, 0.08)",
                       border: `1px solid ${copiedPrompt ? "rgba(74, 222, 128, 0.4)" : "rgba(255, 255, 255, 0.15)"}`,
-                      color: copiedPrompt ? "#4ade80" : "rgba(255, 255, 255, 0.75)",
+                      color: copiedPrompt
+                        ? "#4ade80"
+                        : "rgba(255, 255, 255, 0.75)",
                       padding: "3px 8px",
                       borderRadius: 8,
                       fontSize: "0.7rem",
@@ -1430,19 +1939,22 @@ export default function UserDashboard() {
                     {copiedPrompt ? "✓ Copied!" : "📋 Copy"}
                   </button>
                 </div>
-                <div className="daily-poster-question">{data.today.question}</div>
+                <div className="daily-poster-question">
+                  {data.today.question}
+                </div>
               </div>
             </>
           )}
 
           {/* Vocabulary words — all day types */}
-          {Array.isArray(data.today.vocabulary) && data.today.vocabulary.length > 0 && (
-            <VocabularyWords
-              words={data.today.vocabulary}
-              requiredCount={data.today.vocabRequiredCount}
-              totalCount={data.today.vocabWordCount}
-            />
-          )}
+          {Array.isArray(data.today.vocabulary) &&
+            data.today.vocabulary.length > 0 && (
+              <VocabularyWords
+                words={data.today.vocabulary}
+                requiredCount={data.today.vocabRequiredCount}
+                totalCount={data.today.vocabWordCount}
+              />
+            )}
 
           {/* Speaking Readiness Tips Checklist */}
           <div className="readiness-strip">
@@ -1465,23 +1977,30 @@ export default function UserDashboard() {
             <button
               type="button"
               className="btn-hero-primary"
-              onClick={() => isGuest ? navigate('/register') : navigate('/record')}
+              onClick={() =>
+                isGuest ? navigate("/register") : navigate("/record")
+              }
             >
               <span>🎥</span>
               <span>
-                {isGuest ? "Register to Submit Video"
-                  : data?.today?.isMonthlyReflection ? "Record Monthly Reflection"
-                    : data?.today?.isMonthlyGoals ? "Record Monthly Goals"
-                      : data?.today?.isStorySummary ? "Record Story Summary"
-                        : data?.today?.isPictureDescription ? "Record Picture Description"
-                        : "Record Video Now"}
+                {isGuest
+                  ? "Register to Submit Video"
+                  : data?.today?.isMonthlyReflection
+                    ? "Record Monthly Reflection"
+                    : data?.today?.isMonthlyGoals
+                      ? "Record Monthly Goals"
+                      : data?.today?.isStorySummary
+                        ? "Record Story Summary"
+                        : data?.today?.isPictureDescription
+                          ? "Record Picture Description"
+                          : "Record Video Now"}
               </span>
             </button>
             {!isGuest && (
               <button
                 type="button"
                 className="btn-hero-secondary"
-                onClick={() => navigate('/video-analysis')}
+                onClick={() => navigate("/video-analysis")}
               >
                 <span>📁</span>
                 <span>Upload Video File</span>
@@ -1494,7 +2013,10 @@ export default function UserDashboard() {
       {!profile && !isGuest && (
         <div className="warn-box">
           <p>⚠️ Account not linked to WhatsApp yet</p>
-          <p>Register with the same phone number you use in the WhatsApp group. Submit a video to see your data here.</p>
+          <p>
+            Register with the same phone number you use in the WhatsApp group.
+            Submit a video to see your data here.
+          </p>
         </div>
       )}
 
@@ -1507,55 +2029,104 @@ export default function UserDashboard() {
         />
       )}
 
-      {profile && data?.today?.question && !isGuest && (
-        profile.completed
-          ? <CelebrationCard
+      {profile &&
+        data?.today?.question &&
+        !isGuest &&
+        (profile.completed ? (
+          <CelebrationCard
             name={profile?.name}
             streak={profile?.streak || 0}
             navigate={navigate}
           />
-          : (data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals)
-            ? <SubmitNudge
-              name={profile?.name}
-              streak={profile?.streak || 0}
-              navigate={navigate}
-              specialDay={
-                data?.today?.isMonthlyGoals ? "goals"
-                  : "reflection"
-              }
-            />
-            : <SubmitNudge
-              name={profile?.name}
-              streak={profile?.streak || 0}
-              navigate={navigate}
-            />
-      )}
+        ) : data?.today?.isMonthlyReflection || data?.today?.isMonthlyGoals ? (
+          <SubmitNudge
+            name={profile?.name}
+            streak={profile?.streak || 0}
+            navigate={navigate}
+            specialDay={data?.today?.isMonthlyGoals ? "goals" : "reflection"}
+          />
+        ) : (
+          <SubmitNudge
+            name={profile?.name}
+            streak={profile?.streak || 0}
+            navigate={navigate}
+          />
+        ))}
 
       {/* Guest submit nudge — same visual weight as SubmitNudge but drives to register */}
       {isGuest && data?.today?.question && (
-        <div style={{
-          background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1e3a8a 100%)",
-          border: "2px solid rgba(96,165,250,0.5)",
-          borderRadius: 16, padding: "1.75rem 1.5rem",
-          marginBottom: "1.5rem", position: "relative", overflow: "hidden",
-        }}>
-          <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.5rem" }}>
+        <div
+          style={{
+            background:
+              "linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #1e3a8a 100%)",
+            border: "2px solid rgba(96,165,250,0.5)",
+            borderRadius: 16,
+            padding: "1.75rem 1.5rem",
+            marginBottom: "1.5rem",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: -60,
+              right: -60,
+              width: 200,
+              height: 200,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(96,165,250,0.3) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              fontSize: "0.75rem",
+              color: "rgba(255,255,255,0.7)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: "0.5rem",
+            }}
+          >
             🎯 Ready to take the challenge?
           </div>
-          <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", marginBottom: "0.5rem", lineHeight: 1.3 }}>
+          <div
+            style={{
+              fontSize: "1.3rem",
+              fontWeight: 800,
+              color: "#fff",
+              marginBottom: "0.5rem",
+              lineHeight: 1.3,
+            }}
+          >
             Submit your video and get AI-powered feedback!
           </div>
-          <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.75)", marginBottom: "1.25rem" }}>
-            Register to unlock fluency, grammar, confidence & vocabulary analysis after each submission.
+          <div
+            style={{
+              fontSize: "0.85rem",
+              color: "rgba(255,255,255,0.75)",
+              marginBottom: "1.25rem",
+            }}
+          >
+            Register to unlock fluency, grammar, confidence & vocabulary
+            analysis after each submission.
           </div>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate("/register")}
             style={{
-              width: "100%", background: "linear-gradient(135deg,#60a5fa,#3b82f6)",
-              color: "#fff", border: "none", borderRadius: 12,
-              padding: "1rem", fontSize: "1.05rem", fontWeight: 800,
-              cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.05em",
+              width: "100%",
+              background: "linear-gradient(135deg,#60a5fa,#3b82f6)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              padding: "1rem",
+              fontSize: "1.05rem",
+              fontWeight: 800,
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
               boxShadow: "0 6px 20px rgba(0,0,0,0.3)",
             }}
           >
@@ -1565,65 +2136,177 @@ export default function UserDashboard() {
       )}
 
       <div className="stat-grid">
-        <StatCard icon="🔥" label="Current Streak" value={`${profile?.streak || 0} days`} color="#f97316" />
-        <StatCard icon="📹" label="Total Sessions" value={totalSessionsCount} color="#7c6fff" />
-        <StatCard icon="⏱️" label="Total Recorded (All-time)" value={totalRecordedTimeLabel} color="#38bdf8" />
-        <StatCard icon="📅" label="This Week" value={`${profile?.weeklySubmissions || 0}/7`} color="#4ade80" />
-        <StatCard icon="📆" label="Monthly" value={profile?.monthlySubmissions || 0} color="#fbbf24" />
+        <StatCard
+          icon="🔥"
+          label="Current Streak"
+          value={`${profile?.streak || 0} days`}
+          color="#f97316"
+        />
+        <StatCard
+          icon="📹"
+          label="Total Sessions"
+          value={totalSessionsCount}
+          color="#7c6fff"
+        />
+        <StatCard
+          icon="⏱️"
+          label="Total Recorded (All-time)"
+          value={totalRecordedTimeLabel}
+          color="#38bdf8"
+        />
+        <StatCard
+          icon="📅"
+          label="This Week"
+          value={`${profile?.weeklySubmissions || 0}/7`}
+          color="#4ade80"
+        />
+        <StatCard
+          icon="📆"
+          label="Monthly"
+          value={profile?.monthlySubmissions || 0}
+          color="#fbbf24"
+        />
       </div>
 
       {/* Earned streak badges */}
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div className="section-title">🏅 Streak Badges</div>
         {profile?.currentBadge && (
-          <div style={{ marginBottom: "0.7rem", color: "var(--muted)", fontSize: "0.78rem" }}>
+          <div
+            style={{
+              marginBottom: "0.7rem",
+              color: "var(--muted)",
+              fontSize: "0.78rem",
+            }}
+          >
             Current badge <StreakBadge badge={profile.currentBadge} />
           </div>
         )}
         {profile?.nextBadge ? (
           <div style={{ marginBottom: "0.85rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginBottom: "0.35rem", fontSize: "0.75rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "0.75rem",
+                marginBottom: "0.35rem",
+                fontSize: "0.75rem",
+              }}
+            >
               <span style={{ color: "var(--muted)" }}>
                 Progress to <StreakBadge badge={profile.nextBadge} compact />
               </span>
-              <span style={{ color: profile.nextBadge.color, fontWeight: 700, whiteSpace: "nowrap" }}>
+              <span
+                style={{
+                  color: profile.nextBadge.color,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {profile.badgeProgress?.remainingDays || 0} days to go
               </span>
             </div>
-            <div style={{ height: 9, borderRadius: 99, background: "var(--border)", overflow: "hidden" }}>
-              <div style={{
-                height: "100%", width: `${profile.badgeProgress?.percent || 0}%`, borderRadius: 99,
-                background: `linear-gradient(90deg, ${profile.currentBadge?.color || "#4ade80"}, ${profile.nextBadge.color})`,
-                transition: "width 0.6s ease",
-              }} />
+            <div
+              style={{
+                height: 9,
+                borderRadius: 99,
+                background: "var(--border)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${profile.badgeProgress?.percent || 0}%`,
+                  borderRadius: 99,
+                  background: `linear-gradient(90deg, ${profile.currentBadge?.color || "#4ade80"}, ${profile.nextBadge.color})`,
+                  transition: "width 0.6s ease",
+                }}
+              />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.25rem", color: "var(--muted)", fontSize: "0.68rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "0.25rem",
+                color: "var(--muted)",
+                fontSize: "0.68rem",
+              }}
+            >
               <span>{profile.streak || 0} days</span>
               <span>{profile.nextBadge.days} days</span>
             </div>
           </div>
         ) : profile?.currentBadge ? (
-          <div style={{ marginBottom: "0.85rem", color: "#facc15", fontSize: "0.8rem", fontWeight: 700 }}>
+          <div
+            style={{
+              marginBottom: "0.85rem",
+              color: "#facc15",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+            }}
+          >
             🌍 You’ve reached the highest badge — Master Orator!
           </div>
         ) : null}
         {profile?.earnedBadges?.length ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
-            {profile.earnedBadges.map(badge => <StreakBadge key={badge.id} badge={badge} />)}
+            {profile.earnedBadges.map((badge) => (
+              <StreakBadge key={badge.id} badge={badge} />
+            ))}
           </div>
         ) : (
-          <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Reach a 3-day streak to earn your first badge 🌱</div>
+          <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+            Reach a 3-day streak to earn your first badge 🌱
+          </div>
         )}
         {profile?.availableBadges?.length > 0 && (
-          <div style={{ marginTop: "1rem", paddingTop: "0.9rem", borderTop: "1px solid var(--border)" }}>
-            <button onClick={() => setShowBadgeCatalog(true)} style={{
-              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem",
-              padding: "0.75rem 0.85rem", borderRadius: 10, border: "1px solid rgba(124,111,255,0.3)",
-              background: "rgba(124,111,255,0.08)", color: "var(--text)", cursor: "pointer", textAlign: "left",
-            }}>
+          <div
+            style={{
+              marginTop: "1rem",
+              paddingTop: "0.9rem",
+              borderTop: "1px solid var(--border)",
+            }}
+          >
+            <button
+              onClick={() => setShowBadgeCatalog(true)}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.75rem",
+                padding: "0.75rem 0.85rem",
+                borderRadius: 10,
+                border: "1px solid rgba(124,111,255,0.3)",
+                background: "rgba(124,111,255,0.08)",
+                color: "var(--text)",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
               <span>
-                <span style={{ display: "block", fontSize: "0.8rem", fontWeight: 700 }}>View all badges</span>
-                <span style={{ display: "block", color: "var(--muted)", fontSize: "0.7rem", marginTop: "0.2rem" }}>{profile.earnedBadges?.length || 0} of {profile.availableBadges.length} unlocked</span>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                  }}
+                >
+                  View all badges
+                </span>
+                <span
+                  style={{
+                    display: "block",
+                    color: "var(--muted)",
+                    fontSize: "0.7rem",
+                    marginTop: "0.2rem",
+                  }}
+                >
+                  {profile.earnedBadges?.length || 0} of{" "}
+                  {profile.availableBadges.length} unlocked
+                </span>
               </span>
               <span style={{ color: "#a78bfa", fontSize: "1.2rem" }}>→</span>
             </button>
@@ -1632,43 +2315,119 @@ export default function UserDashboard() {
       </div>
 
       <div className="stat-grid">
-        <StatCard icon="👥" label="Group Members" value={data?.stats?.total || 0} color="#7c6fff" />
-        <StatCard icon="✅" label="Submitted Today" value={data?.stats?.completed || 0} color="#4ade80" />
-        <StatCard icon="⏳" label="Pending Today" value={data?.stats?.pending || 0} color="#f87171" />
+        <StatCard
+          icon="👥"
+          label="Group Members"
+          value={data?.stats?.total || 0}
+          color="#7c6fff"
+        />
+        <StatCard
+          icon="✅"
+          label="Submitted Today"
+          value={data?.stats?.completed || 0}
+          color="#4ade80"
+        />
+        <StatCard
+          icon="⏳"
+          label="Pending Today"
+          value={data?.stats?.pending || 0}
+          color="#f87171"
+        />
       </div>
 
       {/* ── Hall of Fame — always visible ── */}
       {data?.streakRecord && (
-        <div style={{
-          marginBottom: "1rem",
-          background: "linear-gradient(135deg, #2a1f00 0%, #3d2e00 50%, #2a1f00 100%)",
-          border: "1.5px solid rgba(251,191,36,0.55)",
-          borderRadius: 14,
-          padding: "0.75rem 1rem",
-          display: "flex", alignItems: "center", gap: "0.75rem",
-          boxShadow: "0 0 24px rgba(251,191,36,0.12)",
-          position: "relative", overflow: "hidden",
-        }}>
-          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(251,191,36,0.18) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div
+          style={{
+            marginBottom: "1rem",
+            background:
+              "linear-gradient(135deg, #2a1f00 0%, #3d2e00 50%, #2a1f00 100%)",
+            border: "1.5px solid rgba(251,191,36,0.55)",
+            borderRadius: 14,
+            padding: "0.75rem 1rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            boxShadow: "0 0 24px rgba(251,191,36,0.12)",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: -30,
+              right: -30,
+              width: 120,
+              height: 120,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(251,191,36,0.18) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
           <span style={{ fontSize: "1.6rem", flexShrink: 0 }}>👑</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "0.6rem", fontWeight: 800, color: "rgba(251,191,36,0.7)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.15rem" }}>
+            <div
+              style={{
+                fontSize: "0.6rem",
+                fontWeight: 800,
+                color: "rgba(251,191,36,0.7)",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                marginBottom: "0.15rem",
+              }}
+            >
               All-Time Streak Record
             </div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#fde68a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div
+              style={{
+                fontSize: "0.9rem",
+                fontWeight: 700,
+                color: "#fde68a",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {data.streakRecord.name}
             </div>
             {data.streakRecord.achievedAt && (
-              <div style={{ fontSize: "0.62rem", color: "rgba(251,191,36,0.5)", marginTop: "0.1rem" }}>
-                Set on {new Date(data.streakRecord.achievedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              <div
+                style={{
+                  fontSize: "0.62rem",
+                  color: "rgba(251,191,36,0.5)",
+                  marginTop: "0.1rem",
+                }}
+              >
+                Set on{" "}
+                {new Date(data.streakRecord.achievedAt).toLocaleDateString(
+                  "en-IN",
+                  { day: "numeric", month: "short", year: "numeric" },
+                )}
               </div>
             )}
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#fbbf24", lineHeight: 1 }}>
+            <div
+              style={{
+                fontSize: "1.8rem",
+                fontWeight: 900,
+                color: "#fbbf24",
+                lineHeight: 1,
+              }}
+            >
               {data.streakRecord.streak}
             </div>
-            <div style={{ fontSize: "0.62rem", color: "rgba(251,191,36,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <div
+              style={{
+                fontSize: "0.62rem",
+                color: "rgba(251,191,36,0.6)",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
               day streak
             </div>
           </div>
@@ -1677,47 +2436,151 @@ export default function UserDashboard() {
 
       {/* ── Today's Top Scorer ── */}
       {data?.todayTopScorer && (
-        <div style={{
-          marginBottom: "1rem",
-          borderRadius: 18,
-          padding: "0.85rem 1.25rem",
-          position: "relative",
-          overflow: "hidden",
-          background: "linear-gradient(135deg, #0a2a30 0%, #082028 60%, #061a20 100%)",
-          border: "1px solid rgba(6,182,212,0.3)",
-          boxShadow: "0 8px 32px rgba(6,182,212,0.1), inset 0 1px 0 rgba(6,182,212,0.15)",
-        }}>
+        <div
+          style={{
+            marginBottom: "1rem",
+            borderRadius: 18,
+            padding: "0.85rem 1.25rem",
+            position: "relative",
+            overflow: "hidden",
+            background:
+              "linear-gradient(135deg, #0a2a30 0%, #082028 60%, #061a20 100%)",
+            border: "1px solid rgba(6,182,212,0.3)",
+            boxShadow:
+              "0 8px 32px rgba(6,182,212,0.1), inset 0 1px 0 rgba(6,182,212,0.15)",
+          }}
+        >
           {/* shimmer line at top */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, transparent 0%, #22d3ee 40%, #34d399 60%, transparent 100%)", opacity: 0.8 }} />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 2,
+              background:
+                "linear-gradient(90deg, transparent 0%, #22d3ee 40%, #34d399 60%, transparent 100%)",
+              opacity: 0.8,
+            }}
+          />
           {/* glow orbs */}
-          <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -30, left: -20, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div
+            style={{
+              position: "absolute",
+              top: -40,
+              right: -40,
+              width: 160,
+              height: 160,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: -30,
+              left: -20,
+              width: 100,
+              height: 100,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(52,211,153,0.1) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
 
           {/* single row: label + name on left, score on right — all vertically centered */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+            }}
+          >
             {/* left: label + name */}
             <div style={{ minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.25rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
                 <span style={{ fontSize: "0.75rem", lineHeight: 1 }}>⭐</span>
-                <span style={{ fontSize: "0.58rem", fontWeight: 800, letterSpacing: "0.13em", textTransform: "uppercase", color: "#22d3ee", opacity: 0.8 }}>Today's Top Scorer</span>
+                <span
+                  style={{
+                    fontSize: "0.58rem",
+                    fontWeight: 800,
+                    letterSpacing: "0.13em",
+                    textTransform: "uppercase",
+                    color: "#22d3ee",
+                    opacity: 0.8,
+                  }}
+                >
+                  Today's Top Scorer
+                </span>
               </div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f0fdff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.02em" }}>
+              <div
+                style={{
+                  fontSize: "1.1rem",
+                  fontWeight: 800,
+                  color: "#f0fdff",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "-0.02em",
+                }}
+              >
                 {data.todayTopScorer.name}
               </div>
-              <div style={{ fontSize: "0.65rem", color: "rgba(34,211,238,0.45)", marginTop: "0.1rem" }}>highest score today</div>
+              <div
+                style={{
+                  fontSize: "0.65rem",
+                  color: "rgba(34,211,238,0.45)",
+                  marginTop: "0.1rem",
+                }}
+              >
+                highest score today
+              </div>
             </div>
 
             {/* right: score number + "points" label */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
-              <span style={{
-                fontSize: "2.1rem", fontWeight: 900, lineHeight: 1,
-                background: "linear-gradient(135deg, #22d3ee 0%, #34d399 100%)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                letterSpacing: "-0.03em",
-              }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "2.1rem",
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  background:
+                    "linear-gradient(135deg, #22d3ee 0%, #34d399 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  letterSpacing: "-0.03em",
+                }}
+              >
                 {data.todayTopScorer.score}
               </span>
-              <span style={{ fontSize: "0.56rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(34,211,238,0.45)", marginTop: "0.15rem" }}>
+              <span
+                style={{
+                  fontSize: "0.56rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "rgba(34,211,238,0.45)",
+                  marginTop: "0.15rem",
+                }}
+              >
                 points
               </span>
             </div>
@@ -1728,50 +2591,93 @@ export default function UserDashboard() {
       {data?.topStreak?.length > 0 && (
         <div className="card" style={{ marginBottom: "1rem" }}>
           <div className="section-title">🏆 Today's Leaderboard</div>
-          <div className="streak-list" style={{ maxHeight: "16rem", overflowY: "auto", paddingRight: "0.25rem" }}>
+          <div
+            className="streak-list"
+            style={{
+              maxHeight: "16rem",
+              overflowY: "auto",
+              overflowX: "auto",
+              paddingRight: "0.25rem",
+            }}
+          >
             {data.topStreak.map((u, i) => {
-              const isMe = data?.myStreakEntry?.inTop5 && data.myStreakEntry.rank === i + 1;
+              const isMe =
+                data?.myStreakEntry?.inTop5 &&
+                data.myStreakEntry.rank === i + 1;
               return (
                 <div
                   className="streak-row"
                   key={i}
-                  style={isMe ? {
-                    background: "rgba(124,111,255,0.13)",
-                    border: "1px solid rgba(124,111,255,0.35)",
-                    borderRadius: 10,
-                    padding: "0.45rem 0.6rem",
-                    margin: "0 -0.1rem",
-                  } : {}}
+                  style={
+                    isMe
+                      ? {
+                          background: "rgba(124,111,255,0.13)",
+                          border: "1px solid rgba(124,111,255,0.35)",
+                          borderRadius: 10,
+                          padding: "0.45rem 0.6rem",
+                          margin: "0 -0.1rem",
+                        }
+                      : {}
+                  }
                 >
-                  <span className="streak-rank">{["🥇", "🥈", "🥉"][i] || `${i + 1}.`}</span>
-                  <span className="streak-name" style={isMe ? { color: "#a78bfa", fontWeight: 700 } : {}}>
+                  <span className="streak-rank">
+                    {["🥇", "🥈", "🥉"][i] || `${i + 1}.`}
+                  </span>
+                  <span
+                    className="streak-name"
+                    style={isMe ? { color: "#a78bfa", fontWeight: 700 } : {}}
+                  >
                     {u.name || u.userId?.split("@")[0]}
-                    {u.currentBadge && <StreakBadge badge={u.currentBadge} compact />}
-                    {isMe && <span style={{ fontSize: "0.62rem", color: "#7c6fff", marginLeft: "0.3rem", opacity: 0.85 }}>(you)</span>}
+                    {u.currentBadge && (
+                      <StreakBadge badge={u.currentBadge} compact />
+                    )}
+                    {isMe && (
+                      <span
+                        style={{
+                          fontSize: "0.62rem",
+                          color: "#7c6fff",
+                          marginLeft: "0.3rem",
+                          opacity: 0.85,
+                        }}
+                      >
+                        (you)
+                      </span>
+                    )}
                   </span>
                   <span className="streak-val">🔥 {u.streak} days</span>
                   <span className="streak-sub">{u.weeklySubmissions}/7</span>
                   {/* Monthly score — shown if user has any score this month */}
                   {u.monthlyScore > 0 ? (
-                    <span style={{
-                      fontSize: "0.78rem", fontWeight: 700,
-                      padding: "0.2rem 0.55rem", borderRadius: 20,
-                      background: "rgba(124,111,255,0.18)",
-                      color: "#c4b5fd",
-                      whiteSpace: "nowrap",
-                    }}>
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        padding: "0.2rem 0.55rem",
+                        borderRadius: 20,
+                        background: "rgba(124,111,255,0.18)",
+                        color: "#c4b5fd",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {Math.round(u.monthlyScore)} pts
                     </span>
                   ) : (
                     <span style={{ width: "4rem" }} />
                   )}
-                  <span style={{
-                    marginLeft: "0.4rem", fontSize: "0.75rem", fontWeight: 600,
-                    padding: "0.2rem 0.6rem", borderRadius: 20,
-                    background: u.completed ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.12)",
-                    color: u.completed ? "#4ade80" : "#f87171",
-                    whiteSpace: "nowrap",
-                  }}>
+                  <span
+                    style={{
+                      marginLeft: "0.4rem",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      padding: "0.2rem 0.6rem",
+                      borderRadius: 20,
+                      background: u.completed
+                        ? "rgba(74,222,128,0.15)"
+                        : "rgba(248,113,113,0.12)",
+                      color: u.completed ? "#4ade80" : "#f87171",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {u.completed ? "✅ Done" : "⏳ Pending"}
                   </span>
                 </div>
@@ -1782,46 +2688,96 @@ export default function UserDashboard() {
           {/* My position row — only if NOT in top 5 */}
           {data?.myStreakEntry && !data.myStreakEntry.inTop5 && (
             <>
-              <div style={{ borderTop: "1px dashed rgba(255,255,255,0.07)", margin: "0.5rem 0", position: "relative" }}>
-                <span style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: "translate(-50%,-50%)",
-                  background: "var(--card)", padding: "0 0.5rem",
-                  fontSize: "0.6rem", color: "var(--muted)", whiteSpace: "nowrap",
-                }}>· · ·</span>
-              </div>
-              <div className="streak-row" style={{
-                background: "rgba(124,111,255,0.07)",
-                border: "1px solid rgba(124,111,255,0.2)",
-                borderRadius: 10,
-                padding: "0.5rem 0.75rem",
-              }}>
-                <span className="streak-rank" style={{ color: "#a78bfa", minWidth: 28 }}>#{data.myStreakEntry.rank}</span>
-                <span className="streak-name" style={{ color: "#a78bfa", fontWeight: 700 }}>
-                  {data.myStreakEntry.name || "You"} {data.myStreakEntry.currentBadge && <StreakBadge badge={data.myStreakEntry.currentBadge} compact />} <span style={{ fontSize: "0.65rem", opacity: 0.7 }}>(you)</span>
-                </span>
-                <span className="streak-val">🔥 {data.myStreakEntry.streak} days</span>
-                <span className="streak-sub">{data.myStreakEntry.weeklySubmissions}/7</span>
-                {data.myStreakEntry.monthlyScore > 0 ? (
-                  <span style={{
-                    fontSize: "0.78rem", fontWeight: 700,
-                    padding: "0.2rem 0.55rem", borderRadius: 20,
-                    background: "rgba(124,111,255,0.18)",
-                    color: "#c4b5fd",
+              <div
+                style={{
+                  borderTop: "1px dashed rgba(255,255,255,0.07)",
+                  margin: "0.5rem 0",
+                  position: "relative",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%,-50%)",
+                    background: "var(--card)",
+                    padding: "0 0.5rem",
+                    fontSize: "0.6rem",
+                    color: "var(--muted)",
                     whiteSpace: "nowrap",
-                  }}>
+                  }}
+                >
+                  · · ·
+                </span>
+              </div>
+              <div
+                className="streak-row"
+                style={{
+                  background: "rgba(124,111,255,0.07)",
+                  border: "1px solid rgba(124,111,255,0.2)",
+                  borderRadius: 10,
+                  padding: "0.5rem 0.75rem",
+                }}
+              >
+                <span
+                  className="streak-rank"
+                  style={{ color: "#a78bfa", minWidth: 28 }}
+                >
+                  #{data.myStreakEntry.rank}
+                </span>
+                <span
+                  className="streak-name"
+                  style={{ color: "#a78bfa", fontWeight: 700 }}
+                >
+                  {data.myStreakEntry.name || "You"}{" "}
+                  {data.myStreakEntry.currentBadge && (
+                    <StreakBadge
+                      badge={data.myStreakEntry.currentBadge}
+                      compact
+                    />
+                  )}{" "}
+                  <span style={{ fontSize: "0.65rem", opacity: 0.7 }}>
+                    (you)
+                  </span>
+                </span>
+                <span className="streak-val">
+                  🔥 {data.myStreakEntry.streak} days
+                </span>
+                <span className="streak-sub">
+                  {data.myStreakEntry.weeklySubmissions}/7
+                </span>
+                {data.myStreakEntry.monthlyScore > 0 ? (
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      padding: "0.2rem 0.55rem",
+                      borderRadius: 20,
+                      background: "rgba(124,111,255,0.18)",
+                      color: "#c4b5fd",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {Math.round(data.myStreakEntry.monthlyScore)} pts
                   </span>
                 ) : (
                   <span style={{ width: "4rem" }} />
                 )}
-                <span style={{
-                  marginLeft: "0.4rem", fontSize: "0.75rem", fontWeight: 600,
-                  padding: "0.2rem 0.6rem", borderRadius: 20,
-                  background: data.myStreakEntry.completed ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.12)",
-                  color: data.myStreakEntry.completed ? "#4ade80" : "#f87171",
-                  whiteSpace: "nowrap",
-                }}>
+                <span
+                  style={{
+                    marginLeft: "0.4rem",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    padding: "0.2rem 0.6rem",
+                    borderRadius: 20,
+                    background: data.myStreakEntry.completed
+                      ? "rgba(74,222,128,0.15)"
+                      : "rgba(248,113,113,0.12)",
+                    color: data.myStreakEntry.completed ? "#4ade80" : "#f87171",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {data.myStreakEntry.completed ? "✅ Done" : "⏳ Pending"}
                 </span>
               </div>
@@ -1834,8 +2790,21 @@ export default function UserDashboard() {
         <>
           <div className="stat-grid">
             {Object.entries(SCORES).map(([k, c]) => (
-              <StatCard key={k} icon={k === "fluency" ? "🗣️" : k === "grammar" ? "📝" : k === "confidence" ? "💪" : "📚"}
-                label={`Avg ${k.charAt(0).toUpperCase() + k.slice(1)}`} value={avg(scores, k)} color={c} />
+              <StatCard
+                key={k}
+                icon={
+                  k === "fluency"
+                    ? "🗣️"
+                    : k === "grammar"
+                      ? "📝"
+                      : k === "confidence"
+                        ? "💪"
+                        : "📚"
+                }
+                label={`Avg ${k.charAt(0).toUpperCase() + k.slice(1)}`}
+                value={avg(scores, k)}
+                color={c}
+              />
             ))}
           </div>
 
@@ -1845,11 +2814,24 @@ export default function UserDashboard() {
               {Object.entries(SCORES).map(([k, c]) => (
                 <div className="score-bar" key={k}>
                   <div className="score-bar-header">
-                    <span className="score-bar-label">{k.charAt(0).toUpperCase() + k.slice(1)}</span>
-                    <span className="score-bar-value" style={{ color: scoreColor(latest?.[k] || 0) }}>{latest?.[k] || 0}/10</span>
+                    <span className="score-bar-label">
+                      {k.charAt(0).toUpperCase() + k.slice(1)}
+                    </span>
+                    <span
+                      className="score-bar-value"
+                      style={{ color: scoreColor(latest?.[k] || 0) }}
+                    >
+                      {latest?.[k] || 0}/10
+                    </span>
                   </div>
                   <div className="score-bar-track">
-                    <div className="score-bar-fill" style={{ width: `${(latest?.[k] || 0) * 10}%`, background: c }} />
+                    <div
+                      className="score-bar-fill"
+                      style={{
+                        width: `${(latest?.[k] || 0) * 10}%`,
+                        background: c,
+                      }}
+                    />
                   </div>
                 </div>
               ))}
@@ -1857,7 +2839,9 @@ export default function UserDashboard() {
           </div>
 
           <div className="card" style={{ marginTop: "1rem" }}>
-            <div className="section-title">Score History ({scores.length} sessions)</div>
+            <div className="section-title">
+              Score History ({scores.length} sessions)
+            </div>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#252545" />
@@ -1866,43 +2850,113 @@ export default function UserDashboard() {
                 <Tooltip contentStyle={tt} />
                 <Legend />
                 {Object.entries(SCORES).map(([k, c]) => (
-                  <Line key={k} type="monotone" dataKey={k.charAt(0).toUpperCase() + k.slice(1)} stroke={c} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line
+                    key={k}
+                    type="monotone"
+                    dataKey={k.charAt(0).toUpperCase() + k.slice(1)}
+                    stroke={c}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
                 ))}
               </LineChart>
             </ResponsiveContainer>
             {isGuest && (
-              <div style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.5rem", padding: "0.5rem", background: "rgba(124,111,255,0.07)", borderRadius: 8 }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: "0.75rem",
+                  color: "var(--muted)",
+                  marginTop: "0.5rem",
+                  padding: "0.5rem",
+                  background: "rgba(124,111,255,0.07)",
+                  borderRadius: 8,
+                }}
+              >
                 📊 Sample data — register to track your real progress
               </div>
             )}
           </div>
 
           {pointsData.length > 0 && pointsSummary && (
-            <div className="card" style={{ marginTop: "1rem", border: "1px solid rgba(34,211,238,0.18)", boxShadow: "0 16px 40px rgba(2,8,23,0.24)", background: "linear-gradient(135deg, rgba(15,23,42,0.98) 0%, rgba(15,23,42,0.9) 100%)" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "0.95rem", flexWrap: "wrap" }}>
+            <div
+              className="card"
+              style={{
+                marginTop: "1rem",
+                border: "1px solid rgba(34,211,238,0.18)",
+                boxShadow: "0 16px 40px rgba(2,8,23,0.24)",
+                background:
+                  "linear-gradient(135deg, rgba(15,23,42,0.98) 0%, rgba(15,23,42,0.9) 100%)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "1rem",
+                  marginBottom: "0.95rem",
+                  flexWrap: "wrap",
+                }}
+              >
                 <div>
-                  <div className="section-title" style={{ marginBottom: "0.25rem" }}>📈 Daily Points Trend</div>
-                  <div style={{ color: "var(--muted)", fontSize: "0.74rem" }}>Your consistency over the last {pointsData.length} sessions · Sunday bonuses excluded</div>
+                  <div
+                    className="section-title"
+                    style={{ marginBottom: "0.25rem" }}
+                  >
+                    📈 Daily Points Trend
+                  </div>
+                  <div style={{ color: "var(--muted)", fontSize: "0.74rem" }}>
+                    Your consistency over the last {pointsData.length} sessions
+                    · Sunday bonuses excluded
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(34,211,238,0.12)", color: "#67e8f9", fontSize: "0.74rem", fontWeight: 700 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "0.4rem 0.7rem",
+                      borderRadius: 999,
+                      background: "rgba(34,211,238,0.12)",
+                      color: "#67e8f9",
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                    }}
+                  >
                     {pointsSummary.avg} avg pts
                   </div>
-                  <div style={{ padding: "0.4rem 0.7rem", borderRadius: 999, background: "rgba(167,139,250,0.14)", color: "#c4b5fd", fontSize: "0.74rem", fontWeight: 700 }}>
+                  <div
+                    style={{
+                      padding: "0.4rem 0.7rem",
+                      borderRadius: 999,
+                      background: "rgba(167,139,250,0.14)",
+                      color: "#c4b5fd",
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                    }}
+                  >
                     Best {pointsSummary.best} pts
                   </div>
-                  <div style={{
-                    padding: "0.4rem 0.75rem",
-                    borderRadius: 999,
-                    background: pointsSummary.performance.badgeBg,
-                    color: pointsSummary.performance.color,
-                    fontSize: "0.74rem",
-                    fontWeight: 700,
-                    border: `1px solid ${pointsSummary.performance.color}33`,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.3rem",
-                  }}>
+                  <div
+                    style={{
+                      padding: "0.4rem 0.75rem",
+                      borderRadius: 999,
+                      background: pointsSummary.performance.badgeBg,
+                      color: pointsSummary.performance.color,
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                      border: `1px solid ${pointsSummary.performance.color}33`,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                    }}
+                  >
                     <span>{pointsSummary.performance.icon}</span>
                     <span>{pointsSummary.performance.label}</span>
                   </div>
@@ -1911,74 +2965,273 @@ export default function UserDashboard() {
 
               {/* Motivational Insight Banner */}
               {pointsSummary.performance?.motivationalTip && (
-                <div style={{
-                  padding: "0.65rem 0.9rem",
-                  borderRadius: 10,
-                  background: pointsSummary.performance.badgeBg,
-                  border: `1px solid ${pointsSummary.performance.color}33`,
-                  marginBottom: "0.9rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.6rem",
-                }}>
-                  <span style={{ fontSize: "1.1rem" }}>{pointsSummary.performance.icon}</span>
-                  <span style={{ fontSize: "0.78rem", color: "#e2e8f0", lineHeight: 1.4, fontWeight: 500 }}>
+                <div
+                  style={{
+                    padding: "0.65rem 0.9rem",
+                    borderRadius: 10,
+                    background: pointsSummary.performance.badgeBg,
+                    border: `1px solid ${pointsSummary.performance.color}33`,
+                    marginBottom: "0.9rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.6rem",
+                  }}
+                >
+                  <span style={{ fontSize: "1.1rem" }}>
+                    {pointsSummary.performance.icon}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      color: "#e2e8f0",
+                      lineHeight: 1.4,
+                      fontWeight: 500,
+                    }}
+                  >
                     {pointsSummary.performance.motivationalTip}
                   </span>
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.7rem", marginBottom: "0.9rem" }}>
-                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Latest</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.latest} pts</div>
-                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.2rem" }}>Session #{pointsSummary.sessionCount}</div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: "0.7rem",
+                  marginBottom: "0.9rem",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid rgba(148,163,184,0.16)",
+                    background: "rgba(15,23,42,0.6)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "#94a3b8",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Latest
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.2rem",
+                      fontWeight: 800,
+                      color: "#f8fafc",
+                    }}
+                  >
+                    {pointsSummary.latest} pts
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.68rem",
+                      color: "#64748b",
+                      marginTop: "0.2rem",
+                    }}
+                  >
+                    Session #{pointsSummary.sessionCount}
+                  </div>
                 </div>
-                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Performance</div>
-                  <div style={{ fontSize: "1.05rem", fontWeight: 800, color: pointsSummary.performance.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                <div
+                  style={{
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid rgba(148,163,184,0.16)",
+                    background: "rgba(15,23,42,0.6)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "#94a3b8",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Performance
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.05rem",
+                      fontWeight: 800,
+                      color: pointsSummary.performance.color,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                    }}
+                  >
                     <span>{pointsSummary.performance.icon}</span>
                     <span>{pointsSummary.performance.label}</span>
                   </div>
-                  <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.2rem" }}>{pointsSummary.performance.trendText}</div>
-                </div>
-                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Last 30 Sessions</div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc" }}>{pointsSummary.last30RecordedLabel}</div>
-                  <div style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.25rem" }}>
-                    {pointsSummary.last30RecordedSeconds > 0 ? "Recent speak time" : "Last 30 sessions"}
+                  <div
+                    style={{
+                      fontSize: "0.68rem",
+                      color: "#94a3b8",
+                      marginTop: "0.2rem",
+                    }}
+                  >
+                    {pointsSummary.performance.trendText}
                   </div>
                 </div>
-                <div style={{ padding: "0.8rem 0.9rem", borderRadius: 12, border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.6)" }}>
-                  <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: "0.25rem" }}>Momentum</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: pointsSummary.trend.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                <div
+                  style={{
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid rgba(148,163,184,0.16)",
+                    background: "rgba(15,23,42,0.6)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "#94a3b8",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Last 30 Sessions
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: 800,
+                      color: "#f8fafc",
+                    }}
+                  >
+                    {pointsSummary.last30RecordedLabel}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.68rem",
+                      color: "#64748b",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {pointsSummary.last30RecordedSeconds > 0
+                      ? "Recent speak time"
+                      : "Last 30 sessions"}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid rgba(148,163,184,0.16)",
+                    background: "rgba(15,23,42,0.6)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      color: "#94a3b8",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    Momentum
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.95rem",
+                      fontWeight: 700,
+                      color: pointsSummary.trend.color,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                    }}
+                  >
                     <span>{pointsSummary.trend.icon}</span>
                     <span>{pointsSummary.trend.label}</span>
                   </div>
-                  <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "0.2rem" }}>{pointsSummary.trend.subText}</div>
+                  <div
+                    style={{
+                      fontSize: "0.68rem",
+                      color: "#94a3b8",
+                      marginTop: "0.2rem",
+                    }}
+                  >
+                    {pointsSummary.trend.subText}
+                  </div>
                 </div>
               </div>
 
               <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={pointsData} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                <AreaChart
+                  data={pointsData}
+                  margin={{ top: 8, right: 10, left: 0, bottom: 0 }}
+                >
                   <defs>
-                    <linearGradient id="dailyPointsFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.28} />
-                      <stop offset="72%" stopColor="#22d3ee" stopOpacity={0.08} />
+                    <linearGradient
+                      id="dailyPointsFill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="#22d3ee"
+                        stopOpacity={0.28}
+                      />
+                      <stop
+                        offset="72%"
+                        stopColor="#22d3ee"
+                        stopOpacity={0.08}
+                      />
                       <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="4 6" stroke="rgba(148,163,184,0.14)" vertical={false} />
-                  <XAxis dataKey="session" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} dy={8} interval="preserveStartEnd" />
-                  <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} width={34} tickFormatter={v => `${v}`} />
+                  <CartesianGrid
+                    strokeDasharray="4 6"
+                    stroke="rgba(148,163,184,0.14)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="session"
+                    stroke="#64748b"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dy={8}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    ticks={[0, 25, 50, 75, 100]}
+                    stroke="#64748b"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    width={34}
+                    tickFormatter={(v) => `${v}`}
+                  />
                   <Tooltip
-                    contentStyle={{ ...tt, border: "1px solid rgba(34,211,238,0.35)", boxShadow: "0 8px 24px rgba(0,0,0,0.28)" }}
+                    contentStyle={{
+                      ...tt,
+                      border: "1px solid rgba(34,211,238,0.35)",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+                    }}
                     cursor={{ stroke: "rgba(34,211,238,0.35)", strokeWidth: 1 }}
                     formatter={(v) => [`${v} pts`, "Daily points"]}
                     itemStyle={{ color: "#67e8f9", fontWeight: 700 }}
                     labelStyle={{ color: "#cbd5e1", marginBottom: "0.2rem" }}
                   />
-                  <Area type="monotone" dataKey="pts" stroke="none" fill="url(#dailyPointsFill)" />
+                  <Area
+                    type="monotone"
+                    dataKey="pts"
+                    stroke="none"
+                    fill="url(#dailyPointsFill)"
+                  />
                   <Line
                     type="monotone"
                     dataKey="pts"
@@ -1996,8 +3249,18 @@ export default function UserDashboard() {
                     strokeWidth={0}
                     connectNulls={false}
                     isAnimationActive={false}
-                    dot={{ r: 4.5, fill: "#cffafe", stroke: "#67e8f9", strokeWidth: 2 }}
-                    activeDot={{ r: 6, fill: "#cffafe", stroke: "#0891b2", strokeWidth: 2.5 }}
+                    dot={{
+                      r: 4.5,
+                      fill: "#cffafe",
+                      stroke: "#67e8f9",
+                      strokeWidth: 2,
+                    }}
+                    activeDot={{
+                      r: 6,
+                      fill: "#cffafe",
+                      stroke: "#0891b2",
+                      strokeWidth: 2.5,
+                    }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -2008,20 +3271,63 @@ export default function UserDashboard() {
             <div className="section-title">Session History</div>
             <div className="table-wrap">
               <table className="data-table">
-                <thead><tr><th>#</th><th>Date</th><th>Recorded</th><th>Fluency</th><th>Grammar</th><th>Confidence</th><th>Vocabulary</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Recorded</th>
+                    <th>Fluency</th>
+                    <th>Grammar</th>
+                    <th>Confidence</th>
+                    <th>Vocabulary</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {pagedScores.map((s, i) => {
-                    const globalIdx = scores.length - ((sessionPage - 1) * SESSION_PAGE_SIZE + i);
+                    const globalIdx =
+                      scores.length -
+                      ((sessionPage - 1) * SESSION_PAGE_SIZE + i);
                     return (
                       <tr key={i}>
                         <td style={{ color: "var(--muted)" }}>{globalIdx}</td>
-                        <td style={{ color: "var(--muted)" }}>{s.date ? new Date(s.date).toLocaleDateString("en-IN") : s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("en-IN") : "—"}</td>
-                        <td style={{ color: "#38bdf8", fontWeight: 700, whiteSpace: "nowrap" }}>
-                          {formatSessionDuration(parseDurationToSeconds(s.duration ?? s.videoDuration ?? s.recordedDuration ?? s.durationSeconds))}
+                        <td style={{ color: "var(--muted)" }}>
+                          {s.date
+                            ? new Date(s.date).toLocaleDateString("en-IN")
+                            : s.submittedAt
+                              ? new Date(s.submittedAt).toLocaleDateString(
+                                  "en-IN",
+                                )
+                              : "—"}
                         </td>
-                        {["fluency", "grammar", "confidence", "vocabulary"].map(k => (
-                          <td key={k} style={{ fontWeight: 600, color: scoreColor(s[k] || 0) }}>{s[k] ?? "—"}/10</td>
-                        ))}
+                        <td
+                          style={{
+                            color: "#38bdf8",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {formatSessionDuration(
+                            parseDurationToSeconds(
+                              s.duration ??
+                                s.videoDuration ??
+                                s.recordedDuration ??
+                                s.durationSeconds,
+                            ),
+                          )}
+                        </td>
+                        {["fluency", "grammar", "confidence", "vocabulary"].map(
+                          (k) => (
+                            <td
+                              key={k}
+                              style={{
+                                fontWeight: 600,
+                                color: scoreColor(s[k] || 0),
+                              }}
+                            >
+                              {s[k] ?? "—"}/10
+                            </td>
+                          ),
+                        )}
                       </tr>
                     );
                   })}
@@ -2031,12 +3337,52 @@ export default function UserDashboard() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", marginTop: "1rem", flexWrap: "wrap" }}>
-                <button className="btn-ghost" style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }} onClick={() => setSessionPage(p => Math.max(1, p - 1))} disabled={sessionPage === 1}>← Prev</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                  <button key={p} className={sessionPage === p ? "btn-primary" : "btn-ghost"} style={{ padding: "0.3rem 0.65rem", fontSize: "0.82rem", minWidth: 34 }} onClick={() => setSessionPage(p)}>{p}</button>
-                ))}
-                <button className="btn-ghost" style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }} onClick={() => setSessionPage(p => Math.min(totalPages, p + 1))} disabled={sessionPage === totalPages}>Next →</button>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginTop: "1rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  className="btn-ghost"
+                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }}
+                  onClick={() => setSessionPage((p) => Math.max(1, p - 1))}
+                  disabled={sessionPage === 1}
+                >
+                  ← Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (p) => (
+                    <button
+                      key={p}
+                      className={
+                        sessionPage === p ? "btn-primary" : "btn-ghost"
+                      }
+                      style={{
+                        padding: "0.3rem 0.65rem",
+                        fontSize: "0.82rem",
+                        minWidth: 34,
+                      }}
+                      onClick={() => setSessionPage(p)}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+                <button
+                  className="btn-ghost"
+                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }}
+                  onClick={() =>
+                    setSessionPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={sessionPage === totalPages}
+                >
+                  Next →
+                </button>
               </div>
             )}
           </div>
@@ -2044,7 +3390,9 @@ export default function UserDashboard() {
       ) : (
         <div className="card empty-state">
           <div className="empty-icon">📹</div>
-          <p>No feedback scores yet. Submit a video via WhatsApp to get started!</p>
+          <p>
+            No feedback scores yet. Submit a video via WhatsApp to get started!
+          </p>
         </div>
       )}
 
@@ -2053,58 +3401,111 @@ export default function UserDashboard() {
         <div className="card" style={{ marginTop: "1rem" }}>
           <div className="section-title">🎥 Live Sessions</div>
           <div style={{ display: "grid", gap: "0.75rem", marginTop: "1rem" }}>
-            {liveSessions.map(s => {
+            {liveSessions.map((s) => {
               const isLive = s.status === "live";
-              const alreadyIn = isLive && s.participants?.includes(data?.profile?.linkedPhone);
+              const alreadyIn =
+                isLive && s.participants?.includes(data?.profile?.linkedPhone);
               return (
-                <div key={s._id} style={{
-                  background: isLive ? "rgba(74,222,128,0.05)" : "var(--bg-secondary)",
-                  border: `1px solid ${isLive ? "rgba(74,222,128,0.4)" : "rgba(96,165,250,0.25)"}`,
-                  borderRadius: 12,
-                  padding: "1rem 1.25rem",
-                  position: "relative",
-                  overflow: "hidden",
-                }}>
+                <div
+                  key={s._id}
+                  style={{
+                    background: isLive
+                      ? "rgba(74,222,128,0.05)"
+                      : "var(--bg-secondary)",
+                    border: `1px solid ${isLive ? "rgba(74,222,128,0.4)" : "rgba(96,165,250,0.25)"}`,
+                    borderRadius: 12,
+                    padding: "1rem 1.25rem",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
                   {isLive && (
-                    <div style={{
-                      position: "absolute",
-                      top: 0, left: 0, right: 0, height: 3,
-                      background: "linear-gradient(90deg, #4ade80, #22c55e)",
-                    }} />
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 3,
+                        background: "linear-gradient(90deg, #4ade80, #22c55e)",
+                      }}
+                    />
                   )}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "1rem",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.3rem" }}>
-                        <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>{s.title}</span>
-                        <span style={{
-                          fontSize: "0.65rem", fontWeight: 700,
-                          padding: "0.15rem 0.5rem", borderRadius: 20, textTransform: "uppercase",
-                          background: isLive ? "rgba(74,222,128,0.15)" : "rgba(96,165,250,0.15)",
-                          color: isLive ? "#4ade80" : "#60a5fa",
-                        }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          marginBottom: "0.3rem",
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+                          {s.title}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.65rem",
+                            fontWeight: 700,
+                            padding: "0.15rem 0.5rem",
+                            borderRadius: 20,
+                            textTransform: "uppercase",
+                            background: isLive
+                              ? "rgba(74,222,128,0.15)"
+                              : "rgba(96,165,250,0.15)",
+                            color: isLive ? "#4ade80" : "#60a5fa",
+                          }}
+                        >
                           {isLive ? "🔴 Live Now" : "Scheduled"}
                         </span>
                         {/* "You're inside" badge */}
                         {alreadyIn && (
-                          <span style={{
-                            fontSize: "0.65rem", fontWeight: 700,
-                            padding: "0.15rem 0.5rem", borderRadius: 20,
-                            background: "rgba(124,111,255,0.15)",
-                            color: "#a78bfa",
-                          }}>
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                              padding: "0.15rem 0.5rem",
+                              borderRadius: 20,
+                              background: "rgba(124,111,255,0.15)",
+                              color: "#a78bfa",
+                            }}
+                          >
                             ✅ You're in
                           </span>
                         )}
                       </div>
                       {s.description && (
-                        <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "0.4rem" }}>
+                        <div
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "var(--muted)",
+                            marginBottom: "0.4rem",
+                          }}
+                        >
                           {s.description}
                         </div>
                       )}
-                      <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
-                        📅 {new Date(s.scheduledAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-                        {s.participantCount > 0 && ` · 👥 ${s.participantCount}/${s.maxParticipants || 20}`}
-                        {s.participantCount >= (s.maxParticipants || 20) && " 🔴 Full"}
+                      <div
+                        style={{ fontSize: "0.78rem", color: "var(--muted)" }}
+                      >
+                        📅{" "}
+                        {new Date(s.scheduledAt).toLocaleString("en-IN", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                        {s.participantCount > 0 &&
+                          ` · 👥 ${s.participantCount}/${s.maxParticipants || 20}`}
+                        {s.participantCount >= (s.maxParticipants || 20) &&
+                          " 🔴 Full"}
                       </div>
                     </div>
 
@@ -2117,11 +3518,15 @@ export default function UserDashboard() {
                             ? "rgba(124,111,255,0.15)"
                             : "linear-gradient(135deg,#4ade80,#22c55e)",
                           color: alreadyIn ? "#a78bfa" : "#065f46",
-                          border: alreadyIn ? "1px solid rgba(124,111,255,0.35)" : "none",
+                          border: alreadyIn
+                            ? "1px solid rgba(124,111,255,0.35)"
+                            : "none",
                           borderRadius: 10,
                           padding: "0.5rem 1rem",
-                          fontWeight: 700, fontSize: "0.82rem",
-                          cursor: "pointer", whiteSpace: "nowrap",
+                          fontWeight: 700,
+                          fontSize: "0.82rem",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {alreadyIn ? "🔄 Rejoin" : "📹 Join Now"}
@@ -2134,7 +3539,6 @@ export default function UserDashboard() {
           </div>
         </div>
       )}
-
     </Layout>
   );
 }
