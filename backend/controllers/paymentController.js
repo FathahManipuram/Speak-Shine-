@@ -10,7 +10,7 @@ import User from "../../models/userSchema.js";
 import Transaction from "../../models/transactionSchema.js";
 import Auth from "../../models/authSchema.js";
 import Status from "../../models/statusSchema.js";
-import { escapeRegex } from "../utils/phoneUtils.js";
+import { escapeRegex, getPhoneLookupVariants } from "../utils/phoneUtils.js";
 
 function getRazorpay() {
   const key_id = process.env.RAZORPAY_KEY_ID;
@@ -23,13 +23,24 @@ function getRazorpay() {
 
 // Helper: find user by phone (handles both plain and WhatsApp formats)
 async function findUserByPhone(phone) {
-  let user = await User.findOne({ phone });
-  if (!user) {
+  const candidates = [...new Set(getPhoneLookupVariants(phone))];
+
+  for (const candidate of candidates) {
+    let user = await User.findOne({ phone: candidate });
+    if (user) return user;
+
     user = await User.findOne({
-      userId: { $regex: `^${escapeRegex(phone)}(@|:)` },
+      userId: { $regex: `^${escapeRegex(candidate)}(@|:)` },
     });
+    if (user) return user;
   }
-  return user;
+
+  for (const candidate of candidates) {
+    const user = await User.findOne({ phone: { $regex: new RegExp(`^${escapeRegex(candidate)}$`, "i") } });
+    if (user) return user;
+  }
+
+  return null;
 }
 
 /**

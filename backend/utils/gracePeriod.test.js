@@ -5,6 +5,7 @@ import {
   getMonthlyGracePeriodInfo,
   getISTDate,
 } from "./gracePeriodUtils.js";
+import { getPhoneLookupVariants } from "./phoneUtils.js";
 import { requirePaid } from "../middleware/requirePaid.js";
 
 describe("Monthly Grace Period Utilities", () => {
@@ -63,6 +64,17 @@ describe("Monthly Grace Period Utilities", () => {
     expect(endIST.getHours()).toBe(0);
     expect(endIST.getMinutes()).toBe(0);
     expect(endIST.getSeconds()).toBe(0);
+  });
+});
+
+describe("Phone normalization for wallet lookups", () => {
+  it("produces the same canonical variants for admin wallet requests", () => {
+    const variants = getPhoneLookupVariants("+91 98765 43210");
+
+    expect(variants).toContain("9876543210");
+    expect(variants).toContain("919876543210");
+    expect(variants).toContain("+919876543210");
+    expect(variants).toEqual(expect.arrayContaining(["9876543210", "919876543210", "+919876543210"]));
   });
 });
 
