@@ -60,16 +60,36 @@ async function deleteAdminOTP(phone) {
 }
 
 async function sendSmsOTP(phone, otp) {
+  // Always display OTP in terminal during development so testing/admin actions are frictionless
+  if (process.env.NODE_ENV !== "production" || !TWO_FACTOR_KEY) {
+    console.log("\n=======================================================");
+    console.log(`📱 [OTP] USER SERVICE / ADMIN ACTION OTP`);
+    console.log(`📞 Phone: +91 ${phone}`);
+    console.log(`🔑 OTP CODE: ${otp}`);
+    console.log("=======================================================\n");
+  }
+
   if (!TWO_FACTOR_KEY) {
-    console.log(`[UserService] DEV MODE — OTP for ${phone}: ${otp}`);
     return true;
   }
-  const stripped = phone.replace(/^(\+91|91)/, "");
-  const { default: fetch } = await import("node-fetch");
-  const url = `https://2factor.in/API/V1/${TWO_FACTOR_KEY}/SMS/${stripped}/${otp}/OTP1`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.Status === "Success";
+
+  try {
+    const stripped = phone.replace(/^(\+91|91)/, "");
+    const { default: fetch } = await import("node-fetch");
+    const url = `https://2factor.in/API/V1/${TWO_FACTOR_KEY}/SMS/${stripped}/${otp}/OTP1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.Status !== "Success") {
+      console.warn(`[UserService] 2Factor SMS response:`, data);
+      if (process.env.NODE_ENV !== "production") return true;
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`[UserService] 2Factor SMS error:`, err.message);
+    if (process.env.NODE_ENV !== "production") return true;
+    return false;
+  }
 }
 
 // ── User Management Services ─────────────────────────────────────────────────
