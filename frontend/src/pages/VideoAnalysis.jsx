@@ -12,6 +12,7 @@ import { useBackgroundBlur } from "../hooks/useBackgroundBlur.js";
 import { useVideoFrameHash } from "../hooks/useVideoFrameHash.js";
 import { evaluateSubmitGate, getDurationLimits } from "../utils/videoSubmitGate.js";
 import { saveDraft, loadDraft, clearDraft } from "../utils/videoDraftDB.js";
+import MonthlyGraceCountdown from "../components/MonthlyGraceCountdown.jsx";
 
 // ── Mode toggle ──────────────────────────────────────────────────────────────
 // "upload"  → existing file-upload flow
@@ -280,6 +281,9 @@ export default function VideoAnalysis() {
         />
       )}
       <div className="video-analysis-page">
+        {/* Monthly 2-Day Free Grace Period Countdown & Instant Payment Option */}
+        <MonthlyGraceCountdown />
+
         {/* Guest banner */}
         {isGuest && <GuestBanner />}
         {isGuest && (

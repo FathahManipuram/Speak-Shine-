@@ -175,7 +175,8 @@ export async function resetWeeklyCounters() {
 }
 
 /**
- * Reset monthly submissions (1st of month only)
+ * Reset monthly submissions and payment status (1st of month only)
+ * Every month starts a new subscription cycle with a 2-day free upload window (1st & 2nd).
  */
 export async function resetMonthlyCounters() {
   try {
@@ -188,7 +189,18 @@ export async function resetMonthlyCounters() {
 
     const result = await User.updateMany(
       {},
-      { $set: { monthlySubmissions: 0, monthlyScore: 0, lastScoreDate: null, todayScore: null } }
+      {
+        $set: {
+          monthlySubmissions: 0,
+          monthlyScore: 0,
+          lastScoreDate: null,
+          todayScore: null,
+          paid: false,
+          razorpayOrderId: null,
+          razorpayPaymentId: null,
+          paidAt: null,
+        },
+      }
     );
 
     return {
