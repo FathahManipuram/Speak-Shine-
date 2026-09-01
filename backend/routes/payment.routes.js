@@ -12,6 +12,8 @@ import {
   getUserWallet,
   verifyPayment,
   adminTogglePaid,
+  adminAdjustWallet,
+  adminGetStudentWallet,
   getMyTransactions,
   adminGetAllTransactions,
   handleWebhook,
@@ -44,7 +46,9 @@ router.post("/verify",          authMiddleware, paymentLimiter, verifyPayment);
 router.get("/my-transactions",  authMiddleware, getMyTransactions);
 
 // ── Admin endpoints ────────────────────────────────────────────────────────────
-router.patch("/admin/toggle-paid/:phone", authMiddleware, requireRole("admin", "admins"), adminTogglePaid);
-router.get("/admin/all",                  authMiddleware, requireRole("admin", "admins", "viewer"), adminGetAllTransactions);
+router.patch("/admin/toggle-paid/:phone",   authMiddleware, requireRole("admin", "admins"), adminTogglePaid);
+router.post("/admin/wallet-adjust",         authMiddleware, requireRole("admin", "admins"), adminAdjustWallet);
+router.get("/admin/wallet-history/:phone",  authMiddleware, requireRole("admin", "admins", "viewer"), adminGetStudentWallet);
+router.get("/admin/all",                    authMiddleware, requireRole("admin", "admins", "viewer"), adminGetAllTransactions);
 
 export default router;

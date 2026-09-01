@@ -406,6 +406,100 @@ export async function verifyPayment(req, res) {
 }
 
 /**
+ * POST /api/payments/admin/wallet-adjust
+ * Admin endpoint to manually credit, debit, or set a student's wallet balance.
+ */
+export async function adminAdjustWallet(req, res) {
+  try {
+    const { phone, actionType, amount, reason } = req.body || {};
+    const cleanPhone = getRequestPhone(phone);
+    if (!cleanPhone) return res.status(400).json({ error: "Student phone number is required" });
+
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ error: "Amount must be a positive number" });
+    }
+
+    const validActions = ["credit", "debit", "set"];
+    if (!validActions.includes(actionType)) {
+      return res.status(400).json({ error: "Invalid actionType. Must be 'credit', 'debit', or 'set'" });
+    }
+
+    const user = await findUserByPhone(cleanPhone);
+    if (!user) return res.status(404).json({ error: "Student user record not found" });
+
+    const currentBalance = Number(user.walletBalance) || 0;
+    let newBalance = currentBalance;
+    let transactionType = actionType === "debit" ? "debit" : "credit";
+    let changeAmount = numAmount;
+
+    if (actionType === "credit") {
+      newBalance = currentBalance + numAmount;
+    } else if (actionType === "debit") {
+      if (numAmount > currentBalance) {
+        return res.status(400).json({ error: `Cannot debit ₹${numAmount}. Current student wallet balance is only ₹${currentBalance}` });
+      }
+      newBalance = currentBalance - numAmount;
+    } else if (actionType === "set") {
+      const diff = numAmount - currentBalance;
+      transactionType = diff >= 0 ? "credit" : "debit";
+      changeAmount = Math.abs(diff);
+      newBalance = numAmount;
+    }
+
+    user.walletBalance = newBalance;
+    if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+    user.walletHistory.push({
+      type: transactionType,
+      amount: changeAmount,
+      reason: reason?.trim() ? `🛡️ Admin: ${reason.trim()}` : `🛡️ Admin Manual ${actionType.toUpperCase()}`,
+      balanceAfter: newBalance,
+      date: new Date(),
+    });
+    await user.save();
+
+    console.log(`[Admin Wallet] ${actionType.toUpperCase()} ₹${numAmount} for ${user.phone}. New balance: ₹${newBalance}`);
+
+    return res.json({
+      success: true,
+      message: `Wallet ${actionType}ed successfully for ${user.name || user.phone}!`,
+      walletBalance: newBalance,
+      walletHistory: user.walletHistory,
+    });
+  } catch (err) {
+    console.error("[Admin Wallet] adminAdjustWallet error:", err.message);
+    res.status(500).json({ error: "Failed to adjust wallet balance" });
+  }
+}
+
+/**
+ * GET /api/payments/admin/wallet-history/:phone
+ * Fetch full wallet history for a student from admin dashboard.
+ */
+export async function adminGetStudentWallet(req, res) {
+  try {
+    const cleanPhone = getRequestPhone(req.params.phone);
+    if (!cleanPhone) return res.status(400).json({ error: "Phone number required" });
+
+    const user = await findUserByPhone(cleanPhone);
+    if (!user) return res.status(404).json({ error: "Student user record not found" });
+
+    return res.json({
+      success: true,
+      user: {
+        name: user.name || user.registeredName,
+        phone: user.phone,
+        walletBalance: user.walletBalance || 0,
+      },
+      walletHistory: user.walletHistory || [],
+    });
+  } catch (err) {
+    console.error("[Admin Wallet] adminGetStudentWallet error:", err.message);
+    res.status(500).json({ error: "Failed to fetch student wallet history" });
+  }
+}
+
+/**
  * PATCH /api/payments/admin/toggle-paid/:phone
  */
 export async function adminTogglePaid(req, res) {
