@@ -470,9 +470,9 @@ export default function AdminDashboard() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedAdminInvoiceTx, setSelectedAdminInvoiceTx] = useState(null);
 
-  // Advanced Payments Filters (Default: "paid")
+  // Advanced Payments Filters (Default: "paid", Time: "this_month")
   const [paymentTypeFilter, setPaymentTypeFilter] = useState("paid"); // "paid" (default) | "all" | "manual" | "failed"
-  const [paymentDateFilter, setPaymentDateFilter] = useState("all"); // "all" | "today" | "week" | "this_month" | "prev_month" | "this_year"
+  const [paymentDateFilter, setPaymentDateFilter] = useState("this_month"); // "this_month" (default) | "all" | "today" | "week" | "prev_month" | "this_year"
   const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
   const [paymentSortOrder, setPaymentSortOrder] = useState("desc"); // "desc" | "asc" | "amount_desc" | "amount_asc"
 
@@ -4109,12 +4109,12 @@ export default function AdminDashboard() {
                       TIME:
                     </span>
                     {[
-                      { id: "all", label: "📅 All Time" },
+                      { id: "this_month", label: "🗓️ This Month (Default)" },
                       { id: "today", label: "⚡ Today" },
                       { id: "week", label: "📆 This Week" },
-                      { id: "this_month", label: "🗓️ This Month" },
                       { id: "prev_month", label: "⏮️ Previous Month" },
                       { id: "this_year", label: "⭐ This Year" },
+                      { id: "all", label: "📅 All Time" },
                     ].map(d => {
                       const active = paymentDateFilter === d.id;
                       return (
