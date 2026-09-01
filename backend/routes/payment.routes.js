@@ -9,6 +9,7 @@ import { authMiddleware, requireRole } from "../middleware/auth.js";
 import {
   createOrder,
   getPaymentConfig,
+  getUserWallet,
   verifyPayment,
   adminTogglePaid,
   getMyTransactions,
@@ -37,6 +38,7 @@ router.post("/webhook", handleWebhook);
 
 // ── User endpoints ─────────────────────────────────────────────────────────────
 router.get("/config",           getPaymentConfig);
+router.get("/wallet",           authMiddleware, getUserWallet);
 router.post("/create-order",    authMiddleware, paymentLimiter, createOrder);
 router.post("/verify",          authMiddleware, paymentLimiter, verifyPayment);
 router.get("/my-transactions",  authMiddleware, getMyTransactions);

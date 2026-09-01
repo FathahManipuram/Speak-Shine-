@@ -1364,6 +1364,49 @@ export async function sendMonthEndPrizeReportToGroup(options = {}) {
   await sock.sendMessage(targetGroup, { text: summary.previewMessage });
   console.log(`[WhatsApp] ✅ Month-End Prize Report sent successfully to ${targetGroup}!`);
 
+  // Automatically credit winning students' wallets in MongoDB
+  try {
+    const User = (await import("../../../models/userSchema.js")).default;
+    const rankLabels = ["1st Place", "2nd Place", "3rd Place", "4th Place", "5th Place", "6th Place"];
+
+    for (const w of summary.winners || []) {
+      const creditAmount = Math.max(0, Number(w.amount) || 0);
+      if (creditAmount <= 0) continue;
+
+      // Find user by phone or name
+      let user = null;
+      if (w.phone) {
+        user = await User.findOne({ phone: w.phone });
+      }
+      if (!user && w.name) {
+        user = await User.findOne({
+          $or: [
+            { name: { $regex: `^${w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } },
+            { registeredName: { $regex: `^${w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } },
+          ]
+        });
+      }
+
+      if (user) {
+        const rankText = rankLabels[w.rank - 1] || `${w.rank}th Place`;
+        const newBalance = (Number(user.walletBalance) || 0) + creditAmount;
+        user.walletBalance = newBalance;
+        if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+        user.walletHistory.push({
+          type: "credit",
+          amount: creditAmount,
+          reason: `🏆 Month-End Prize Reward (${summary.monthName} — ${rankText})`,
+          balanceAfter: newBalance,
+          date: new Date(),
+        });
+        await user.save();
+        console.log(`[WhatsApp Wallet] 💰 Credited ₹${creditAmount} to ${user.name || user.phone} (Rank ${w.rank}). New wallet balance: ₹${newBalance}`);
+      }
+    }
+  } catch (walletErr) {
+    console.error("[WhatsApp Wallet] Error crediting winner wallets:", walletErr.message);
+  }
+
   // Persist last sent status in DB
   try {
     const Status = (await import("../../../models/statusSchema.js")).default;

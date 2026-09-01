@@ -52,6 +52,21 @@ const userSchema = new mongoose.Schema({
   razorpayPaymentId: { type: String, default: null },
   paidAt:            { type: Date,   default: null },
 
+  // ── Wallet & Rewards ──────────────────────────────────────────────────────
+  // Credited automatically when student wins Month-End Prize rewards (Top 3–6).
+  // Automatically applied as a discount on checkout (or 100% coverage if balance >= fee).
+  walletBalance: { type: Number, default: 0, min: 0 },
+  walletHistory: {
+    type: [{
+      type: { type: String, enum: ["credit", "debit"], required: true },
+      amount: { type: Number, required: true },
+      reason: { type: String, required: true },
+      balanceAfter: { type: Number, required: true },
+      date: { type: Date, default: Date.now },
+    }],
+    default: [],
+  },
+
   // Legacy fields — kept for DB compatibility, no longer used in business logic
   fine: { type: Number, default: 0 },
   weeklyFine: { type: Number, default: 0 },

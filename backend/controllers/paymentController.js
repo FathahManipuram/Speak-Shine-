@@ -98,19 +98,111 @@ export async function getPaymentConfig(req, res) {
 }
 
 /**
+ * GET /api/payments/wallet
+ */
+export async function getUserWallet(req, res) {
+  try {
+    let phone = req.user.phone;
+    let user = phone ? await findUserByPhone(phone) : null;
+    if (!user && req.user.id) {
+      const auth = await Auth.findById(req.user.id).select("phone").lean();
+      if (auth?.phone) user = await findUserByPhone(auth.phone);
+    }
+
+    if (!user) {
+      return res.json({ success: true, walletBalance: 0, walletHistory: [] });
+    }
+
+    return res.json({
+      success: true,
+      walletBalance: user.walletBalance || 0,
+      walletHistory: user.walletHistory || [],
+    });
+  } catch (err) {
+    console.error("[Payment] getUserWallet error:", err.message);
+    res.status(500).json({ error: "Failed to fetch wallet information" });
+  }
+}
+
+/**
  * POST /api/payments/create-order
  */
 export async function createOrder(req, res) {
   try {
-    const razorpay = getRazorpay();
+    const totalFee = await getPaymentAmount();
 
-    const amountINR = await getPaymentAmount();
-    const amountPaise = Math.round(amountINR * 100);
-
-    if (amountPaise < 100) {
-      return res.status(400).json({ error: "Amount must be at least ₹1 (100 paise)" });
+    // Find user to check wallet balance
+    let phone = req.user.phone;
+    let user = phone ? await findUserByPhone(phone) : null;
+    if (!user && req.user.id) {
+      const auth = await Auth.findById(req.user.id).select("phone name").lean();
+      if (auth?.phone) {
+        phone = auth.phone;
+        user = await findUserByPhone(phone);
+      }
     }
 
+    const currentWallet = user ? Math.max(0, Number(user.walletBalance) || 0) : 0;
+
+    // CASE 1: 100% Wallet Balance Cover (walletBalance >= totalFee)
+    if (user && currentWallet >= totalFee && totalFee > 0) {
+      const newBalance = currentWallet - totalFee;
+      user.walletBalance = newBalance;
+      user.paid = true;
+      user.paidAt = new Date();
+      if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+      user.walletHistory.push({
+        type: "debit",
+        amount: totalFee,
+        reason: "💳 Subscription Activated (100% Wallet Balance Covered)",
+        balanceAfter: newBalance,
+        date: new Date(),
+      });
+      await user.save();
+
+      // Log successful transaction
+      await Transaction.create({
+        phone: user.phone || phone,
+        name: user.name || req.user.name || null,
+        userId: user.userId || null,
+        razorpayOrderId: `wallet_${Date.now()}`,
+        razorpayPaymentId: `wallet_pay_${Date.now()}`,
+        amount: totalFee,
+        status: "success",
+        method: "wallet",
+        source: "wallet",
+        note: "Activated 100% using Wallet Balance",
+      }).catch(() => {});
+
+      // Socket broadcast
+      const io = req.app?.get("io");
+      if (io) {
+        io.emit("user:paid_status", { phone: user.phone || phone, paid: true, paidAt: user.paidAt, name: user.name });
+        io.emit("payment:recorded", { phone: user.phone || phone, name: user.name, amount: totalFee, razorpayPaymentId: "wallet_pay", createdAt: new Date() });
+      }
+
+      console.log(`[Payment] ⚡ 100% Wallet Cover Activated for ${user.phone}. Fee: ₹${totalFee}, New balance: ₹${newBalance}`);
+      return res.json({
+        success: true,
+        walletCovered: true,
+        message: `Subscription activated 100% using your wallet balance (₹${totalFee} deducted)!`,
+        totalFee,
+        walletDiscountApplied: totalFee,
+        netPayableINR: 0,
+        walletBalance: newBalance,
+      });
+    }
+
+    // CASE 2: Partial Wallet Discount or Standard Gateway Checkout
+    const walletDiscountApplied = Math.min(currentWallet, totalFee);
+    const netPayableINR = Math.max(0, totalFee - walletDiscountApplied);
+    const amountPaise = Math.round(netPayableINR * 100);
+
+    if (amountPaise < 100) {
+      return res.status(400).json({ error: "Net payable amount must be at least ₹1 (100 paise)" });
+    }
+
+    const razorpay = getRazorpay();
     const shortId = String(req.user.id).slice(-8);
     const shortTs = String(Date.now()).slice(-8);
     const receipt = `r_${shortId}_${shortTs}`;
@@ -121,8 +213,10 @@ export async function createOrder(req, res) {
       receipt,
       notes: {
         userId: String(req.user.id || ""),
-        phone: String(req.user.phone || ""),
+        phone: String(req.user.phone || phone || ""),
         name: String(req.user.name || ""),
+        totalFee: String(totalFee),
+        walletDiscountApplied: String(walletDiscountApplied),
       },
     });
 
@@ -131,6 +225,10 @@ export async function createOrder(req, res) {
       amount: order.amount,
       currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID,
+      totalFee,
+      walletDiscountApplied,
+      netPayableINR,
+      walletBalance: currentWallet,
     });
   } catch (err) {
     const razorpayMsg = err?.error?.description || err?.message || "Failed to create payment order";
@@ -242,6 +340,25 @@ export async function verifyPayment(req, res) {
       const orderDetails = await rzp.orders.fetch(razorpay_order_id);
       amountINR = orderDetails.amount / 100;
     } catch { /* non-critical */ }
+
+    // Deduct applied wallet discount from user balance if discount was used
+    const currentWallet = Math.max(0, Number(user.walletBalance) || 0);
+    const totalFee = await getPaymentAmount();
+    const discountUsed = Math.min(currentWallet, Math.max(0, totalFee - amountINR));
+
+    if (discountUsed > 0) {
+      const newBalance = Math.max(0, currentWallet - discountUsed);
+      user.walletBalance = newBalance;
+      if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+      user.walletHistory.push({
+        type: "debit",
+        amount: discountUsed,
+        reason: `💳 Applied Wallet Discount to Subscription Payment (Paid Net ₹${amountINR} via Gateway)`,
+        balanceAfter: newBalance,
+        date: new Date(),
+      });
+      console.log(`[Payment Wallet] Deducted ₹${discountUsed} wallet discount from ${user.phone}. New wallet balance: ₹${newBalance}`);
+    }
 
     // Mark user paid
     user.paid = true;
