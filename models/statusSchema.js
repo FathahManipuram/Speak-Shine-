@@ -115,6 +115,17 @@ const statusSchema = new mongoose.Schema({
   deploymentNotifyEnabled: { type: Boolean, default: true },
   // Track last successful daily reset (YYYY-MM-DD in IST) to detect missed resets
   lastResetDate: { type: String, default: null },
+  // Month-End Prize Distribution & Rewards settings
+  prizeWinnerCount: { type: Number, default: 3, min: 3, max: 6 },
+  prizeCalculationMethod: { type: String, enum: ["preset_top3", "preset_top4", "preset_top5", "preset_top6", "equal", "custom"], default: "preset_top3" },
+  prizeCustomTotalCollection: { type: Number, default: null },
+  prizeCustomAmounts: { type: [Number], default: [] },
+  prizeCustomWinnerNames: { type: [String], default: [] },
+  prizeFooterNote: { type: String, default: "*Rewards will credit before evening*" },
+  monthEndReportAutoSend: { type: Boolean, default: true },
+  lastMonthEndReportDate: { type: String, default: null },
+  lastMonthEndReportStatus: { type: String, enum: ["pending", "success", "failed"], default: "pending" },
+  lastMonthEndReportError: { type: String, default: null },
 }, { timestamps: true });
 
 export default mongoose.model("Status", statusSchema);

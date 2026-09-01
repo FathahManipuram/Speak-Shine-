@@ -7,14 +7,18 @@ import * as authService from "../services/auth/authService.js";
 
 // ── Cookie helpers ───────────────────────────────────────────────────────────
 const isProd = process.env.NODE_ENV === "production";
+// 3 hours (10,800,000 ms) in development/local mode, 15 minutes in production (or process.env.ACCESS_TOKEN_MAX_AGE)
+const ACCESS_TOKEN_MAX_AGE = process.env.ACCESS_TOKEN_MAX_AGE
+  ? Number(process.env.ACCESS_TOKEN_MAX_AGE)
+  : (isProd ? 15 * 60 * 1000 : 3 * 60 * 60 * 1000);
 
 function setAuthCookies(res, accessToken, refreshToken) {
-  // Access token cookie — short-lived (15 min), httpOnly, secure in prod
+  // Access token cookie — 3 hours locally / in dev, 15 min in prod
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "strict" : "lax",
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    maxAge: ACCESS_TOKEN_MAX_AGE,
     path: "/",
   });
   // Refresh token cookie — long-lived (7 days), httpOnly, restricted to /api/auth

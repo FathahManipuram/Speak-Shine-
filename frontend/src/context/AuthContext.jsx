@@ -4,8 +4,8 @@ import { getSharedSocket } from "../hooks/useSocket";
 
 const AuthContext = createContext(null);
 
-// Proactive refresh interval — refresh 1 min before the 15-min access token expires
-const REFRESH_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+// Proactive refresh interval — refresh periodically (every 30 minutes) to keep session fresh
+const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 // Sentinel used when auth is cookie-based (no token in localStorage)
 const COOKIE_AUTH_SENTINEL = "cookie-session";
@@ -19,19 +19,15 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("token") || null);
   const refreshTimerRef = useRef(null);
 
-  // Schedule a proactive silent token refresh every 14 minutes
+  // Schedule a proactive silent token refresh every 30 minutes
   const scheduleRefresh = useCallback(() => {
     if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     refreshTimerRef.current = setInterval(async () => {
       try {
         await api.post("/auth/refresh", {});
         console.log("[Auth] 🔄 Proactive token refresh succeeded");
-      } catch {
-        console.warn("[Auth] Proactive refresh failed — session expired");
-        clearInterval(refreshTimerRef.current);
-        setUser(null);
-        setToken(null);
-        window.location.href = "/login";
+      } catch (err) {
+        console.warn("[Auth] Proactive refresh check paused:", err?.message || err);
       }
     }, REFRESH_INTERVAL_MS);
   }, []);

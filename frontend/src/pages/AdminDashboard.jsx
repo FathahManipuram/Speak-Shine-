@@ -383,7 +383,18 @@ export default function AdminDashboard() {
   const [waUnlinking, setWaUnlinking] = useState(false);
   const [waSendingPoster, setWaSendingPoster] = useState(false);
   const [waSendingReport, setWaSendingReport] = useState(false);
+  const [waSendingPrizeReport, setWaSendingPrizeReport] = useState(false);
+  const [waPrizeSummary, setWaPrizeSummary] = useState(null);
+  const [prizeWinnerCount, setPrizeWinnerCount] = useState(3);
+  const [prizeCalculationMethod, setPrizeCalculationMethod] = useState("preset_top3");
+  const [prizeCustomTotalCollection, setPrizeCustomTotalCollection] = useState("");
+  const [prizeCustomAmounts, setPrizeCustomAmounts] = useState(["", "", "", "", "", ""]);
+  const [prizeWinnerNames, setPrizeWinnerNames] = useState(["", "", "", "", "", ""]);
+  const [prizeFooterNote, setPrizeFooterNote] = useState("*Rewards will credit before evening*");
+  const [monthEndReportAutoSend, setMonthEndReportAutoSend] = useState(true);
+  const [savingPrizeSettings, setSavingPrizeSettings] = useState(false);
   const [waPreviewTab, setWaPreviewTab] = useState("report");
+  const [waSubSection, setWaSubSection] = useState("all");
   const [showWaPhone, setShowWaPhone] = useState(false);
   const [settingsSubTab, setSettingsSubTab] = useState("schedules");
   const [editingTemplateType, setEditingTemplateType] = useState("comprehensive");
@@ -919,7 +930,29 @@ export default function AdminDashboard() {
         durationPictureFull: s.data.durationPictureFull ?? 180,
         adminNotifyPhone: s.data.adminNotifyPhone || "",
         deploymentNotifyEnabled: s.data.deploymentNotifyEnabled !== false,
+        prizeWinnerCount: s.data.prizeWinnerCount ?? 3,
+        prizeCalculationMethod: s.data.prizeCalculationMethod || "preset_top3",
+        prizeCustomTotalCollection: s.data.prizeCustomTotalCollection ?? null,
+        prizeCustomAmounts: Array.isArray(s.data.prizeCustomAmounts) ? s.data.prizeCustomAmounts : [],
+        prizeFooterNote: s.data.prizeFooterNote || "*Rewards will credit before evening*",
+        monthEndReportAutoSend: s.data.monthEndReportAutoSend !== false,
       });
+
+      if (s.data.prizeWinnerCount) setPrizeWinnerCount(s.data.prizeWinnerCount);
+      if (s.data.prizeCalculationMethod) setPrizeCalculationMethod(s.data.prizeCalculationMethod);
+      if (s.data.prizeCustomTotalCollection !== undefined && s.data.prizeCustomTotalCollection !== null) {
+        setPrizeCustomTotalCollection(String(s.data.prizeCustomTotalCollection));
+      }
+      if (Array.isArray(s.data.prizeCustomAmounts) && s.data.prizeCustomAmounts.length > 0) {
+        setPrizeCustomAmounts(prev => {
+          const next = [...prev];
+          s.data.prizeCustomAmounts.forEach((a, i) => { next[i] = String(a); });
+          return next;
+        });
+      }
+      if (s.data.prizeFooterNote) setPrizeFooterNote(s.data.prizeFooterNote);
+      if (s.data.monthEndReportAutoSend !== undefined) setMonthEndReportAutoSend(s.data.monthEndReportAutoSend);
+
       setDataLoaded(prev => ({ ...prev, settings: true }));
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -967,6 +1000,112 @@ export default function AdminDashboard() {
       msg(err.response?.data?.error || "Failed to send submission report to WhatsApp group", "danger");
     } finally {
       setWaSendingReport(false);
+    }
+  };
+
+  const loadWaPrizeSummary = async (overrides = null) => {
+    try {
+      const isInitialFetch = overrides === null;
+
+      const effectiveWinnerCount = (overrides && overrides.winnerCount != null) ? overrides.winnerCount : prizeWinnerCount;
+      const effectiveMethod = (overrides && overrides.calculationMethod) ? overrides.calculationMethod : prizeCalculationMethod;
+      const effectiveCollection = (overrides && overrides.totalCollection !== undefined)
+        ? (overrides.totalCollection !== "" ? overrides.totalCollection : undefined)
+        : (prizeCustomTotalCollection !== "" ? prizeCustomTotalCollection : undefined);
+      const effectiveCustomAmounts = (overrides && overrides.customAmounts != null)
+        ? overrides.customAmounts
+        : prizeCustomAmounts.slice(0, effectiveWinnerCount).filter(Boolean).join(",");
+      const effectiveWinnerNames = (overrides && overrides.customWinnerNames != null)
+        ? overrides.customWinnerNames
+        : prizeWinnerNames.slice(0, effectiveWinnerCount).filter(Boolean).join(",");
+      const effectiveFooterNote = (overrides && overrides.footerNote != null) ? overrides.footerNote : prizeFooterNote;
+
+      const params = new URLSearchParams();
+      if (!isInitialFetch) {
+        if (effectiveWinnerCount != null) params.append("winnerCount", effectiveWinnerCount);
+        if (effectiveMethod) params.append("calculationMethod", effectiveMethod);
+        if (effectiveCollection != null && effectiveCollection !== "") params.append("totalCollection", effectiveCollection);
+        if (effectiveCustomAmounts) params.append("customAmounts", effectiveCustomAmounts);
+        if (effectiveWinnerNames) params.append("customWinnerNames", effectiveWinnerNames);
+        if (effectiveFooterNote) params.append("footerNote", effectiveFooterNote);
+      }
+
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const res = await api.get(`/whatsapp/month-end-summary${queryString}`);
+      if (res.data?.success) {
+        setWaPrizeSummary(res.data);
+        if (isInitialFetch) {
+          if (res.data.winnerCount) setPrizeWinnerCount(res.data.winnerCount);
+          if (res.data.calculationMethod) setPrizeCalculationMethod(res.data.calculationMethod);
+          setPrizeCustomTotalCollection(res.data.prizeCustomTotalCollection != null ? String(res.data.prizeCustomTotalCollection) : "");
+          if (res.data.footerNote) setPrizeFooterNote(res.data.footerNote);
+          if (res.data.autoSendEnabled != null) setMonthEndReportAutoSend(res.data.autoSendEnabled);
+          if (Array.isArray(res.data.prizeCustomAmounts) && res.data.prizeCustomAmounts.length > 0) {
+            setPrizeCustomAmounts(prev => {
+              const next = [...prev];
+              res.data.prizeCustomAmounts.forEach((amt, i) => { next[i] = String(amt); });
+              return next;
+            });
+          }
+          if (Array.isArray(res.data.winners)) {
+            const names = res.data.winners.map(w => w.name);
+            setPrizeWinnerNames(prev => {
+              const next = [...prev];
+              names.forEach((n, i) => { next[i] = n || ""; });
+              return next;
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load Month-End Prize summary:", err);
+    }
+  };
+
+  const handleSendPrizeReportToGroup = async () => {
+    try {
+      setWaSendingPrizeReport(true);
+      const customWinnerNamesList = prizeWinnerNames.slice(0, prizeWinnerCount);
+      const res = await api.post("/whatsapp/send-month-end-report", {
+        winnerCount: prizeWinnerCount,
+        calculationMethod: prizeCalculationMethod,
+        totalCollection: prizeCustomTotalCollection !== "" ? Number(prizeCustomTotalCollection) : undefined,
+        customAmounts: prizeCustomAmounts.slice(0, prizeWinnerCount).map(Number).filter(n => !isNaN(n)),
+        customWinnerNames: customWinnerNamesList,
+        footerNote: prizeFooterNote,
+      });
+      if (res.data?.success) {
+        msg("✅ Month-End Prize Distribution Report sent to WhatsApp group successfully!", "success");
+        loadWaPrizeSummary();
+      }
+    } catch (err) {
+      msg(err.response?.data?.error || "Failed to send Month-End Prize Report", "danger");
+    } finally {
+      setWaSendingPrizeReport(false);
+    }
+  };
+
+  const handleSavePrizeSettings = async () => {
+    try {
+      setSavingPrizeSettings(true);
+      const customWinnerNamesList = prizeWinnerNames.slice(0, prizeWinnerCount);
+      const res = await api.post("/whatsapp/save-month-end-settings", {
+        winnerCount: prizeWinnerCount,
+        calculationMethod: prizeCalculationMethod,
+        totalCollection: prizeCustomTotalCollection !== "" ? Number(prizeCustomTotalCollection) : null,
+        customAmounts: prizeCustomAmounts.slice(0, prizeWinnerCount).map(Number).filter(n => !isNaN(n)),
+        customWinnerNames: customWinnerNamesList,
+        footerNote: prizeFooterNote,
+        monthEndReportAutoSend,
+      });
+      if (res.data?.success) {
+        msg("✅ Month-End Prize Distribution settings saved to MongoDB successfully!", "success");
+        await loadWaPrizeSummary();
+      }
+    } catch (err) {
+      msg(err.response?.data?.error || "Failed to save Month-End Prize settings to MongoDB", "danger");
+    } finally {
+      setSavingPrizeSettings(false);
     }
   };
 
@@ -1093,6 +1232,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (tab === "whatsapp" || (!waStatus?.isConnected && tab === "today")) {
       loadWhatsAppStatus();
+      loadWaPrizeSummary();
       const interval = setInterval(loadWhatsAppStatus, 3000);
       return () => clearInterval(interval);
     }
@@ -4292,32 +4432,157 @@ export default function AdminDashboard() {
 
       {/* WHATSAPP TAB */}
       {tab === "whatsapp" && (
-        <div className="wa-grid-layout">
-          {/* Left Column: Device & Connection Hub */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <div className="card" style={{ padding: "1.5rem", margin: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                <div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span>📱 WhatsApp Gateway</span>
-                  </div>
-                  <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
-                    Multi-device session powered by Baileys
-                  </div>
-                </div>
-                <button 
-                  className="cmd-refresh-btn" 
-                  onClick={loadWhatsAppStatus} 
-                  disabled={waLoading}
-                  style={{ fontSize: "0.78rem" }}
-                  title="Refresh Gateway Status"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                  </svg>
-                  Sync
-                </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", width: "100%", maxWidth: 1150, margin: "0 auto" }}>
+          
+          {/* Top Ultra-Premium Hero Header */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(30, 27, 75, 0.95), rgba(15, 23, 42, 0.95))",
+            border: "1px solid rgba(124, 111, 255, 0.35)",
+            borderRadius: 20,
+            padding: "1.35rem 1.65rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1.25rem",
+            boxShadow: "0 16px 40px rgba(0, 0, 0, 0.4)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1.1rem" }}>
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background: "linear-gradient(135deg, #25d366, #128c7e)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.6rem",
+                boxShadow: "0 6px 20px rgba(37, 211, 102, 0.35)",
+                flexShrink: 0,
+              }}>
+                ⚡
               </div>
+              <div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#fff", display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+                  <span>WhatsApp Control Center</span>
+                  <span style={{ fontSize: "0.72rem", background: "rgba(37, 211, 102, 0.2)", color: "#4ade80", border: "1px solid rgba(37, 211, 102, 0.4)", padding: "2px 10px", borderRadius: 12, fontWeight: 800, letterSpacing: "0.04em" }}>
+                    PRO AUTOMATION
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                  Baileys v6 Socket · Multi-Slot Attendance Reminders · Automated 11:59 PM Month-End Prize Calculator
+                </div>
+              </div>
+            </div>
+
+            {/* Right Health Badges & Actions */}
+            <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.55rem",
+                background: "rgba(0,0,0,0.35)",
+                padding: "0.5rem 0.9rem",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.1)",
+                fontSize: "0.78rem",
+                color: "#e2e8f0",
+                fontWeight: 700,
+              }}>
+                <span style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: "50%",
+                  background: waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24",
+                  boxShadow: `0 0 10px ${waStatus?.isConnected ? "#4ade80" : waStatus?.hasSavedCredentials ? "#38bdf8" : "#fbbf24"}`,
+                }} />
+                <span>
+                  {waStatus?.isConnected
+                    ? "Live Connected"
+                    : waStatus?.hasSavedCredentials
+                    ? "Re-authenticating"
+                    : "QR Ready"}
+                </span>
+              </div>
+
+              <button
+                className="cmd-refresh-btn"
+                onClick={loadWhatsAppStatus}
+                disabled={waLoading}
+                style={{ padding: "0.55rem 1.1rem", fontSize: "0.82rem", fontWeight: 800, background: "linear-gradient(135deg, rgba(124, 111, 255, 0.25), rgba(99, 102, 241, 0.15))", border: "1px solid rgba(124, 111, 255, 0.4)", color: "#c084fc", borderRadius: 14, cursor: "pointer" }}
+              >
+                🔄 Sync Status
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-Tab Navigation Bar for Zero-Scroll Focused Views */}
+          <div style={{
+            display: "flex",
+            gap: "0.5rem",
+            background: "rgba(15, 23, 42, 0.8)",
+            padding: "0.45rem",
+            borderRadius: 16,
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            flexWrap: "wrap",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+          }}>
+            {[
+              { id: "all", label: "⚡ All-in-One Dashboard", icon: "⚡" },
+              { id: "gateway", label: "📱 Gateway & Socket", icon: "📱" },
+              { id: "preview", label: "💬 Live Message Hub", icon: "💬" },
+              { id: "prize", label: "🏆 Month-End Prize", icon: "🏆" },
+            ].map(tabItem => (
+              <button
+                key={tabItem.id}
+                type="button"
+                onClick={() => setWaSubSection(tabItem.id)}
+                style={{
+                  flex: 1,
+                  minWidth: 140,
+                  padding: "0.6rem 1rem",
+                  borderRadius: 12,
+                  fontSize: "0.84rem",
+                  fontWeight: 800,
+                  border: waSubSection === tabItem.id ? "1px solid #7c6fff" : "1px solid transparent",
+                  background: waSubSection === tabItem.id ? "linear-gradient(135deg, rgba(124, 111, 255, 0.35), rgba(99, 102, 241, 0.2))" : "transparent",
+                  color: waSubSection === tabItem.id ? "#fff" : "var(--muted)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  textAlign: "center",
+                  boxShadow: waSubSection === tabItem.id ? "0 4px 14px rgba(124, 111, 255, 0.25)" : "none",
+                }}
+              >
+                {tabItem.label}
+              </button>
+            ))}
+          </div>
+
+          {(waSubSection === "all" || waSubSection === "gateway" || waSubSection === "preview") && (
+            <div className="wa-grid-layout" style={{ gridTemplateColumns: waSubSection === "gateway" ? "1fr" : waSubSection === "preview" ? "1fr" : undefined }}>
+              {/* Left Column: Device & Connection Hub */}
+              {(waSubSection === "all" || waSubSection === "gateway") && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <div className="card" style={{ padding: "1.5rem", margin: 0, background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(99, 102, 241, 0.25)", borderRadius: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                  <div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#f8fafc", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span>📱 WhatsApp Gateway</span>
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                      Multi-device session powered by Baileys
+                    </div>
+                  </div>
+                  <button 
+                    className="cmd-refresh-btn" 
+                    onClick={loadWhatsAppStatus} 
+                    disabled={waLoading}
+                    style={{ fontSize: "0.78rem" }}
+                    title="Refresh Gateway Status"
+                  >
+                    Sync
+                  </button>
+                </div>
 
               {/* Status Banner */}
               <div style={{
@@ -4526,10 +4791,12 @@ export default function AdminDashboard() {
                 🕒 Poster Time: <strong style={{ color: "var(--accent)" }}>{settings?.posterSendTime || "08:00"} IST</strong> · Auto-Sync: <span style={{ color: "#4ade80" }}>Active</span>
               </div>
             </div>
-          </div>
+            </div>
+          )}
 
           {/* Right Column: Live Message Simulation & Dispatch Hub */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {(waSubSection === "all" || waSubSection === "preview") && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             <div className="card" style={{ padding: "1.5rem", margin: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
                 <div>
@@ -4542,14 +4809,14 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Simulation Mode Switcher */}
-                <div style={{ display: "flex", gap: "0.4rem" }}>
+                <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => setWaPreviewTab("report")}
                     style={{
-                      padding: "0.38rem 0.85rem",
+                      padding: "0.38rem 0.75rem",
                       borderRadius: 10,
-                      fontSize: "0.78rem",
+                      fontSize: "0.76rem",
                       fontWeight: 700,
                       border: waPreviewTab === "report" ? "1px solid #7c6fff" : "1px solid rgba(255,255,255,0.1)",
                       background: waPreviewTab === "report" ? "rgba(124, 111, 255, 0.25)" : "rgba(255,255,255,0.04)",
@@ -4564,9 +4831,9 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => setWaPreviewTab("poster")}
                     style={{
-                      padding: "0.38rem 0.85rem",
+                      padding: "0.38rem 0.75rem",
                       borderRadius: 10,
-                      fontSize: "0.78rem",
+                      fontSize: "0.76rem",
                       fontWeight: 700,
                       border: waPreviewTab === "poster" ? "1px solid #7c6fff" : "1px solid rgba(255,255,255,0.1)",
                       background: waPreviewTab === "poster" ? "rgba(124, 111, 255, 0.25)" : "rgba(255,255,255,0.04)",
@@ -4575,7 +4842,24 @@ export default function AdminDashboard() {
                       transition: "all 0.15s ease",
                     }}
                   >
-                    🖼️ Daily Challenge Poster
+                    🖼️ Daily Poster
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWaPreviewTab("prize")}
+                    style={{
+                      padding: "0.38rem 0.75rem",
+                      borderRadius: 10,
+                      fontSize: "0.76rem",
+                      fontWeight: 700,
+                      border: waPreviewTab === "prize" ? "1px solid #fbbf24" : "1px solid rgba(255,255,255,0.1)",
+                      background: waPreviewTab === "prize" ? "rgba(251, 191, 36, 0.22)" : "rgba(255,255,255,0.04)",
+                      color: waPreviewTab === "prize" ? "#fbbf24" : "var(--muted)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    🏆 Month-End Prize
                   </button>
                 </div>
               </div>
@@ -4643,7 +4927,7 @@ export default function AdminDashboard() {
                         <span style={{ color: "#53bdeb" }}>✓✓</span>
                       </div>
                     </div>
-                  ) : (
+                  ) : waPreviewTab === "poster" ? (
                     <div className="wa-msg-bubble">
                       <div style={{ fontWeight: 800, color: "#25d366", marginBottom: "0.4rem" }}>
                         🎯 *SPEAK &amp; SHINE — DAILY CHALLENGE*
@@ -4667,39 +4951,75 @@ export default function AdminDashboard() {
                         <span style={{ color: "#53bdeb" }}>✓✓</span>
                       </div>
                     </div>
+                  ) : (
+                    <div className="wa-msg-bubble">
+                      <div style={{ fontWeight: 800, color: "#fbbf24", marginBottom: "0.4rem" }}>
+                        🏆 *SPEAK &amp; SHINE — {waPrizeSummary?.monthName || "MONTHLY"} PRIZE DISTRIBUTION* 🏆
+                      </div>
+                      <div>💰 <strong>Total Collection: ₹{waPrizeSummary?.totalCollection || (prizeCustomTotalCollection !== "" ? prizeCustomTotalCollection : 60)}</strong></div>
+                      <div style={{ opacity: 0.7, margin: "0.3rem 0" }}>━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", margin: "0.5rem 0" }}>
+                        {(waPrizeSummary?.winners || []).map((w, idx) => {
+                          const emojis = ["🥇", "🥈", "🥉", "🏅", "🎖️", "🎗️"];
+                          const labels = ["1st Place", "2nd Place", "3rd Place", "4th Place", "5th Place", "6th Place"];
+                          return (
+                            <div key={idx} style={{ fontSize: "0.82rem" }}>
+                              {emojis[idx] || "🏅"} <strong>{labels[idx] || `${idx + 1}th Place`}:</strong> ₹{w.amount} <span style={{ color: "#38bdf8", fontWeight: 700 }}>{w.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ opacity: 0.7, margin: "0.3rem 0" }}>━━━━━━━━━━━━━━━━━━ 💰 Total: ₹{waPrizeSummary?.totalCollection || 60}</div>
+
+                      <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#f43f5e", fontWeight: 700 }}>
+                        🎉 Congratulations to all the winners! 🎉🔥<br/>
+                        ✨ Keep speaking, keep improving, and keep shining! 🌟
+                      </div>
+
+                      <div style={{ marginTop: "0.4rem", fontSize: "0.74rem", fontStyle: "italic", color: "var(--muted)" }}>
+                        {prizeFooterNote}
+                      </div>
+
+                      <div className="wa-msg-time">
+                        {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                        <span style={{ color: "#53bdeb" }}>✓✓</span>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Action Buttons Row */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
                 <button
                   className="btn-primary"
                   style={{
-                    padding: "0.85rem",
-                    fontSize: "0.88rem",
+                    padding: "0.8rem 0.5rem",
+                    fontSize: "0.82rem",
                     fontWeight: 700,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: "0.45rem",
+                    gap: "0.35rem",
                   }}
                   disabled={!waStatus?.isConnected || waSendingPoster}
                   onClick={handleSendPosterToGroup}
                 >
-                  {waSendingPoster ? "⏳ Sending Poster..." : "🚀 Broadcast Poster Now"}
+                  {waSendingPoster ? "⏳ Sending..." : "🚀 Broadcast Poster"}
                 </button>
 
                 <button
                   className="btn-secondary"
                   style={{
-                    padding: "0.85rem",
-                    fontSize: "0.88rem",
+                    padding: "0.8rem 0.5rem",
+                    fontSize: "0.82rem",
                     fontWeight: 700,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: "0.45rem",
+                    gap: "0.35rem",
                     border: "1px solid rgba(124, 111, 255, 0.4)",
                     background: "rgba(124, 111, 255, 0.14)",
                     color: "#c084fc",
@@ -4707,7 +5027,27 @@ export default function AdminDashboard() {
                   disabled={!waStatus?.isConnected || waSendingReport}
                   onClick={handleSendSubmissionReportToGroup}
                 >
-                  {waSendingReport ? "⏳ Sending Report..." : "📊 Broadcast Report Now"}
+                  {waSendingReport ? "⏳ Sending..." : "📊 Broadcast Report"}
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  style={{
+                    padding: "0.8rem 0.5rem",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.35rem",
+                    border: "1px solid rgba(251, 191, 36, 0.4)",
+                    background: "rgba(251, 191, 36, 0.14)",
+                    color: "#fbbf24",
+                  }}
+                  disabled={!waStatus?.isConnected || waSendingPrizeReport}
+                  onClick={handleSendPrizeReportToGroup}
+                >
+                  {waSendingPrizeReport ? "⏳ Sending..." : "🏆 Broadcast Prize"}
                 </button>
               </div>
 
@@ -4731,6 +5071,397 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+          )}
+          </div>
+          )}
+          {/* End wa-grid-layout */}
+
+          {/* TIER 3: Month-End Prize Distribution & Rewards Calculator Card */}
+          {(waSubSection === "all" || waSubSection === "prize") && (
+            <div className="card" style={{
+              padding: "1.75rem",
+              margin: 0,
+              background: "linear-gradient(135deg, rgba(22, 18, 45, 0.98), rgba(30, 27, 75, 0.95))",
+              borderRadius: 20,
+              border: "1px solid rgba(251, 191, 36, 0.4)",
+              boxShadow: "0 16px 48px rgba(0, 0, 0, 0.45)",
+            }}>
+            {/* Card Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.85rem" }}>
+              <div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#f8fafc", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span>🏆 Month-End Prize Distribution &amp; Rewards Calculator</span>
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                  Calculate monthly collections, split prize money across Top 3 to Top 6 winners, inspect formulas, and save settings for future months.
+                </div>
+              </div>
+              
+              {/* Header Controls: Auto-Cron Badge & Toggle */}
+              <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.74rem", background: "rgba(251, 191, 36, 0.15)", color: "#fbbf24", border: "1px solid rgba(251, 191, 36, 0.4)", padding: "4px 12px", borderRadius: 14, fontWeight: 700 }}>
+                  ⏰ Auto-Cron: 11:59 PM IST (Last Day)
+                </span>
+
+                <label style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                  cursor: "pointer",
+                  background: monthEndReportAutoSend ? "rgba(34, 197, 94, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  padding: "4px 12px",
+                  borderRadius: 14,
+                  border: monthEndReportAutoSend ? "1px solid rgba(34, 197, 94, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
+                  transition: "all 0.2s ease",
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={monthEndReportAutoSend}
+                    onChange={e => setMonthEndReportAutoSend(e.target.checked)}
+                    style={{ cursor: "pointer", accentColor: "#22c55e" }}
+                  />
+                  <span style={{ fontSize: "0.76rem", fontWeight: 700, color: monthEndReportAutoSend ? "#4ade80" : "var(--muted)" }}>
+                    {monthEndReportAutoSend ? "⚡ Auto-Cron Active" : "⏸️ Auto-Cron Paused"}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* 2-Column Content Grid inside Prize Card */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "1.5rem", marginTop: "1.25rem" }}>
+              
+              {/* Left Column: Formula + Controls */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                
+                {/* Formula Breakdown & Calculation Method Banner */}
+                <div style={{
+                  padding: "0.95rem 1.15rem",
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(16, 185, 129, 0.08))",
+                  border: "1px solid rgba(251, 191, 36, 0.35)",
+                  fontSize: "0.82rem",
+                  color: "#fef08a",
+                  fontFamily: "monospace",
+                  lineHeight: 1.5,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+                }}>
+                  <div style={{ fontWeight: 800, color: "#fbbf24", marginBottom: "0.3rem", fontSize: "0.88rem", fontFamily: "sans-serif", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <span>📊 Live Calculation Formula &amp; Split Ratios:</span>
+                  </div>
+                  {waPrizeSummary?.formulaText || "Calculation: Preset Top 3 (50% / 33.3% / 16.7%) → 1st: ₹30, 2nd: ₹20, 3rd: ₹10 | Total: ₹60"}
+                </div>
+
+                {/* Total Collection Input */}
+                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "1.1rem", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                  <label style={{ fontSize: "0.82rem", color: "#f8fafc", fontWeight: 700, display: "block", marginBottom: "0.5rem" }}>
+                    💰 Total Collection (₹)
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <div style={{ position: "relative", flex: 1 }}>
+                      <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#fbbf24", fontWeight: 900, fontSize: "0.95rem" }}>₹</span>
+                      <input
+                        type="number"
+                        className="form-input"
+                        placeholder={waPrizeSummary?.autoCalculatedCollection ? `${waPrizeSummary.autoCalculatedCollection}` : "60"}
+                        value={prizeCustomTotalCollection}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setPrizeCustomTotalCollection(val);
+                          loadWaPrizeSummary({ totalCollection: val !== "" ? Number(val) : undefined });
+                        }}
+                        style={{ width: "100%", paddingLeft: "2rem", fontSize: "0.95rem", fontWeight: 700, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(251, 191, 36, 0.35)", color: "#fff", borderRadius: 10 }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => {
+                        setPrizeCustomTotalCollection("");
+                        loadWaPrizeSummary({ totalCollection: undefined });
+                      }}
+                      style={{ fontSize: "0.78rem", padding: "0.55rem 0.9rem", whiteSpace: "nowrap", background: prizeCustomTotalCollection === "" ? "rgba(251, 191, 36, 0.2)" : "rgba(255,255,255,0.05)", border: "1px solid rgba(251, 191, 36, 0.35)", color: "#fbbf24", fontWeight: 800, borderRadius: 10 }}
+                      title="Reset to Auto-Calculated Collection from current month's payments"
+                    >
+                      ⚡ Auto: ₹{waPrizeSummary?.autoCalculatedCollection || 60}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--muted)", marginTop: "0.45rem" }}>
+                    Calculated from this month's payments ({waPrizeSummary?.monthName || "CURRENT MONTH"}).
+                  </div>
+                </div>
+
+                {/* Winner Tier Count (Top 3 to Top 6) */}
+                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "1.1rem", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                  <label style={{ fontSize: "0.82rem", color: "#f8fafc", fontWeight: 700, display: "block", marginBottom: "0.5rem" }}>
+                    🏆 Number of Winners (Top 3 – Top 6)
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {[3, 4, 5, 6].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => {
+                          setPrizeWinnerCount(num);
+                          const defaultMethod = num === 4 ? "preset_top4" : num === 5 ? "preset_top5" : num === 6 ? "preset_top6" : "preset_top3";
+                          setPrizeCalculationMethod(defaultMethod);
+                          loadWaPrizeSummary({ winnerCount: num, calculationMethod: defaultMethod });
+                        }}
+                        style={{
+                          padding: "0.5rem 1rem",
+                          borderRadius: 10,
+                          fontSize: "0.84rem",
+                          fontWeight: 800,
+                          border: prizeWinnerCount === num ? "1px solid #fbbf24" : "1px solid rgba(255,255,255,0.12)",
+                          background: prizeWinnerCount === num ? "linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.15))" : "rgba(255,255,255,0.04)",
+                          color: prizeWinnerCount === num ? "#fff" : "var(--muted)",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        Top {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Calculation Method Selection */}
+                <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "1.1rem", borderRadius: 14, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                  <label style={{ fontSize: "0.82rem", color: "#f8fafc", fontWeight: 700, display: "block", marginBottom: "0.5rem" }}>
+                    ⚙️ Calculation Method &amp; Split Ratios
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {[
+                      { id: `preset_top${prizeWinnerCount}`, label: `📊 Preset Ratio (Top ${prizeWinnerCount})` },
+                      { id: "equal", label: `⚖️ Equal Split (1/${prizeWinnerCount} each)` },
+                      { id: "custom", label: "✏️ Custom Manual Amounts" },
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setPrizeCalculationMethod(m.id);
+                          loadWaPrizeSummary({ calculationMethod: m.id });
+                        }}
+                        style={{
+                          padding: "0.5rem 1rem",
+                          borderRadius: 10,
+                          fontSize: "0.8rem",
+                          fontWeight: 800,
+                          border: prizeCalculationMethod === m.id ? "1px solid #7c6fff" : "1px solid rgba(255,255,255,0.12)",
+                          background: prizeCalculationMethod === m.id ? "rgba(124, 111, 255, 0.28)" : "rgba(255,255,255,0.04)",
+                          color: prizeCalculationMethod === m.id ? "#fff" : "var(--muted)",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Winners Leaderboard Mapping + Action Buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                
+                {/* Winners Leaderboard Mapping Table */}
+                <div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 800, color: "#f8fafc", marginBottom: "0.65rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>🥇 Winners Leaderboard Mapping ({prizeWinnerCount} Members)</span>
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Mapped directly from DB points</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    {(waPrizeSummary?.winners || []).slice(0, prizeWinnerCount).map((w, idx) => {
+                      const emojis = ["🥇", "🥈", "🥉", "🏅", "🎖️", "🎗️"];
+                      const labels = ["1st Place", "2nd Place", "3rd Place", "4th Place", "5th Place", "6th Place"];
+                      const rankBorders = [
+                        "1px solid rgba(251, 191, 36, 0.5)",
+                        "1px solid rgba(226, 232, 240, 0.4)",
+                        "1px solid rgba(249, 115, 22, 0.4)",
+                        "1px solid rgba(167, 139, 250, 0.25)",
+                        "1px solid rgba(167, 139, 250, 0.2)",
+                        "1px solid rgba(167, 139, 250, 0.2)",
+                      ];
+                      const rankGradients = [
+                        "linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(15, 23, 42, 0.85))",
+                        "linear-gradient(135deg, rgba(226, 232, 240, 0.09), rgba(15, 23, 42, 0.85))",
+                        "linear-gradient(135deg, rgba(249, 115, 22, 0.09), rgba(15, 23, 42, 0.85))",
+                        "rgba(15, 23, 42, 0.6)",
+                        "rgba(15, 23, 42, 0.6)",
+                        "rgba(15, 23, 42, 0.6)",
+                      ];
+                      const rankTextColors = ["#fbbf24", "#e2e8f0", "#fdba74", "#cbd5e1", "#cbd5e1", "#cbd5e1"];
+
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.85rem",
+                            background: rankGradients[idx] || "rgba(15, 23, 42, 0.6)",
+                            padding: "0.75rem 1rem",
+                            borderRadius: 14,
+                            border: rankBorders[idx] || "1px solid rgba(255, 255, 255, 0.08)",
+                            flexWrap: "wrap",
+                            boxShadow: idx < 3 ? "0 4px 14px rgba(0,0,0,0.25)" : "none",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: 100 }}>
+                            <span style={{ fontSize: "1.25rem" }}>{emojis[idx] || "🏅"}</span>
+                            <span style={{ fontSize: "0.82rem", fontWeight: 800, color: rankTextColors[idx] || "#e2e8f0" }}>
+                              {labels[idx] || `${idx + 1}th`}
+                            </span>
+                          </div>
+
+                          {/* Editable Name Input */}
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={prizeWinnerNames[idx] ? prizeWinnerNames[idx] : (w?.name || "")}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setPrizeWinnerNames(prev => {
+                                const next = [...prev];
+                                next[idx] = val;
+                                return next;
+                              });
+                            }}
+                            style={{
+                              flex: 1,
+                              minWidth: 160,
+                              fontSize: "0.88rem",
+                              padding: "0.45rem 0.8rem",
+                              background: "rgba(0,0,0,0.4)",
+                              border: idx === 0 ? "1px solid rgba(251, 191, 36, 0.35)" : "1px solid rgba(255,255,255,0.15)",
+                              color: "#fff",
+                              fontWeight: 700,
+                              borderRadius: 10,
+                            }}
+                            placeholder={w?.name || `Student ${idx + 1}`}
+                          />
+
+                          {/* Leaderboard Points Badge */}
+                          <div style={{
+                            background: "rgba(167, 139, 250, 0.15)",
+                            border: "1px solid rgba(167, 139, 250, 0.3)",
+                            padding: "4px 10px",
+                            borderRadius: 10,
+                            fontSize: "0.78rem",
+                            color: "#c084fc",
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                          }}>
+                            ⭐ {w.monthlyScore || 0} pts
+                          </div>
+
+                          {/* Custom Amount Input or Static Rupee Badge */}
+                          {prizeCalculationMethod === "custom" ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                              <span style={{ fontSize: "0.9rem", color: "#4ade80", fontWeight: 900 }}>₹</span>
+                              <input
+                                type="number"
+                                className="form-input"
+                                value={prizeCustomAmounts[idx] != null ? prizeCustomAmounts[idx] : w.amount}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setPrizeCustomAmounts(prev => {
+                                    const next = [...prev];
+                                    next[idx] = val;
+                                    return next;
+                                  });
+                                  loadWaPrizeSummary({ customAmounts: prizeCustomAmounts.filter(Boolean).join(",") });
+                                }}
+                                style={{ width: 85, fontSize: "0.9rem", padding: "0.4rem 0.6rem", fontWeight: 800, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(74, 222, 128, 0.5)", color: "#4ade80", borderRadius: 10 }}
+                              />
+                            </div>
+                          ) : (
+                            <div style={{
+                              background: "rgba(34, 197, 94, 0.15)",
+                              border: "1px solid rgba(34, 197, 94, 0.35)",
+                              padding: "4px 12px",
+                              borderRadius: 12,
+                              fontSize: "0.95rem",
+                              fontWeight: 900,
+                              color: "#4ade80",
+                              textAlign: "center",
+                              minWidth: 70,
+                            }}>
+                              ₹{w.amount}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Announcement Footer Note Input */}
+                <div>
+                  <label style={{ fontSize: "0.82rem", color: "#f8fafc", fontWeight: 700, display: "block", marginBottom: "0.4rem" }}>
+                    📝 Announcement Footer Note
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={prizeFooterNote}
+                    onChange={e => setPrizeFooterNote(e.target.value)}
+                    placeholder="*Rewards will credit before evening*"
+                    style={{ width: "100%", fontSize: "0.88rem", padding: "0.55rem 0.9rem", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: 10 }}
+                  />
+                </div>
+
+                {/* Primary Action Buttons Row: Save Settings + Broadcast Now */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "0.5rem" }}>
+                  <button
+                    className="btn-secondary"
+                    disabled={savingPrizeSettings}
+                    onClick={handleSavePrizeSettings}
+                    style={{
+                      padding: "0.9rem 1.35rem",
+                      fontSize: "0.9rem",
+                      fontWeight: 800,
+                      background: "linear-gradient(135deg, #059669, #10b981)",
+                      border: "none",
+                      color: "#fff",
+                      borderRadius: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.5rem",
+                      boxShadow: "0 6px 20px rgba(16, 185, 129, 0.35)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {savingPrizeSettings ? "⏳ Saving Settings..." : "💾 Save Month-End Settings"}
+                  </button>
+
+                  <button
+                    className="btn-primary"
+                    disabled={!waStatus?.isConnected || waSendingPrizeReport}
+                    onClick={handleSendPrizeReportToGroup}
+                    style={{
+                      padding: "0.9rem 1.35rem",
+                      fontSize: "0.9rem",
+                      fontWeight: 800,
+                      background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                      border: "none",
+                      borderRadius: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.5rem",
+                      boxShadow: "0 6px 20px rgba(245, 158, 11, 0.35)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {waSendingPrizeReport ? "⏳ Dispatching Report..." : "🚀 Broadcast Report Now"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          )}
         </div>
       )}
 

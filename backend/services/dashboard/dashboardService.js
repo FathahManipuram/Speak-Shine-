@@ -539,6 +539,14 @@ export async function getSettings() {
     durationPictureFull: status.durationPictureFull ?? 180,
     adminNotifyPhone: status.adminNotifyPhone || process.env.ADMIN_NOTIFY_PHONE || null,
     deploymentNotifyEnabled: status.deploymentNotifyEnabled !== false,
+    prizeWinnerCount: status.prizeWinnerCount ?? 3,
+    prizeCalculationMethod: status.prizeCalculationMethod || "preset_top3",
+    prizeCustomTotalCollection: status.prizeCustomTotalCollection ?? null,
+    prizeCustomAmounts: Array.isArray(status.prizeCustomAmounts) ? status.prizeCustomAmounts : [],
+    prizeFooterNote: status.prizeFooterNote || "*Rewards will credit before evening*",
+    monthEndReportAutoSend: status.monthEndReportAutoSend !== false,
+    lastMonthEndReportDate: status.lastMonthEndReportDate || null,
+    lastMonthEndReportStatus: status.lastMonthEndReportStatus || "pending",
   };
 }
 
@@ -968,6 +976,41 @@ export async function updateSettings(input, ...rest) {
 
   if (allowPrivateVideos !== undefined) {
     updates.allowPrivateVideos = allowPrivateVideos === true || allowPrivateVideos === "true";
+  }
+
+  // Month-End Prize Settings
+  if (params.prizeWinnerCount !== undefined) {
+    const count = parseInt(params.prizeWinnerCount, 10);
+    if (!isNaN(count) && count >= 3 && count <= 6) {
+      updates.prizeWinnerCount = count;
+    }
+  }
+
+  if (params.prizeCalculationMethod !== undefined) {
+    const validMethods = ["preset_top3", "preset_top4", "preset_top5", "preset_top6", "equal", "custom"];
+    if (validMethods.includes(params.prizeCalculationMethod)) {
+      updates.prizeCalculationMethod = params.prizeCalculationMethod;
+    }
+  }
+
+  if (params.prizeCustomTotalCollection !== undefined) {
+    updates.prizeCustomTotalCollection = params.prizeCustomTotalCollection !== null && params.prizeCustomTotalCollection !== ""
+      ? Number(params.prizeCustomTotalCollection)
+      : null;
+  }
+
+  if (params.prizeCustomAmounts !== undefined) {
+    if (Array.isArray(params.prizeCustomAmounts)) {
+      updates.prizeCustomAmounts = params.prizeCustomAmounts.map(Number).filter(n => !isNaN(n));
+    }
+  }
+
+  if (params.prizeFooterNote !== undefined) {
+    updates.prizeFooterNote = typeof params.prizeFooterNote === "string" ? params.prizeFooterNote.trim() : "*Rewards will credit before evening*";
+  }
+
+  if (params.monthEndReportAutoSend !== undefined) {
+    updates.monthEndReportAutoSend = params.monthEndReportAutoSend === true || params.monthEndReportAutoSend === "true";
   }
 
   await Status.updateOne({}, { $set: updates }, { upsert: true });

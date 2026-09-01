@@ -16,6 +16,11 @@ import { validatePassword } from "../../utils/validationUtils.js";
 const OTP_TTL = 300; // 5 minutes
 const TWO_FACTOR_KEY = process.env.TWO_FACTOR_API_KEY || null;
 
+// Access token duration: 3 hours ("3h") in development/local mode, 15 minutes ("15m") in production
+const JWT_ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES
+  || (process.env.NODE_ENV === "production" ? "15m" : "3h");
+const ACCESS_EXPIRES_SECONDS = JWT_ACCESS_EXPIRES === "3h" ? 10800 : (JWT_ACCESS_EXPIRES === "15m" ? 900 : 10800);
+
 // ── JWT Secret Helper ────────────────────────────────────────────────────────
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
@@ -244,7 +249,7 @@ export async function loginUser(phone, password, ipAddress) {
   const accessToken = jwt.sign(
     { id: auth._id, role: auth.role, type: 'access' },
     getJwtSecret(),
-    { expiresIn: "15m" }
+    { expiresIn: JWT_ACCESS_EXPIRES }
   );
 
   const refreshToken = jwt.sign(
@@ -281,7 +286,7 @@ export async function loginUser(phone, password, ipAddress) {
   return {
     accessToken,
     refreshToken,
-    expiresIn: 900,
+    expiresIn: ACCESS_EXPIRES_SECONDS,
     role: auth.role,
     name: auth.name,
     phone: auth.phone,
@@ -350,7 +355,7 @@ export async function refreshAccessToken(refreshToken, ipAddress) {
   const newAccessToken = jwt.sign(
     { id: auth._id, role: auth.role, type: 'access' },
     getJwtSecret(),
-    { expiresIn: "15m" }
+    { expiresIn: JWT_ACCESS_EXPIRES }
   );
 
   const newRefreshToken = jwt.sign(
@@ -374,7 +379,7 @@ export async function refreshAccessToken(refreshToken, ipAddress) {
   return {
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
-    expiresIn: 900
+    expiresIn: ACCESS_EXPIRES_SECONDS,
   };
 }
 
