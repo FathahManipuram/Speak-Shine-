@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/client.js";
 import Layout from "../components/Layout.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getMonthlyGracePeriodStatus } from "../utils/gracePeriodUtils.js";
 
 const InvoiceModal = lazy(() => import("../components/InvoiceModal.jsx"));
 
@@ -35,6 +36,7 @@ export default function PaymentWall({ onSuccess }) {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [failed, setFailed] = useState(false);
   const [planAmount, setPlanAmount] = useState(DEFAULT_PLAN_AMOUNT);
+  const [graceStatus] = useState(() => getMonthlyGracePeriodStatus());
   const navigate = useNavigate();
   const { login, user } = useAuth();
 
@@ -395,13 +397,18 @@ export default function PaymentWall({ onSuccess }) {
             background: "radial-gradient(circle, rgba(124,111,255,0.2) 0%, transparent 70%)",
             pointerEvents: "none",
           }} />
-          <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>🔒</div>
+          <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>
+            {graceStatus.isGracePeriod ? "🎁" : "🔒"}
+          </div>
           <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--text)", marginBottom: "0.5rem" }}>
-            Payment Required
+            {graceStatus.isGracePeriod
+              ? `Unlock Full ${graceStatus.monthName} Membership`
+              : "Payment Required"}
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "0.9rem", lineHeight: 1.6 }}>
-            Your account is on a payment hold. Complete the payment below to unlock
-            video submission, analysis, and all premium features.
+            {graceStatus.isGracePeriod
+              ? `Day ${graceStatus.dayOfMonth} of 2 is active. You can practice speaking for free right now, or complete your monthly membership now for uninterrupted access.`
+              : "Your account is on a payment hold. Complete the payment below to unlock video submission, analysis, and all premium features."}
           </p>
         </div>
 

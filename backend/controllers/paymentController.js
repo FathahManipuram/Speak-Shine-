@@ -70,6 +70,8 @@ function getRequestPhone(rawPhone = "") {
   }
 }
 
+import { getMonthlyGracePeriodInfo } from "../utils/gracePeriodUtils.js";
+
 async function getPaymentAmount() {
   const status = await Status.findOne().select("paymentAmount").lean();
   const amount = Number(status?.paymentAmount ?? 5);
@@ -82,7 +84,13 @@ async function getPaymentAmount() {
 export async function getPaymentConfig(req, res) {
   try {
     const amount = await getPaymentAmount();
-    res.json({ amount, currency: "INR" });
+    const gracePeriod = getMonthlyGracePeriodInfo();
+    res.json({
+      amount,
+      currency: "INR",
+      gracePeriod,
+      isGracePeriod: gracePeriod.isGracePeriod,
+    });
   } catch (err) {
     console.error("[Payment] config error:", err.message);
     res.status(500).json({ error: "Failed to fetch payment settings" });

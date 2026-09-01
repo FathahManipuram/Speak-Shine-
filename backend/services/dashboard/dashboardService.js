@@ -13,6 +13,7 @@ import env from "../../config/env.js";
 import { getTodayVocabulary } from "../ai/vocabularyGenerator.js";
 import { getDurationLimits } from "../video/submitGate.js";
 import { serializeStreakBadges } from "../../utils/streakBadges.js";
+import { getMonthlyGracePeriodInfo } from "../../utils/gracePeriodUtils.js";
 
 const withBadgeData = (user, data = {}) => ({ ...data, ...serializeStreakBadges(user) });
 const activeStoryTask = (status) => status?.todayContentType === "story_audio"
@@ -319,6 +320,7 @@ export async function getUserProfile(phone) {
         isPictureDescription: activePictureTask(status),
       }, status || {}),
     },
+    gracePeriod: getMonthlyGracePeriodInfo(),
     dailyReport: showReport ? dailyReport : null,
     showReport,
     reportExpiresAt: showReport ? status.reportExpiresAt : null,

@@ -61,13 +61,17 @@ function HomeRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
+import { isMonthlyGracePeriod } from "./utils/gracePeriodUtils.js";
+
 // Block unpaid users from accessing video/analysis pages — show payment wall instead.
-// Admins, trainers, and viewers bypass the gate.
+// Admins, trainers, and viewers bypass the gate at all times.
+// Initial 2 days of each month (1st & 2nd in IST) are open to all users without payment.
 function PaidRoute({ children }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   const bypass = ["admin", "admins", "trainer", "viewer"].includes(user.role);
   if (bypass) return children;
+  if (isMonthlyGracePeriod()) return children;
   if (!user.paid) return <PaymentWall />;
   return children;
 }

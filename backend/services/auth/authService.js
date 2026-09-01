@@ -70,16 +70,37 @@ async function deleteOTP(phone, purpose) {
 }
 
 async function sendSmsOTP(phone, otp) {
+  // Always display OTP in terminal during development so testing/registration is frictionless
+  if (process.env.NODE_ENV !== "production" || !TWO_FACTOR_KEY) {
+    console.log("\n=======================================================");
+    console.log(`📱 [OTP] AUTH / REGISTRATION OTP`);
+    console.log(`📞 Phone: +91 ${phone}`);
+    console.log(`🔑 OTP CODE: ${otp}`);
+    console.log("=======================================================\n");
+  }
+
   if (!TWO_FACTOR_KEY) {
-    console.log(`[OTP] DEV MODE — OTP for ${phone}: ${otp}`);
     return true;
   }
-  const stripped = phone.replace(/^(\+91|91)/, "");
-  const { default: fetch } = await import("node-fetch");
-  const url = `https://2factor.in/API/V1/${TWO_FACTOR_KEY}/SMS/${stripped}/${otp}/OTP1`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.Status === "Success";
+
+  try {
+    const stripped = phone.replace(/^(\+91|91)/, "");
+    const { default: fetch } = await import("node-fetch");
+    const url = `https://2factor.in/API/V1/${TWO_FACTOR_KEY}/SMS/${stripped}/${otp}/OTP1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.Status !== "Success") {
+      console.warn(`[OTP] 2Factor SMS response:`, data);
+      // In development, do not fail registration if SMS gateway fails or lacks credits
+      if (process.env.NODE_ENV !== "production") return true;
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`[OTP] 2Factor SMS error:`, err.message);
+    if (process.env.NODE_ENV !== "production") return true;
+    return false;
+  }
 }
 
 // ── WhatsApp User Helpers ────────────────────────────────────────────────────
