@@ -10,7 +10,7 @@ import User from "../../models/userSchema.js";
 import Transaction from "../../models/transactionSchema.js";
 import Auth from "../../models/authSchema.js";
 import Status from "../../models/statusSchema.js";
-import { escapeRegex } from "../utils/phoneUtils.js";
+import { escapeRegex, getPhoneLookupVariants } from "../utils/phoneUtils.js";
 
 function getRazorpay() {
   const key_id = process.env.RAZORPAY_KEY_ID;
@@ -23,13 +23,24 @@ function getRazorpay() {
 
 // Helper: find user by phone (handles both plain and WhatsApp formats)
 async function findUserByPhone(phone) {
-  let user = await User.findOne({ phone });
-  if (!user) {
+  const candidates = [...new Set(getPhoneLookupVariants(phone))];
+
+  for (const candidate of candidates) {
+    let user = await User.findOne({ phone: candidate });
+    if (user) return user;
+
     user = await User.findOne({
-      userId: { $regex: `^${escapeRegex(phone)}(@|:)` },
+      userId: { $regex: `^${escapeRegex(candidate)}(@|:)` },
     });
+    if (user) return user;
   }
-  return user;
+
+  for (const candidate of candidates) {
+    const user = await User.findOne({ phone: { $regex: new RegExp(`^${escapeRegex(candidate)}$`, "i") } });
+    if (user) return user;
+  }
+
+  return null;
 }
 
 /**
@@ -70,6 +81,8 @@ function getRequestPhone(rawPhone = "") {
   }
 }
 
+import { getMonthlyGracePeriodInfo } from "../utils/gracePeriodUtils.js";
+
 async function getPaymentAmount() {
   const status = await Status.findOne().select("paymentAmount").lean();
   const amount = Number(status?.paymentAmount ?? 5);
@@ -82,10 +95,43 @@ async function getPaymentAmount() {
 export async function getPaymentConfig(req, res) {
   try {
     const amount = await getPaymentAmount();
-    res.json({ amount, currency: "INR" });
+    const gracePeriod = getMonthlyGracePeriodInfo();
+    res.json({
+      amount,
+      currency: "INR",
+      gracePeriod,
+      isGracePeriod: gracePeriod.isGracePeriod,
+    });
   } catch (err) {
     console.error("[Payment] config error:", err.message);
     res.status(500).json({ error: "Failed to fetch payment settings" });
+  }
+}
+
+/**
+ * GET /api/payments/wallet
+ */
+export async function getUserWallet(req, res) {
+  try {
+    let phone = req.user.phone;
+    let user = phone ? await findUserByPhone(phone) : null;
+    if (!user && req.user.id) {
+      const auth = await Auth.findById(req.user.id).select("phone").lean();
+      if (auth?.phone) user = await findUserByPhone(auth.phone);
+    }
+
+    if (!user) {
+      return res.json({ success: true, walletBalance: 0, walletHistory: [] });
+    }
+
+    return res.json({
+      success: true,
+      walletBalance: user.walletBalance || 0,
+      walletHistory: user.walletHistory || [],
+    });
+  } catch (err) {
+    console.error("[Payment] getUserWallet error:", err.message);
+    res.status(500).json({ error: "Failed to fetch wallet information" });
   }
 }
 
@@ -94,15 +140,80 @@ export async function getPaymentConfig(req, res) {
  */
 export async function createOrder(req, res) {
   try {
-    const razorpay = getRazorpay();
+    const totalFee = await getPaymentAmount();
 
-    const amountINR = await getPaymentAmount();
-    const amountPaise = Math.round(amountINR * 100);
-
-    if (amountPaise < 100) {
-      return res.status(400).json({ error: "Amount must be at least ₹1 (100 paise)" });
+    // Find user to check wallet balance
+    let phone = req.user.phone;
+    let user = phone ? await findUserByPhone(phone) : null;
+    if (!user && req.user.id) {
+      const auth = await Auth.findById(req.user.id).select("phone name").lean();
+      if (auth?.phone) {
+        phone = auth.phone;
+        user = await findUserByPhone(phone);
+      }
     }
 
+    const currentWallet = user ? Math.max(0, Number(user.walletBalance) || 0) : 0;
+
+    // CASE 1: 100% Wallet Balance Cover (walletBalance >= totalFee)
+    if (user && currentWallet >= totalFee && totalFee > 0) {
+      const newBalance = currentWallet - totalFee;
+      user.walletBalance = newBalance;
+      user.paid = true;
+      user.paidAt = new Date();
+      if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+      user.walletHistory.push({
+        type: "debit",
+        amount: totalFee,
+        reason: "💳 Subscription Activated (100% Wallet Balance Covered)",
+        balanceAfter: newBalance,
+        date: new Date(),
+      });
+      await user.save();
+
+      // Log successful transaction
+      await Transaction.create({
+        phone: user.phone || phone,
+        name: user.name || req.user.name || null,
+        userId: user.userId || null,
+        razorpayOrderId: `wallet_${Date.now()}`,
+        razorpayPaymentId: `wallet_pay_${Date.now()}`,
+        amount: totalFee,
+        status: "success",
+        method: "wallet",
+        source: "wallet",
+        note: "Activated 100% using Wallet Balance",
+      }).catch(() => {});
+
+      // Socket broadcast
+      const io = req.app?.get("io");
+      if (io) {
+        io.emit("user:paid_status", { phone: user.phone || phone, paid: true, paidAt: user.paidAt, name: user.name });
+        io.emit("payment:recorded", { phone: user.phone || phone, name: user.name, amount: totalFee, razorpayPaymentId: "wallet_pay", createdAt: new Date() });
+      }
+
+      console.log(`[Payment] ⚡ 100% Wallet Cover Activated for ${user.phone}. Fee: ₹${totalFee}, New balance: ₹${newBalance}`);
+      return res.json({
+        success: true,
+        walletCovered: true,
+        message: `Subscription activated 100% using your wallet balance (₹${totalFee} deducted)!`,
+        totalFee,
+        walletDiscountApplied: totalFee,
+        netPayableINR: 0,
+        walletBalance: newBalance,
+      });
+    }
+
+    // CASE 2: Partial Wallet Discount or Standard Gateway Checkout
+    const walletDiscountApplied = Math.min(currentWallet, totalFee);
+    const netPayableINR = Math.max(0, totalFee - walletDiscountApplied);
+    const amountPaise = Math.round(netPayableINR * 100);
+
+    if (amountPaise < 100) {
+      return res.status(400).json({ error: "Net payable amount must be at least ₹1 (100 paise)" });
+    }
+
+    const razorpay = getRazorpay();
     const shortId = String(req.user.id).slice(-8);
     const shortTs = String(Date.now()).slice(-8);
     const receipt = `r_${shortId}_${shortTs}`;
@@ -113,8 +224,10 @@ export async function createOrder(req, res) {
       receipt,
       notes: {
         userId: String(req.user.id || ""),
-        phone: String(req.user.phone || ""),
+        phone: String(req.user.phone || phone || ""),
         name: String(req.user.name || ""),
+        totalFee: String(totalFee),
+        walletDiscountApplied: String(walletDiscountApplied),
       },
     });
 
@@ -123,6 +236,10 @@ export async function createOrder(req, res) {
       amount: order.amount,
       currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID,
+      totalFee,
+      walletDiscountApplied,
+      netPayableINR,
+      walletBalance: currentWallet,
     });
   } catch (err) {
     const razorpayMsg = err?.error?.description || err?.message || "Failed to create payment order";
@@ -235,6 +352,25 @@ export async function verifyPayment(req, res) {
       amountINR = orderDetails.amount / 100;
     } catch { /* non-critical */ }
 
+    // Deduct applied wallet discount from user balance if discount was used
+    const currentWallet = Math.max(0, Number(user.walletBalance) || 0);
+    const totalFee = await getPaymentAmount();
+    const discountUsed = Math.min(currentWallet, Math.max(0, totalFee - amountINR));
+
+    if (discountUsed > 0) {
+      const newBalance = Math.max(0, currentWallet - discountUsed);
+      user.walletBalance = newBalance;
+      if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+      user.walletHistory.push({
+        type: "debit",
+        amount: discountUsed,
+        reason: `💳 Applied Wallet Discount to Subscription Payment (Paid Net ₹${amountINR} via Gateway)`,
+        balanceAfter: newBalance,
+        date: new Date(),
+      });
+      console.log(`[Payment Wallet] Deducted ₹${discountUsed} wallet discount from ${user.phone}. New wallet balance: ₹${newBalance}`);
+    }
+
     // Mark user paid
     user.paid = true;
     user.razorpayOrderId   = razorpay_order_id;
@@ -277,6 +413,100 @@ export async function verifyPayment(req, res) {
   } catch (err) {
     console.error("[Payment] verify error:", err.message);
     res.status(500).json({ error: "Payment verification failed" });
+  }
+}
+
+/**
+ * POST /api/payments/admin/wallet-adjust
+ * Admin endpoint to manually credit, debit, or set a student's wallet balance.
+ */
+export async function adminAdjustWallet(req, res) {
+  try {
+    const { phone, actionType, amount, reason } = req.body || {};
+    const cleanPhone = getRequestPhone(phone);
+    if (!cleanPhone) return res.status(400).json({ error: "Student phone number is required" });
+
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ error: "Amount must be a positive number" });
+    }
+
+    const validActions = ["credit", "debit", "set"];
+    if (!validActions.includes(actionType)) {
+      return res.status(400).json({ error: "Invalid actionType. Must be 'credit', 'debit', or 'set'" });
+    }
+
+    const user = await findUserByPhone(cleanPhone);
+    if (!user) return res.status(404).json({ error: "Student user record not found" });
+
+    const currentBalance = Number(user.walletBalance) || 0;
+    let newBalance = currentBalance;
+    let transactionType = actionType === "debit" ? "debit" : "credit";
+    let changeAmount = numAmount;
+
+    if (actionType === "credit") {
+      newBalance = currentBalance + numAmount;
+    } else if (actionType === "debit") {
+      if (numAmount > currentBalance) {
+        return res.status(400).json({ error: `Cannot debit ₹${numAmount}. Current student wallet balance is only ₹${currentBalance}` });
+      }
+      newBalance = currentBalance - numAmount;
+    } else if (actionType === "set") {
+      const diff = numAmount - currentBalance;
+      transactionType = diff >= 0 ? "credit" : "debit";
+      changeAmount = Math.abs(diff);
+      newBalance = numAmount;
+    }
+
+    user.walletBalance = newBalance;
+    if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+    user.walletHistory.push({
+      type: transactionType,
+      amount: changeAmount,
+      reason: reason?.trim() ? `🛡️ Admin: ${reason.trim()}` : `🛡️ Admin Manual ${actionType.toUpperCase()}`,
+      balanceAfter: newBalance,
+      date: new Date(),
+    });
+    await user.save();
+
+    console.log(`[Admin Wallet] ${actionType.toUpperCase()} ₹${numAmount} for ${user.phone}. New balance: ₹${newBalance}`);
+
+    return res.json({
+      success: true,
+      message: `Wallet ${actionType}ed successfully for ${user.name || user.phone}!`,
+      walletBalance: newBalance,
+      walletHistory: user.walletHistory,
+    });
+  } catch (err) {
+    console.error("[Admin Wallet] adminAdjustWallet error:", err.message);
+    res.status(500).json({ error: "Failed to adjust wallet balance" });
+  }
+}
+
+/**
+ * GET /api/payments/admin/wallet-history/:phone
+ * Fetch full wallet history for a student from admin dashboard.
+ */
+export async function adminGetStudentWallet(req, res) {
+  try {
+    const cleanPhone = getRequestPhone(req.params.phone);
+    if (!cleanPhone) return res.status(400).json({ error: "Phone number required" });
+
+    const user = await findUserByPhone(cleanPhone);
+    if (!user) return res.status(404).json({ error: "Student user record not found" });
+
+    return res.json({
+      success: true,
+      user: {
+        name: user.name || user.registeredName,
+        phone: user.phone,
+        walletBalance: user.walletBalance || 0,
+      },
+      walletHistory: user.walletHistory || [],
+    });
+  } catch (err) {
+    console.error("[Admin Wallet] adminGetStudentWallet error:", err.message);
+    res.status(500).json({ error: "Failed to fetch student wallet history" });
   }
 }
 

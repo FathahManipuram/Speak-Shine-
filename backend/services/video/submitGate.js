@@ -335,16 +335,17 @@ export function calculateCompositeScore({
     ? topicRelevance
     : (typeof analysis?.topicRelevance === "number" && !Number.isNaN(analysis.topicRelevance) ? analysis.topicRelevance : null);
 
-  // If this is a Story Summary task, it MUST have topic relevance scoring (never 0/null special day).
+  // If this is a Story Summary or Monthly Challenge task, it MUST have topic relevance scoring (never 0/null special day).
   // Fall back to coherence / communication averages if the raw analysis missed it.
-  if (isStoryTask && effectiveTopicRelevance == null) {
+  const isTargetedTask = isStoryTask || challengeType === "monthly_reflection" || challengeType === "monthly_goals";
+  if (isTargetedTask && effectiveTopicRelevance == null) {
     const coherence = typeof analysis.coherence === "number" && !Number.isNaN(analysis.coherence) ? analysis.coherence : null;
     const commFallbacks = [analysis.fluency, analysis.vocabulary, analysis.confidence].filter(n => typeof n === "number" && !Number.isNaN(n));
     const fallbackScore = coherence ?? (commFallbacks.length ? (commFallbacks.reduce((a, b) => a + b, 0) / commFallbacks.length) : 7.0);
     effectiveTopicRelevance = Math.round(fallbackScore * 10) / 10;
   }
 
-  const isSpecialDay = !isStoryTask && effectiveTopicRelevance == null;
+  const isSpecialDay = !isTargetedTask && effectiveTopicRelevance == null;
 
   // ── Part 1: Effective speaking time ─────────────────────────────────────
   // speechRatio: % of video time actually speaking (0–100), from Whisper timestamps.

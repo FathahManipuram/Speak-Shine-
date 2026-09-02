@@ -16,6 +16,11 @@ import { validatePassword } from "../../utils/validationUtils.js";
 const OTP_TTL = 300; // 5 minutes
 const TWO_FACTOR_KEY = process.env.TWO_FACTOR_API_KEY || null;
 
+// Access token duration: 3 hours ("3h") in development/local mode, 15 minutes ("15m") in production
+const JWT_ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES
+  || (process.env.NODE_ENV === "production" ? "15m" : "3h");
+const ACCESS_EXPIRES_SECONDS = JWT_ACCESS_EXPIRES === "3h" ? 10800 : (JWT_ACCESS_EXPIRES === "15m" ? 900 : 10800);
+
 // ── JWT Secret Helper ────────────────────────────────────────────────────────
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
@@ -70,16 +75,37 @@ async function deleteOTP(phone, purpose) {
 }
 
 async function sendSmsOTP(phone, otp) {
+  // Always display OTP in terminal during development so testing/registration is frictionless
+  if (process.env.NODE_ENV !== "production" || !TWO_FACTOR_KEY) {
+    console.log("\n=======================================================");
+    console.log(`📱 [OTP] AUTH / REGISTRATION OTP`);
+    console.log(`📞 Phone: +91 ${phone}`);
+    console.log(`🔑 OTP CODE: ${otp}`);
+    console.log("=======================================================\n");
+  }
+
   if (!TWO_FACTOR_KEY) {
-    console.log(`[OTP] DEV MODE — OTP for ${phone}: ${otp}`);
     return true;
   }
-  const stripped = phone.replace(/^(\+91|91)/, "");
-  const { default: fetch } = await import("node-fetch");
-  const url = `https://2factor.in/API/V1/${TWO_FACTOR_KEY}/SMS/${stripped}/${otp}/OTP1`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.Status === "Success";
+
+  try {
+    const stripped = phone.replace(/^(\+91|91)/, "");
+    const { default: fetch } = await import("node-fetch");
+    const url = `https://2factor.in/API/V1/${TWO_FACTOR_KEY}/SMS/${stripped}/${otp}/OTP1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.Status !== "Success") {
+      console.warn(`[OTP] 2Factor SMS response:`, data);
+      // In development, do not fail registration if SMS gateway fails or lacks credits
+      if (process.env.NODE_ENV !== "production") return true;
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`[OTP] 2Factor SMS error:`, err.message);
+    if (process.env.NODE_ENV !== "production") return true;
+    return false;
+  }
 }
 
 // ── WhatsApp User Helpers ────────────────────────────────────────────────────
@@ -223,7 +249,7 @@ export async function loginUser(phone, password, ipAddress) {
   const accessToken = jwt.sign(
     { id: auth._id, role: auth.role, type: 'access' },
     getJwtSecret(),
-    { expiresIn: "15m" }
+    { expiresIn: JWT_ACCESS_EXPIRES }
   );
 
   const refreshToken = jwt.sign(
@@ -260,7 +286,7 @@ export async function loginUser(phone, password, ipAddress) {
   return {
     accessToken,
     refreshToken,
-    expiresIn: 900,
+    expiresIn: ACCESS_EXPIRES_SECONDS,
     role: auth.role,
     name: auth.name,
     phone: auth.phone,
@@ -329,7 +355,7 @@ export async function refreshAccessToken(refreshToken, ipAddress) {
   const newAccessToken = jwt.sign(
     { id: auth._id, role: auth.role, type: 'access' },
     getJwtSecret(),
-    { expiresIn: "15m" }
+    { expiresIn: JWT_ACCESS_EXPIRES }
   );
 
   const newRefreshToken = jwt.sign(
@@ -353,7 +379,7 @@ export async function refreshAccessToken(refreshToken, ipAddress) {
   return {
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
-    expiresIn: 900
+    expiresIn: ACCESS_EXPIRES_SECONDS,
   };
 }
 

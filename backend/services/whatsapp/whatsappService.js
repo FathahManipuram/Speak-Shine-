@@ -24,6 +24,7 @@ import Status from "../../../models/statusSchema.js";
 import WhatsAppAuth from "../../../models/whatsAppAuthSchema.js";
 import User from "../../../models/userSchema.js";
 import Auth from "../../../models/authSchema.js";
+import Transaction from "../../../models/transactionSchema.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +41,7 @@ let userPhone = null;
 let userJid = null;
 let reconnectTimer = null;
 let socketIoInstance = null;
+let reconnectAttempts = 0;
 let isFirstBootConnection = true;
 
 export function setSocketIo(io) {
@@ -303,6 +305,7 @@ export async function initWhatsAppBot() {
         connectingStartedAt = null;
         currentQR = null;
         currentQRDataUrl = null;
+        reconnectAttempts = 0;
 
         const rawJid = sock.user?.id || "";
         userJid = rawJid;
@@ -330,23 +333,32 @@ export async function initWhatsAppBot() {
         isConnected = false;
         isConnecting = false;
         connectingStartedAt = null;
+        reconnectAttempts++;
         
         const statusCode = lastDisconnect?.error instanceof Boom
           ? lastDisconnect.error.output?.statusCode
           : lastDisconnect?.error?.statusCode;
 
         const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-        console.log(`[WhatsApp] ⚠️ Connection closed. Status code: ${statusCode || "unknown"}. Reconnect: ${!isLoggedOut}`);
+        const isTerminalDisconnect = isLoggedOut ||
+          statusCode === DisconnectReason.badSession ||
+          statusCode === DisconnectReason.forbidden ||
+          statusCode === DisconnectReason.multideviceMismatch ||
+          statusCode === DisconnectReason.connectionReplaced ||
+          reconnectAttempts >= 4;
 
-        if (isLoggedOut) {
-          console.log("[WhatsApp] 🚪 Logged out from WhatsApp. Resetting auth credentials...");
+        console.log(`[WhatsApp] ⚠️ Connection closed. Status code: ${statusCode || "unknown"} (Attempt ${reconnectAttempts}). Terminal: ${isTerminalDisconnect}`);
+
+        if (isTerminalDisconnect) {
+          console.log(`[WhatsApp] 🚪 Session invalid or failed after ${reconnectAttempts} attempts. Resetting auth credentials to generate new QR code...`);
           currentQR = null;
           currentQRDataUrl = null;
           userPhone = null;
           userJid = null;
+          reconnectAttempts = 0;
           await clearAuthDir();
           broadcastStatus();
-          scheduleReconnect(2000);
+          scheduleReconnect(1500);
         } else {
           // Restart required (515) or temporary socket drop
           broadcastStatus();
@@ -378,8 +390,20 @@ async function clearAuthDir() {
   try {
     await clearMongoAuth();
     if (fs.existsSync(AUTH_DIR)) {
-      fs.rmSync(AUTH_DIR, { recursive: true, force: true });
-      fs.mkdirSync(AUTH_DIR, { recursive: true });
+      try {
+        fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+      } catch (err) {
+        // Fallback for Windows file lock (EBUSY)
+        try {
+          const files = fs.readdirSync(AUTH_DIR);
+          for (const file of files) {
+            try { fs.unlinkSync(path.join(AUTH_DIR, file)); } catch {}
+          }
+        } catch {}
+      }
+      if (!fs.existsSync(AUTH_DIR)) {
+        fs.mkdirSync(AUTH_DIR, { recursive: true });
+      }
     }
   } catch (err) {
     console.warn("[WhatsApp] Could not clear auth folder:", err.message);
@@ -406,13 +430,21 @@ export function getStatus() {
     // Only supply QR code if we do not already have an authenticated saved session
     qrCodeDataUrl: isConnected || (hasCreds && !currentQR) ? null : currentQRDataUrl,
     authDirExists: hasCreds,
+    reconnectAttempts,
   };
 }
 
 /**
  * Manually reconnect / refresh QR code.
+ * @param {boolean} [forceReset=false] - If true, clears saved credentials and forces fresh QR generation
  */
-export async function restartWhatsAppBot() {
+export async function restartWhatsAppBot(forceReset = false) {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
+
   if (sock) {
     try {
       sock.ev?.removeAllListeners();
@@ -424,6 +456,13 @@ export async function restartWhatsAppBot() {
   isConnecting = false;
   currentQR = null;
   currentQRDataUrl = null;
+
+  if (forceReset) {
+    userPhone = null;
+    userJid = null;
+    await clearAuthDir();
+  }
+
   return await initWhatsAppBot();
 }
 
@@ -431,14 +470,25 @@ export async function restartWhatsAppBot() {
  * Log out and remove credentials.
  */
 export async function logoutWhatsAppBot() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
+
   if (sock) {
     try {
-      await sock.logout();
-    } catch {
-      // Ignore
+      // Race sock.logout() with a 2-second timeout to prevent hanging when offline
+      await Promise.race([
+        sock.logout(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Logout timeout")), 2000)),
+      ]);
+    } catch (e) {
+      console.warn("[WhatsApp] sock.logout() skipped or timed out:", e.message);
     }
     try {
-      sock.end(new Error("User logout"));
+      sock.ev?.removeAllListeners();
+      sock.end?.(new Error("User logout"));
     } catch {
       // Ignore
     }
@@ -450,8 +500,12 @@ export async function logoutWhatsAppBot() {
   currentQRDataUrl = null;
   userPhone = null;
   userJid = null;
+
   await clearAuthDir();
   broadcastStatus();
+
+  // Schedule immediate init to generate a fresh QR code right away
+  scheduleReconnect(800);
   return { success: true };
 }
 
@@ -629,17 +683,38 @@ export async function sendDailyPosterToGroup(options = {}) {
     vocabRequiredCount: vocabReq,
   });
 
+  const isReflection = category?.toLowerCase().includes("reflection") || topic?.toLowerCase().includes("reflection") || status?.isMonthlyReflectionDay;
+  const isGoals = category?.toLowerCase().includes("goal") || topic?.toLowerCase().includes("goal") || status?.isMonthlyGoalsDay;
+
+  const headerTitle = isReflection
+    ? `🌟 *SPEAK & SHINE — MONTHLY REFLECTION CHALLENGE* 🌟`
+    : isGoals
+    ? `🎯 *SPEAK & SHINE — MONTHLY GOALS CHALLENGE* 🎯`
+    : `🌟 *SPEAK & SHINE — DAILY SPEAKING CHALLENGE* 🌟`;
+
+  const questionHeader = isReflection
+    ? `📋 *REFLECTION QUESTIONS:*`
+    : isGoals
+    ? `🎯 *GOAL SETTING QUESTIONS:*`
+    : `❓ *TODAY'S QUESTION:*`;
+
+  const taskPrompt = isReflection
+    ? `🎥 *TASK:* Record & submit your monthly reflection video!`
+    : isGoals
+    ? `🎥 *TASK:* Record & submit your monthly goals video!`
+    : `🎥 *TASK:* Record & submit your 1-minute speaking video!`;
+
   const caption = [
-    `🌟 *SPEAK & SHINE — DAILY SPEAKING CHALLENGE* 🌟`,
+    headerTitle,
     `━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `🏷️ *Topic:* ${topic}`,
     `📂 *Category:* ${category}`,
     ``,
-    `❓ *TODAY'S QUESTION:*`,
+    questionHeader,
     `${question}`,
     vocabSection,
     `━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `🎥 *TASK:* Record & submit your 1-minute speaking video!`,
+    taskPrompt,
     `🚀 *Submit here:* ${frontendUrl}`,
   ].filter(Boolean).join("\n");
 
@@ -925,6 +1000,20 @@ export async function sendAdminDirectMessage(text, options = {}) {
 }
 
 /**
+ * Fetch all groups the connected WhatsApp account is participating in.
+ */
+export async function getParticipatingGroups() {
+  await ensureWhatsAppConnected(15000);
+  if (!sock) throw new Error("WhatsApp bot not connected");
+  const groups = await sock.groupFetchAllParticipating();
+  return Object.values(groups).map(g => ({
+    id: g.id,
+    subject: g.subject,
+    participantsCount: g.participants?.length || 0,
+  }));
+}
+
+/**
  * Sends automated deployment success or startup failure notifications to the admin's personal number.
  */
 export async function sendDeploymentNotification({ status = "success", error = null, extra = {} } = {}) {
@@ -996,4 +1085,421 @@ export async function sendDeploymentNotification({ status = "success", error = n
     console.warn("[WhatsApp] Could not send deployment notification:", err.message);
     return { success: false, error: err.message };
   }
+}
+
+/**
+ * Calculate money distribution split across Top 3..6 winners.
+ * Supported calculation methods:
+ * - 'preset_top3': 50% / 33.3% / 16.7% (e.g. ₹30, ₹20, ₹10 for ₹60)
+ * - 'preset_top4': 41.7% / 28.3% / 16.7% / 13.3% (e.g. ₹25, ₹17, ₹10, ₹8 for ₹60)
+ * - 'preset_top5': 35% / 25% / 20% / 12% / 8%
+ * - 'preset_top6': 30% / 22% / 18% / 14% / 10% / 6%
+ * - 'equal': Total / winnerCount evenly split
+ * - 'custom': Admin provided customAmounts array
+ */
+export function calculateMonthEndPrizeDistribution({
+  totalCollection = 60,
+  winnerCount = 3,
+  calculationMethod = "preset_top3",
+  customAmounts = [],
+}) {
+  const collection = Math.max(0, Number(totalCollection) || 60);
+  const count = Math.min(6, Math.max(3, Number(winnerCount) || 3));
+  let amounts = [];
+  let percentages = [];
+  let methodName = "Preset Ratio Split";
+
+  if (calculationMethod === "equal") {
+    methodName = `Equal Split among Top ${count} winners`;
+    const base = Math.floor(collection / count);
+    const remainder = collection - base * count;
+    amounts = Array(count).fill(base);
+    if (remainder > 0) amounts[0] += remainder; // Give rounding remainder to 1st place
+    percentages = amounts.map(a => Math.round((a / (collection || 1)) * 1000) / 10);
+  } else if (calculationMethod === "custom" && Array.isArray(customAmounts) && customAmounts.length >= count) {
+    methodName = "Custom Manual Rupee Amounts";
+    amounts = customAmounts.slice(0, count).map(v => Math.max(0, Number(v) || 0));
+    percentages = amounts.map(a => Math.round((a / (collection || 1)) * 1000) / 10);
+  } else {
+    // Presets
+    let presetRatios = [50, 33.333, 16.667];
+    if (calculationMethod === "preset_top4" || (count === 4 && calculationMethod === "preset_top3")) {
+      presetRatios = [41.667, 28.333, 16.667, 13.333];
+      methodName = "Top 4 Preset Split (41.7% / 28.3% / 16.7% / 13.3%)";
+    } else if (calculationMethod === "preset_top5" || (count === 5 && calculationMethod === "preset_top3")) {
+      presetRatios = [35, 25, 20, 12, 8];
+      methodName = "Top 5 Preset Split (35% / 25% / 20% / 12% / 8%)";
+    } else if (calculationMethod === "preset_top6" || (count === 6 && calculationMethod === "preset_top3")) {
+      presetRatios = [30, 22, 18, 14, 10, 6];
+      methodName = "Top 6 Preset Split (30% / 22% / 18% / 14% / 10% / 6%)";
+    } else {
+      presetRatios = [50, 33.333, 16.667];
+      methodName = "Top 3 Preset Split (50% / 33.3% / 16.7%)";
+    }
+
+    // Adjust ratios array to match winnerCount
+    if (presetRatios.length > count) {
+      presetRatios = presetRatios.slice(0, count);
+      const sum = presetRatios.reduce((a, b) => a + b, 0);
+      presetRatios = presetRatios.map(r => (r / sum) * 100);
+    }
+
+    // Special exact integer values for standard ₹60 collection
+    if (collection === 60 && count === 3) {
+      amounts = [30, 20, 10];
+    } else if (collection === 60 && count === 4) {
+      amounts = [25, 17, 10, 8];
+    } else {
+      // Calculate amounts from percentages
+      amounts = presetRatios.map(r => Math.round(collection * (r / 100)));
+      const sumAmt = amounts.reduce((a, b) => a + b, 0);
+      const diff = collection - sumAmt;
+      if (diff !== 0 && amounts.length > 0) {
+        amounts[0] += diff; // adjust 1st place so total equals totalCollection
+      }
+    }
+    percentages = amounts.map(a => Math.round((a / (collection || 1)) * 1000) / 10);
+  }
+
+  const distributedTotal = amounts.reduce((a, b) => a + b, 0);
+  const ranksLabel = ["1st", "2nd", "3rd", "4th", "5th", "6th"];
+  const breakdownList = amounts.map((amt, idx) => `${ranksLabel[idx] || `${idx+1}th`}: ₹${amt} (${percentages[idx]}%)`);
+
+  const formulaText = `Method: ${methodName} | Collection: ₹${collection} → ${breakdownList.join(" | ")} [Total: ₹${distributedTotal}]`;
+
+  return {
+    totalCollection: collection,
+    winnerCount: count,
+    calculationMethod,
+    methodName,
+    amounts,
+    percentages,
+    distributedTotal,
+    formulaText,
+    breakdownList,
+  };
+}
+
+/**
+ * Build WhatsApp Month-End Prize Distribution Report text with clean names (no @ tags).
+ */
+export function buildMonthEndPrizeReportMessage({
+  monthName = "AUGUST",
+  year = new Date().getFullYear(),
+  totalCollection = 60,
+  winners = [],
+  footerNote = "*Rewards will credit before evening*",
+}) {
+  const rankEmojis = ["🥇", "🥈", "🥉", "🏅", "🎖️", "🎗️"];
+  const rankLabels = ["1st Place", "2nd Place", "3rd Place", "4th Place", "5th Place", "6th Place"];
+
+  const winnerLines = winners.map((w, idx) => {
+    const emoji = rankEmojis[idx] || "🏅";
+    const label = rankLabels[idx] || `${idx + 1}th Place`;
+    const amount = w.amount != null ? w.amount : 0;
+    const cleanName = String(w.name || w.registeredName || `Member ${idx + 1}`).replace(/^@~?/, "");
+    return `${emoji} ${label}: ₹${amount} ${cleanName}`;
+  }).join("\n");
+
+  const winnerCountLabel = winners.length > 0 ? `Top ${winners.length}` : "winners";
+
+  return [
+    `🏆 *SPEAK & SHINE — ${String(monthName).toUpperCase()} ${year} PRIZE DISTRIBUTION* 🏆`,
+    ``,
+    `💰 Total Collection: ₹${totalCollection}`,
+    ``,
+    winnerLines,
+    ``,
+    `━━━━━━━━━━━━━━━━━━ 💰 Total: ₹${totalCollection}`,
+    ``,
+    `🎉 Congratulations to our ${winnerCountLabel}! 🎉🔥`,
+    `✨ Keep speaking, keep improving, and keep shining! 🌟`,
+    ``,
+    ` ${footerNote}`,
+  ].join("\n");
+}
+
+/**
+ * Get Month-End Prize Distribution Summary for Admin Dashboard API.
+ */
+export async function getMonthEndPrizeReportSummary(options = {}) {
+  try {
+    const Status = (await import("../../../models/statusSchema.js")).default;
+    const User = (await import("../../../models/userSchema.js")).default;
+    const Transaction = (await import("../../../models/transactionSchema.js")).default;
+
+    const dbStatus = await Status.findOne().lean().catch(() => null);
+
+    const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const monthName = nowIST.toLocaleDateString("en-IN", { month: "long" }).toUpperCase();
+    const year = nowIST.getFullYear();
+
+    // 1. Calculate actual current month collection from transactions
+    const startOfMonth = new Date(nowIST.getFullYear(), nowIST.getMonth(), 1);
+    const monthTxStats = await Transaction.aggregate([
+      { $match: { status: { $in: ["success", "manual"] }, createdAt: { $gte: startOfMonth } } },
+      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
+    ]).catch(() => []);
+
+    const autoCollectionFromTx = monthTxStats[0]?.total || 0;
+    const paidUserCount = await User.countDocuments({ paid: true }).catch(() => 0);
+    const paymentAmount = dbStatus?.paymentAmount || 5;
+    const autoCollectionFromUsers = paidUserCount * paymentAmount;
+
+    const autoCalculatedCollection = autoCollectionFromTx > 0 ? autoCollectionFromTx : (autoCollectionFromUsers > 0 ? autoCollectionFromUsers : 60);
+
+    // 2. Determine effective configuration
+    const winnerCount = Math.min(6, Math.max(3, Number(options.winnerCount != null && options.winnerCount !== "" ? options.winnerCount : (dbStatus?.prizeWinnerCount || 3))));
+    const calculationMethod = options.calculationMethod || dbStatus?.prizeCalculationMethod || (winnerCount === 4 ? "preset_top4" : winnerCount === 5 ? "preset_top5" : winnerCount === 6 ? "preset_top6" : "preset_top3");
+    
+    const totalCollection = (options.totalCollection != null && options.totalCollection !== "" && !isNaN(options.totalCollection))
+      ? Number(options.totalCollection)
+      : (dbStatus?.prizeCustomTotalCollection != null ? dbStatus.prizeCustomTotalCollection : autoCalculatedCollection);
+
+    const customAmounts = (Array.isArray(options.customAmounts) && options.customAmounts.length > 0)
+      ? options.customAmounts
+      : (dbStatus?.prizeCustomAmounts || []);
+
+    const footerNote = options.footerNote != null ? options.footerNote : (dbStatus?.prizeFooterNote || "*Rewards will credit before evening*");
+    const customWinnerNamesList = (Array.isArray(options.customWinnerNames) && options.customWinnerNames.length > 0)
+      ? options.customWinnerNames
+      : (dbStatus?.prizeCustomWinnerNames || []);
+
+    // 3. Compute distribution split
+    const calc = calculateMonthEndPrizeDistribution({
+      totalCollection,
+      winnerCount,
+      calculationMethod,
+      customAmounts,
+    });
+
+    // 4. Fetch Top Ranked Users from Leaderboard by monthlyScore
+    const allUsers = await User.find({}).sort({ monthlyScore: -1, streak: -1, name: 1 }).lean();
+    const topScorers = allUsers.slice(0, winnerCount);
+
+    // Map winners with clean names (no @ tags) directly from DB points leaderboard or stored custom names
+    const winners = calc.amounts.map((amount, idx) => {
+      const userObj = topScorers[idx];
+      const dbName = userObj ? (userObj.registeredName || userObj.name || `Student ${idx + 1}`) : `Student ${idx + 1}`;
+      const rawName = (customWinnerNamesList[idx] && customWinnerNamesList[idx].trim())
+        ? customWinnerNamesList[idx].trim()
+        : dbName;
+
+      const cleanName = String(rawName).replace(/^@~?/, "");
+      return {
+        rank: idx + 1,
+        name: cleanName,
+        phone: userObj?.phone || null,
+        monthlyScore: userObj?.monthlyScore || 0,
+        amount,
+        percentage: calc.percentages[idx] || 0,
+      };
+    });
+
+    // 5. Build WhatsApp preview message
+    const previewMessage = buildMonthEndPrizeReportMessage({
+      monthName,
+      year,
+      totalCollection,
+      winners,
+      footerNote,
+    });
+
+    return {
+      success: true,
+      monthName,
+      year,
+      autoCalculatedCollection,
+      totalCollection,
+      prizeCustomTotalCollection: dbStatus?.prizeCustomTotalCollection ?? null,
+      prizeCustomAmounts: dbStatus?.prizeCustomAmounts || [],
+      prizeCustomWinnerNames: dbStatus?.prizeCustomWinnerNames || [],
+      winnerCount,
+      calculationMethod,
+      methodName: calc.methodName,
+      formulaText: calc.formulaText,
+      distributedTotal: calc.distributedTotal,
+      winners,
+      previewMessage,
+      footerNote,
+      autoSendEnabled: dbStatus?.monthEndReportAutoSend !== false,
+      lastSentDate: dbStatus?.lastMonthEndReportDate || null,
+      lastSentStatus: dbStatus?.lastMonthEndReportStatus || null,
+    };
+  } catch (err) {
+    console.error("[WhatsApp] Error in getMonthEndPrizeReportSummary:", err.message);
+    return {
+      success: false,
+      error: err.message,
+      monthName: "CURRENT MONTH",
+      totalCollection: 60,
+      winnerCount: 3,
+      calculationMethod: "preset_top3",
+      formulaText: "Error calculating distribution",
+      winners: [],
+      previewMessage: "",
+    };
+  }
+}
+
+/**
+ * Dispatch Month-End Prize Distribution Report to WhatsApp Group.
+ */
+export async function sendMonthEndPrizeReportToGroup(options = {}) {
+  const targetGroup = options.targetGroup || process.env.TARGET_GROUP;
+  if (!targetGroup) {
+    throw new Error("TARGET_GROUP is not configured in .env");
+  }
+
+  // Fetch summary data with any overrides
+  const summary = await getMonthEndPrizeReportSummary(options);
+  if (!summary || !summary.previewMessage) {
+    throw new Error("Failed to generate Month-End Prize Distribution report message");
+  }
+
+  // Ensure WhatsApp socket is connected
+  await ensureWhatsAppConnected(15000);
+
+  console.log(`[WhatsApp] 🏆 Dispatching Month-End Prize Report to ${targetGroup}...`);
+  await sock.sendMessage(targetGroup, { text: summary.previewMessage });
+  console.log(`[WhatsApp] ✅ Month-End Prize Report sent successfully to ${targetGroup}!`);
+
+  // Automatically credit winning students' wallets in MongoDB
+  try {
+    const User = (await import("../../../models/userSchema.js")).default;
+    const rankLabels = ["1st Place", "2nd Place", "3rd Place", "4th Place", "5th Place", "6th Place"];
+
+    for (const w of summary.winners || []) {
+      const creditAmount = Math.max(0, Number(w.amount) || 0);
+      if (creditAmount <= 0) continue;
+
+      // Find user by phone or name
+      let user = null;
+      if (w.phone) {
+        user = await User.findOne({ phone: w.phone });
+      }
+      if (!user && w.name) {
+        user = await User.findOne({
+          $or: [
+            { name: { $regex: `^${w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } },
+            { registeredName: { $regex: `^${w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: "i" } },
+          ]
+        });
+      }
+
+      if (user) {
+        const rankText = rankLabels[w.rank - 1] || `${w.rank}th Place`;
+        const newBalance = (Number(user.walletBalance) || 0) + creditAmount;
+        user.walletBalance = newBalance;
+        if (!Array.isArray(user.walletHistory)) user.walletHistory = [];
+        user.walletHistory.push({
+          type: "credit",
+          amount: creditAmount,
+          reason: `🏆 Month-End Prize Reward (${summary.monthName} — ${rankText})`,
+          balanceAfter: newBalance,
+          date: new Date(),
+        });
+        await user.save();
+        console.log(`[WhatsApp Wallet] 💰 Credited ₹${creditAmount} to ${user.name || user.phone} (Rank ${w.rank}). New wallet balance: ₹${newBalance}`);
+      }
+    }
+  } catch (walletErr) {
+    console.error("[WhatsApp Wallet] Error crediting winner wallets:", walletErr.message);
+  }
+
+  // Persist last sent status in DB
+  try {
+    const Status = (await import("../../../models/statusSchema.js")).default;
+    const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const y = nowIST.getFullYear();
+    const mo = String(nowIST.getMonth() + 1).padStart(2, "0");
+    const d = String(nowIST.getDate()).padStart(2, "0");
+    const dateStr = `${y}-${mo}-${d}`;
+
+    await Status.updateOne({}, {
+      $set: {
+        lastMonthEndReportDate: dateStr,
+        lastMonthEndReportStatus: "success",
+        lastMonthEndReportError: null,
+        prizeWinnerCount: summary.winnerCount,
+        prizeCalculationMethod: summary.calculationMethod,
+        prizeCustomTotalCollection: options.totalCollection != null ? options.totalCollection : summary.totalCollection,
+        prizeFooterNote: summary.footerNote,
+      }
+    }, { upsert: true });
+  } catch {}
+
+  return {
+    success: true,
+    targetGroup,
+    totalCollection: summary.totalCollection,
+    winnerCount: summary.winnerCount,
+    formulaText: summary.formulaText,
+    winners: summary.winners,
+    message: summary.previewMessage,
+    sentAt: new Date(),
+  };
+}
+
+/**
+ * Save Month-End Prize settings permanently to MongoDB Status collection.
+ */
+export async function saveMonthEndPrizeSettings(settings = {}) {
+  const Status = (await import("../../../models/statusSchema.js")).default;
+
+  const updates = {};
+  
+  if (settings.winnerCount !== undefined) {
+    const count = parseInt(settings.winnerCount, 10);
+    if (!isNaN(count) && count >= 3 && count <= 6) {
+      updates.prizeWinnerCount = count;
+    }
+  }
+
+  if (settings.calculationMethod !== undefined) {
+    const validMethods = ["preset_top3", "preset_top4", "preset_top5", "preset_top6", "equal", "custom"];
+    if (validMethods.includes(settings.calculationMethod)) {
+      updates.prizeCalculationMethod = settings.calculationMethod;
+    }
+  }
+
+  if (settings.totalCollection !== undefined) {
+    updates.prizeCustomTotalCollection = settings.totalCollection !== null && settings.totalCollection !== ""
+      ? Number(settings.totalCollection)
+      : null;
+  }
+
+  if (Array.isArray(settings.customAmounts)) {
+    updates.prizeCustomAmounts = settings.customAmounts.map(Number).filter(n => !isNaN(n));
+  }
+
+  if (Array.isArray(settings.customWinnerNames)) {
+    updates.prizeCustomWinnerNames = settings.customWinnerNames.map(s => String(s || "").trim());
+  }
+
+  if (settings.footerNote !== undefined) {
+    updates.prizeFooterNote = typeof settings.footerNote === "string" ? settings.footerNote.trim() : "*Rewards will credit before evening*";
+  }
+
+  if (settings.monthEndReportAutoSend !== undefined) {
+    updates.monthEndReportAutoSend = settings.monthEndReportAutoSend === true || settings.monthEndReportAutoSend === "true";
+  }
+
+  await Status.updateOne({}, { $set: updates }, { upsert: true });
+  console.log("[WhatsApp] 💾 Saved Month-End Prize Settings to MongoDB:", updates);
+
+  const updatedStatus = await Status.findOne().lean();
+  return {
+    success: true,
+    message: "Month-End Prize settings saved to MongoDB successfully!",
+    settings: {
+      prizeWinnerCount: updatedStatus?.prizeWinnerCount ?? 3,
+      prizeCalculationMethod: updatedStatus?.prizeCalculationMethod || "preset_top3",
+      prizeCustomTotalCollection: updatedStatus?.prizeCustomTotalCollection ?? null,
+      prizeCustomAmounts: updatedStatus?.prizeCustomAmounts || [],
+      prizeCustomWinnerNames: updatedStatus?.prizeCustomWinnerNames || [],
+      prizeFooterNote: updatedStatus?.prizeFooterNote || "*Rewards will credit before evening*",
+      monthEndReportAutoSend: updatedStatus?.monthEndReportAutoSend !== false,
+    },
+  };
 }

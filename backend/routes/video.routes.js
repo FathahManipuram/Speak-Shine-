@@ -77,6 +77,7 @@ router.post("/confirm", authMiddleware, requirePaid, videoUploadLimiter, videoCo
 router.post(
   "/upload",
   authMiddleware,
+  requirePaid,
   videoUploadLimiter,
   (req, res, next) => upload.single("video")(req, res, (err) => handleMulterError(err, req, res, next)),
   videoController.uploadVideo

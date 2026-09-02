@@ -450,8 +450,34 @@ export function startDailyReset() {
   // Clean up expired R2 videos every hour
   cron.schedule("0 * * * *", cleanExpiredVideos, { timezone: TIMEZONE });
 
+  // ── Month-End Prize Distribution Report Cron (23:59 IST / 11:59 PM IST on last day of month) ──
+  // Runs 1 minute before 12:00 AM midnight reset so final monthly scores and totals are intact!
+  cron.schedule("59 23 * * *", async () => {
+    try {
+      const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: TIMEZONE }));
+      const tomorrowIST = new Date(nowIST);
+      tomorrowIST.setDate(tomorrowIST.getDate() + 1);
+
+      // Check if tomorrow is the 1st of the new month (i.e. today is the last day of the month)
+      if (tomorrowIST.getDate() === 1) {
+        const Status = (await import("../models/statusSchema.js")).default;
+        const status = await Status.findOne().lean().catch(() => null);
+
+        if (status?.monthEndReportAutoSend !== false) {
+          console.log(`[Scheduler] 🏆 Month-end detected (${nowIST.toLocaleDateString("en-IN")}) — dispatching automated Month-End Prize Distribution Report at 11:59 PM IST...`);
+          const { sendMonthEndPrizeReportToGroup } = await import("../backend/services/whatsapp/whatsappService.js");
+          await sendMonthEndPrizeReportToGroup();
+        } else {
+          console.log("[Scheduler] ℹ️ Month-end prize report auto-send is disabled in settings.");
+        }
+      }
+    } catch (err) {
+      console.error("[Scheduler] ❌ Month-end prize report cron error:", err.message);
+    }
+  }, { timezone: TIMEZONE });
+
   // Run once on startup to catch any orphaned videos from previous sessions
   setTimeout(cleanExpiredVideos, 5000);
   
-  console.log("[Scheduler] ✅ Daily reset scheduler running (00:00 midnight + 00:05 safety fallback)");
+  console.log("[Scheduler] ✅ Daily reset scheduler running (00:00 midnight + 23:59 11:59PM month-end + 00:05 safety fallback)");
 }

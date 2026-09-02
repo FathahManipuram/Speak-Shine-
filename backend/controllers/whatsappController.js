@@ -7,8 +7,12 @@ import {
   sendDailyPosterToGroup,
   sendDailySubmissionReportToGroup,
   getSubmissionReportSummary,
+  getParticipatingGroups,
   restartWhatsAppBot,
   logoutWhatsAppBot,
+  getMonthEndPrizeReportSummary,
+  sendMonthEndPrizeReportToGroup,
+  saveMonthEndPrizeSettings as savePrizeSettings,
 } from "../services/whatsapp/whatsappService.js";
 import Status from "../../models/statusSchema.js";
 
@@ -148,8 +152,12 @@ export async function sendSlotReport(req, res) {
 
 export async function reconnectWhatsApp(req, res) {
   try {
-    await restartWhatsAppBot();
-    return res.json({ success: true, message: "Reconnection started. QR code refreshed." });
+    const { force } = req.body || req.query || {};
+    await restartWhatsAppBot(!!force);
+    return res.json({
+      success: true,
+      message: force ? "Session reset triggered. Generating fresh QR code..." : "Reconnection started.",
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -188,3 +196,75 @@ export async function sendTestAdminAlert(req, res) {
     return res.status(400).json({ success: false, error: err.message });
   }
 }
+
+export async function getGroups(req, res) {
+  try {
+    const groups = await getParticipatingGroups();
+    return res.json({ success: true, groups });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function getMonthEndPrizeSummary(req, res) {
+  try {
+    const { totalCollection, winnerCount, calculationMethod, customAmounts, customWinnerNames, footerNote } = req.query || {};
+    const parsedCustom = customAmounts ? String(customAmounts).split(",").map(Number) : undefined;
+    const parsedNames = customWinnerNames ? String(customWinnerNames).split(",") : undefined;
+
+    const summary = await getMonthEndPrizeReportSummary({
+      totalCollection: totalCollection != null && totalCollection !== "" ? Number(totalCollection) : undefined,
+      winnerCount: winnerCount != null && winnerCount !== "" ? Number(winnerCount) : undefined,
+      calculationMethod,
+      customAmounts: parsedCustom,
+      customWinnerNames: parsedNames,
+      footerNote,
+    });
+
+    return res.json(summary);
+  } catch (err) {
+    console.error("[WhatsAppController] getMonthEndPrizeSummary error:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function sendMonthEndPrizeReport(req, res) {
+  try {
+    const {
+      targetGroup,
+      totalCollection,
+      winnerCount,
+      calculationMethod,
+      customAmounts,
+      customWinnerNames,
+      footerNote,
+    } = req.body || {};
+
+    const result = await sendMonthEndPrizeReportToGroup({
+      targetGroup,
+      totalCollection,
+      winnerCount,
+      calculationMethod,
+      customAmounts,
+      customWinnerNames,
+      footerNote,
+    });
+
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("[WhatsAppController] sendMonthEndPrizeReport error:", err.message);
+    return res.status(400).json({ success: false, error: err.message });
+  }
+}
+
+export async function saveMonthEndSettings(req, res) {
+  try {
+    const result = await savePrizeSettings(req.body);
+    return res.json(result);
+  } catch (err) {
+    console.error("[WhatsAppController] saveMonthEndSettings error:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+

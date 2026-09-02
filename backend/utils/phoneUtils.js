@@ -25,14 +25,61 @@ export function addCountryCode(phone) {
 }
 
 /**
- * Get all possible phone number variations
+ * Get all possible phone number variations used across the app.
+ * Covers 10-digit, +91, 91, and space-formatted values.
  * @param {string} phone - Phone number
- * @returns {string[]} - Array of phone number variations
+ * @returns {string[]} - Array of normalized phone variants
  */
 export function getPhoneVariations(phone) {
   if (!phone) return [];
-  const stripped = stripCountryCode(phone);
-  return [phone, stripped, `91${stripped}`];
+  const raw = String(phone).trim();
+  const digits = raw.replace(/\D/g, "");
+  const normalized = digits.replace(/^91/, "");
+
+  const candidates = new Set();
+  for (const value of [raw, digits, normalized, `91${normalized}`, `+91${normalized}`]) {
+    if (!value) continue;
+    candidates.add(String(value).trim());
+  }
+  if (normalized.length === 10) {
+    candidates.add(normalized);
+    candidates.add(`91${normalized}`);
+    candidates.add(`+91${normalized}`);
+  }
+  return [...candidates];
+}
+
+/**
+ * Canonical wallet lookup variants to resolve a user from any stored formatting.
+ * @param {string} phone - Raw phone value from request or DB
+ * @returns {string[]} - Unique variants to try in order
+ */
+export function getPhoneLookupVariants(phone) {
+  const variants = getPhoneVariations(phone);
+  const ordered = [];
+  const seen = new Set();
+
+  for (const variant of variants) {
+    const clean = String(variant).trim();
+    if (!clean || seen.has(clean)) continue;
+    ordered.push(clean);
+    seen.add(clean);
+  }
+
+  const bareDigits = String(phone || "").replace(/\D/g, "");
+  if (bareDigits.length === 10) {
+    const bare = bareDigits;
+    const with91 = `91${bare}`;
+    const withPlus91 = `+91${bare}`;
+    for (const variant of [bare, with91, withPlus91]) {
+      if (!seen.has(variant)) {
+        ordered.push(variant);
+        seen.add(variant);
+      }
+    }
+  }
+
+  return ordered;
 }
 
 /**

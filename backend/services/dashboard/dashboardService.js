@@ -13,6 +13,7 @@ import env from "../../config/env.js";
 import { getTodayVocabulary } from "../ai/vocabularyGenerator.js";
 import { getDurationLimits } from "../video/submitGate.js";
 import { serializeStreakBadges } from "../../utils/streakBadges.js";
+import { getMonthlyGracePeriodInfo } from "../../utils/gracePeriodUtils.js";
 
 const withBadgeData = (user, data = {}) => ({ ...data, ...serializeStreakBadges(user) });
 const activeStoryTask = (status) => status?.todayContentType === "story_audio"
@@ -319,6 +320,7 @@ export async function getUserProfile(phone) {
         isPictureDescription: activePictureTask(status),
       }, status || {}),
     },
+    gracePeriod: getMonthlyGracePeriodInfo(),
     dailyReport: showReport ? dailyReport : null,
     showReport,
     reportExpiresAt: showReport ? status.reportExpiresAt : null,
@@ -537,6 +539,14 @@ export async function getSettings() {
     durationPictureFull: status.durationPictureFull ?? 180,
     adminNotifyPhone: status.adminNotifyPhone || process.env.ADMIN_NOTIFY_PHONE || null,
     deploymentNotifyEnabled: status.deploymentNotifyEnabled !== false,
+    prizeWinnerCount: status.prizeWinnerCount ?? 3,
+    prizeCalculationMethod: status.prizeCalculationMethod || "preset_top3",
+    prizeCustomTotalCollection: status.prizeCustomTotalCollection ?? null,
+    prizeCustomAmounts: Array.isArray(status.prizeCustomAmounts) ? status.prizeCustomAmounts : [],
+    prizeFooterNote: status.prizeFooterNote || "*Rewards will credit before evening*",
+    monthEndReportAutoSend: status.monthEndReportAutoSend !== false,
+    lastMonthEndReportDate: status.lastMonthEndReportDate || null,
+    lastMonthEndReportStatus: status.lastMonthEndReportStatus || "pending",
   };
 }
 
@@ -968,6 +978,41 @@ export async function updateSettings(input, ...rest) {
     updates.allowPrivateVideos = allowPrivateVideos === true || allowPrivateVideos === "true";
   }
 
+  // Month-End Prize Settings
+  if (params.prizeWinnerCount !== undefined) {
+    const count = parseInt(params.prizeWinnerCount, 10);
+    if (!isNaN(count) && count >= 3 && count <= 6) {
+      updates.prizeWinnerCount = count;
+    }
+  }
+
+  if (params.prizeCalculationMethod !== undefined) {
+    const validMethods = ["preset_top3", "preset_top4", "preset_top5", "preset_top6", "equal", "custom"];
+    if (validMethods.includes(params.prizeCalculationMethod)) {
+      updates.prizeCalculationMethod = params.prizeCalculationMethod;
+    }
+  }
+
+  if (params.prizeCustomTotalCollection !== undefined) {
+    updates.prizeCustomTotalCollection = params.prizeCustomTotalCollection !== null && params.prizeCustomTotalCollection !== ""
+      ? Number(params.prizeCustomTotalCollection)
+      : null;
+  }
+
+  if (params.prizeCustomAmounts !== undefined) {
+    if (Array.isArray(params.prizeCustomAmounts)) {
+      updates.prizeCustomAmounts = params.prizeCustomAmounts.map(Number).filter(n => !isNaN(n));
+    }
+  }
+
+  if (params.prizeFooterNote !== undefined) {
+    updates.prizeFooterNote = typeof params.prizeFooterNote === "string" ? params.prizeFooterNote.trim() : "*Rewards will credit before evening*";
+  }
+
+  if (params.monthEndReportAutoSend !== undefined) {
+    updates.monthEndReportAutoSend = params.monthEndReportAutoSend === true || params.monthEndReportAutoSend === "true";
+  }
+
   await Status.updateOne({}, { $set: updates }, { upsert: true });
   
   return { success: true, ...updates };
@@ -1033,13 +1078,29 @@ export async function enableMonthlyReflection() {
       todayAudioUrl: null,
       todayStoryTranscript: null,
       todaySummaryGuide: null,
+      todayImageUrl: null,
+      todayPosterImage: null,
       todayTopic: MONTHLY_REFLECTION_TOPIC,
       todayQuestion: reflectionText,
       todayCategory: MONTHLY_REFLECTION_CATEGORY,
     }
   }, { upsert: true });
+
+  const { ensureTodayVocabulary } = await import("../ai/vocabularyGenerator.js");
+  await ensureTodayVocabulary().catch(err => console.warn("[Dashboard] Vocabulary generation failed:", err.message));
+
+  try {
+    const { sendDailyPosterToGroup } = await import("../whatsapp/whatsappService.js");
+    await sendDailyPosterToGroup({
+      topic: MONTHLY_REFLECTION_TOPIC,
+      question: reflectionText,
+      category: MONTHLY_REFLECTION_CATEGORY,
+    });
+  } catch (waErr) {
+    console.warn("[Dashboard] WhatsApp poster auto-send skipped/failed:", waErr.message);
+  }
   
-  return { success: true, message: "Monthly reflection mode activated — refresh the app to see it" };
+  return { success: true, message: "Monthly reflection mode activated and poster sent to WhatsApp" };
 }
 
 /**
@@ -1060,13 +1121,29 @@ export async function enableMonthlyGoals() {
       todayAudioUrl: null,
       todayStoryTranscript: null,
       todaySummaryGuide: null,
+      todayImageUrl: null,
+      todayPosterImage: null,
       todayTopic: MONTHLY_GOALS_TOPIC,
       todayQuestion: goalsText,
       todayCategory: MONTHLY_GOALS_CATEGORY,
     }
   }, { upsert: true });
+
+  const { ensureTodayVocabulary } = await import("../ai/vocabularyGenerator.js");
+  await ensureTodayVocabulary().catch(err => console.warn("[Dashboard] Vocabulary generation failed:", err.message));
+
+  try {
+    const { sendDailyPosterToGroup } = await import("../whatsapp/whatsappService.js");
+    await sendDailyPosterToGroup({
+      topic: MONTHLY_GOALS_TOPIC,
+      question: goalsText,
+      category: MONTHLY_GOALS_CATEGORY,
+    });
+  } catch (waErr) {
+    console.warn("[Dashboard] WhatsApp poster auto-send skipped/failed:", waErr.message);
+  }
   
-  return { success: true, message: "Monthly goal-setting mode activated — refresh the app to see it" };
+  return { success: true, message: "Monthly goal-setting mode activated and poster sent to WhatsApp" };
 }
 
 
