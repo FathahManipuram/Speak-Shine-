@@ -433,32 +433,42 @@ export async function adminAdjustWallet(req, res) {
     const cleanPhone = getRequestPhone(phone);
     if (!cleanPhone) return res.status(400).json({ error: "Student phone number is required" });
 
-    const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      return res.status(400).json({ error: "Amount must be a positive number" });
-    }
+    let normalizedAction = actionType;
+    if (actionType === "add") normalizedAction = "credit";
+    if (actionType === "remove") normalizedAction = "debit";
 
     const validActions = ["credit", "debit", "set"];
-    if (!validActions.includes(actionType)) {
+    if (!validActions.includes(normalizedAction)) {
       return res.status(400).json({ error: "Invalid actionType. Must be 'credit', 'debit', or 'set'" });
     }
 
-    let user = await findUserByPhone(cleanPhone);
+    const numAmount = Number(amount);
+    if (normalizedAction === "set") {
+      if (isNaN(numAmount) || numAmount < 0) {
+        return res.status(400).json({ error: "Amount must be 0 or greater for setting wallet balance" });
+      }
+    } else {
+      if (isNaN(numAmount) || numAmount <= 0) {
+        return res.status(400).json({ error: "Amount must be a positive number" });
+      }
+    }
+
+    const user = await findUserByPhone(cleanPhone);
     if (!user) return res.status(404).json({ error: "Student user record not found" });
 
     const currentBalance = Number(user.walletBalance) || 0;
     let newBalance = currentBalance;
-    let transactionType = actionType === "debit" ? "debit" : "credit";
+    let transactionType = normalizedAction === "debit" ? "debit" : "credit";
     let changeAmount = numAmount;
 
-    if (actionType === "credit") {
+    if (normalizedAction === "credit") {
       newBalance = currentBalance + numAmount;
-    } else if (actionType === "debit") {
+    } else if (normalizedAction === "debit") {
       if (numAmount > currentBalance) {
         return res.status(400).json({ error: `Cannot debit ₹${numAmount}. Current student wallet balance is only ₹${currentBalance}` });
       }
       newBalance = currentBalance - numAmount;
-    } else if (actionType === "set") {
+    } else if (normalizedAction === "set") {
       const diff = numAmount - currentBalance;
       transactionType = diff >= 0 ? "credit" : "debit";
       changeAmount = Math.abs(diff);

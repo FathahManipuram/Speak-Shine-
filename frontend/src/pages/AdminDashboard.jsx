@@ -485,34 +485,27 @@ export default function AdminDashboard() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletHistoryList, setWalletHistoryList] = useState([]);
 
-  const openAdminWalletModal = async (u) => {
-    console.log("[WalletModal] Opening for:", u?.phone, u?.registeredName || u?.name);
-    setWalletModalUser(u);
-    setWalletActionType("credit");
-    setWalletAmount("");
-    setWalletReason("");
-    setWalletHistoryList(u.walletHistory || []);
-
-    try {
-      const res = await api.get(`/payments/admin/wallet-history/${encodeURIComponent(u.phone)}`);
-      if (res.data?.success) {
-        setWalletHistoryList(res.data.walletHistory || []);
-        if (res.data.user?.walletBalance != null) {
-          setUsers(prev => prev.map(usr => usr.phone === u.phone ? { ...usr, walletBalance: res.data.user.walletBalance } : usr));
-          setSelectedStudent(prev => prev?.phone === u.phone ? { ...prev, walletBalance: res.data.user.walletBalance } : prev);
-        }
-      }
-    } catch (err) {
-      console.warn("Failed to fetch fresh student wallet history:", err);
+  const openAdminWalletModal = (u, e) => {
+    if (e && typeof e.stopPropagation === "function") {
+      e.stopPropagation();
+      if (typeof e.preventDefault === "function") e.preventDefault();
     }
+    openPointsModal(u, "add", "wallet");
   };
 
   const handleAdminAdjustWallet = async () => {
     if (!walletModalUser || !walletModalUser.phone) return;
     const amt = Number(walletAmount);
-    if (isNaN(amt) || amt <= 0) {
-      msg("Please enter a valid positive amount in ₹", "danger");
-      return;
+    if (walletActionType === "set") {
+      if (isNaN(amt) || amt < 0) {
+        msg("Please enter a valid balance amount (₹0 or greater)", "danger");
+        return;
+      }
+    } else {
+      if (isNaN(amt) || amt <= 0) {
+        msg("Please enter a valid positive amount in ₹", "danger");
+        return;
+      }
     }
 
     try {
@@ -527,9 +520,9 @@ export default function AdminDashboard() {
       if (res.data?.success) {
         msg(`✅ Wallet ${walletActionType}ed successfully! New balance: ₹${res.data.walletBalance}`, "success");
         setWalletHistoryList(res.data.walletHistory || []);
-        setWalletModalUser(prev => prev ? { ...prev, walletBalance: res.data.walletBalance } : null);
+        setWalletModalUser(prev => prev ? { ...prev, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : null);
         setUsers(prev => prev.map(u => u.phone === walletModalUser.phone ? { ...u, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : u));
-        setSelectedStudent(prev => prev?.phone === walletModalUser.phone ? { ...prev, walletBalance: res.data.walletBalance } : prev);
+        setSelectedStudent(s => (s && s.phone === walletModalUser.phone) ? { ...s, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : s);
         setWalletAmount("");
         setWalletReason("");
       }
@@ -1562,6 +1555,8 @@ export default function AdminDashboard() {
       initialAmount = defaultMode === "set" ? (u.streak || 0) : 1;
     } else if (targetType === "freeze") {
       initialAmount = defaultMode === "set" ? (u.streakFreeze || 0) : 1;
+    } else if (targetType === "wallet") {
+      initialAmount = defaultMode === "set" ? (u.walletBalance || 0) : 50;
     } else {
       initialAmount = defaultMode === "set" ? Math.round(u.monthlyScore || 0) : 50;
     }
@@ -1569,26 +1564,100 @@ export default function AdminDashboard() {
     setPointsModal({
       isOpen: true,
       user: u,
-      targetType, // "points" | "streak" | "freeze"
+      targetType, // "points" | "streak" | "freeze" | "wallet"
       mode: defaultMode,
       amount: initialAmount,
       reason: "",
     });
+
+    if (targetType === "wallet" && u.phone) {
+      api.get(`/payments/admin/wallet-history/${encodeURIComponent(u.phone)}`)
+        .then(res => {
+          if (res.data?.success) {
+            setWalletHistoryList(res.data.walletHistory || []);
+            if (res.data.user?.walletBalance != null) {
+              setPointsModal(prev => prev ? {
+                ...prev,
+                user: { ...prev.user, walletBalance: res.data.user.walletBalance, walletHistory: res.data.walletHistory }
+              } : null);
+              setUsers(prev => prev.map(usr => usr.phone === u.phone ? { ...usr, walletBalance: res.data.user.walletBalance, walletHistory: res.data.walletHistory } : usr));
+              setSelectedStudent(s => s && s.phone === u.phone ? { ...s, walletBalance: res.data.user.walletBalance, walletHistory: res.data.walletHistory } : s);
+            }
+          }
+        })
+        .catch(err => {
+          console.warn("Failed to fetch fresh student wallet history:", err);
+        });
+    }
   };
 
   const savePointsAdjustment = async () => {
     if (!pointsModal?.user) return;
     const amount = Number(pointsModal.amount);
+    const targetType = pointsModal.targetType || "points";
+    const phone = pointsModal.user.phone;
+    const studentName = pointsModal.user.registeredName || pointsModal.user.name || phone;
+
+    if (targetType === "wallet") {
+      const actionType = pointsModal.mode === "add" ? "credit" : (pointsModal.mode === "remove" ? "debit" : "set");
+      if (actionType === "set") {
+        if (isNaN(amount) || amount < 0) {
+          msg("Please enter a valid balance amount (₹0 or greater)", "danger");
+          return;
+        }
+      } else {
+        if (isNaN(amount) || amount <= 0) {
+          msg("Please enter a valid positive amount in ₹", "danger");
+          return;
+        }
+      }
+
+      setSavingPoints(true);
+      try {
+        const res = await api.post("/payments/admin/wallet-adjust", {
+          phone,
+          actionType,
+          amount,
+          reason: pointsModal.reason,
+        });
+
+        if (res.data?.success) {
+          msg(`✅ Wallet ${actionType}ed successfully for ${studentName}! New balance: ₹${res.data.walletBalance}`, "success");
+          setWalletHistoryList(res.data.walletHistory || []);
+          setUsers(prev => prev.map(u => {
+            const uPhone = String(u.phone || "").replace(/^(\+91|91)/, "");
+            const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+            if (uPhone === targetPhone || u.phone === phone || (pointsModal.user.userId && u.userId === pointsModal.user.userId)) {
+              return { ...u, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory };
+            }
+            return u;
+          }));
+
+          setSelectedStudent(s => {
+            if (!s) return null;
+            const sPhone = String(s.phone || "").replace(/^(\+91|91)/, "");
+            const targetPhone = String(phone).replace(/^(\+91|91)/, "");
+            if (sPhone === targetPhone || s.phone === phone || (pointsModal.user.userId && s.userId === pointsModal.user.userId)) {
+              return { ...s, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory };
+            }
+            return s;
+          });
+        }
+        setPointsModal(null);
+      } catch (err) {
+        msg(err?.response?.data?.error || "Failed to adjust wallet balance", "danger");
+      } finally {
+        setSavingPoints(false);
+      }
+      return;
+    }
+
     if (isNaN(amount) || amount < 0) {
       msg("Please enter a valid amount", "danger");
       return;
     }
     setSavingPoints(true);
     try {
-      const phone = pointsModal.user.phone;
-      const targetType = pointsModal.targetType || "points";
-      const studentName = pointsModal.user.registeredName || pointsModal.user.name || phone;
-
       if (targetType === "streak") {
         const { data } = await api.patch(`/users/${encodeURIComponent(phone)}/streak`, {
           amount,
@@ -1764,11 +1833,11 @@ export default function AdminDashboard() {
         }}>
           <div style={{
             background: "linear-gradient(180deg, #18192a 0%, #0f101c 100%)",
-            border: `1px solid ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.4)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.4)" : "rgba(167, 139, 250, 0.4)"}`,
-            boxShadow: `0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.2)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.2)" : "rgba(124, 111, 255, 0.2)"}`,
+            border: `1px solid ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.4)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.4)" : pointsModal.targetType === "wallet" ? "rgba(16, 185, 129, 0.4)" : "rgba(167, 139, 250, 0.4)"}`,
+            boxShadow: `0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.2)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.2)" : pointsModal.targetType === "wallet" ? "rgba(16, 185, 129, 0.2)" : "rgba(124, 111, 255, 0.2)"}`,
             borderRadius: 20,
             width: "100%",
-            maxWidth: 490,
+            maxWidth: 520,
             overflow: "hidden",
           }}>
             {/* Modal Header */}
@@ -1784,18 +1853,18 @@ export default function AdminDashboard() {
                   width: 38,
                   height: 38,
                   borderRadius: 10,
-                  background: pointsModal.targetType === "streak" ? "linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(234, 88, 12, 0.3))" : pointsModal.targetType === "freeze" ? "linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.3))" : "linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3))",
-                  border: `1px solid ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.5)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.5)" : "rgba(168, 85, 247, 0.5)"}`,
+                  background: pointsModal.targetType === "streak" ? "linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(234, 88, 12, 0.3))" : pointsModal.targetType === "freeze" ? "linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(14, 165, 233, 0.3))" : pointsModal.targetType === "wallet" ? "linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.3))" : "linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(99, 102, 241, 0.3))",
+                  border: `1px solid ${pointsModal.targetType === "streak" ? "rgba(249, 115, 22, 0.5)" : pointsModal.targetType === "freeze" ? "rgba(56, 189, 248, 0.5)" : pointsModal.targetType === "wallet" ? "rgba(16, 185, 129, 0.5)" : "rgba(168, 85, 247, 0.5)"}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "1.2rem",
                 }}>
-                  {pointsModal.targetType === "streak" ? "🔥" : pointsModal.targetType === "freeze" ? "🧊" : "⭐"}
+                  {pointsModal.targetType === "streak" ? "🔥" : pointsModal.targetType === "freeze" ? "🧊" : pointsModal.targetType === "wallet" ? "💰" : "⭐"}
                 </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff" }}>
-                    {pointsModal.targetType === "streak" ? "Manage Daily Streak" : pointsModal.targetType === "freeze" ? "Manage Streak Freezes" : "Manage Monthly Points"}
+                    {pointsModal.targetType === "streak" ? "Manage Daily Streak" : pointsModal.targetType === "freeze" ? "Manage Streak Freezes" : pointsModal.targetType === "wallet" ? "Manage Student Wallet" : "Manage Monthly Points"}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
                     {pointsModal.user?.registeredName || pointsModal.user?.name || "Student"} ({pointsModal.user?.phone})
@@ -1823,12 +1892,13 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* Target Category Switcher (Points / Streak / Freeze) */}
-            <div style={{ padding: "0.85rem 1.4rem 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.4rem" }}>
+            {/* Target Category Switcher (Points / Streak / Freeze / Wallet) */}
+            <div style={{ padding: "0.85rem 1.4rem 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.4rem" }}>
               {[
                 { id: "points", label: "⭐ Points", color: "#c4b5fd" },
                 { id: "streak", label: "🔥 Streak", color: "#fdba74" },
                 { id: "freeze", label: "🧊 Freeze", color: "#7dd3fc" },
+                { id: "wallet", label: "💰 Wallet", color: "#4ade80" },
               ].map(cat => {
                 const isActive = (pointsModal.targetType || "points") === cat.id;
                 return (
@@ -1837,8 +1907,7 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => {
                       let defaultAmt = 50;
-                      if (cat.id === "streak") defaultAmt = 1;
-                      else if (cat.id === "freeze") defaultAmt = 1;
+                      if (cat.id === "streak" || cat.id === "freeze") defaultAmt = 1;
                       else defaultAmt = 50;
 
                       setPointsModal(prev => ({
@@ -1847,11 +1916,24 @@ export default function AdminDashboard() {
                         mode: "add",
                         amount: defaultAmt,
                       }));
+
+                      if (cat.id === "wallet" && pointsModal.user?.phone) {
+                        api.get(`/payments/admin/wallet-history/${encodeURIComponent(pointsModal.user.phone)}`)
+                          .then(res => {
+                            if (res.data?.success && res.data.user?.walletBalance != null) {
+                              setPointsModal(p => p ? {
+                                ...p,
+                                user: { ...p.user, walletBalance: res.data.user.walletBalance, walletHistory: res.data.walletHistory }
+                              } : null);
+                            }
+                          })
+                          .catch(() => {});
+                      }
                     }}
                     style={{
-                      padding: "0.5rem 0.4rem",
+                      padding: "0.5rem 0.3rem",
                       borderRadius: 10,
-                      fontSize: "0.82rem",
+                      fontSize: "0.78rem",
                       fontWeight: 800,
                       border: isActive ? `1px solid ${cat.color}` : "1px solid rgba(255, 255, 255, 0.06)",
                       background: isActive ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.25)",
@@ -1887,6 +1969,11 @@ export default function AdminDashboard() {
                   unit = "shields";
                   icon = "🧊";
                   activeColor = "#38bdf8";
+                } else if (target === "wallet") {
+                  currentVal = Number(pointsModal.user?.walletBalance || 0);
+                  unit = "₹";
+                  icon = "💰";
+                  activeColor = "#4ade80";
                 } else {
                   currentVal = Number(pointsModal.user?.monthlyScore || 0);
                   unit = "pts";
@@ -1913,19 +2000,19 @@ export default function AdminDashboard() {
                   }}>
                     <div>
                       <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                        Current {target === "streak" ? "Streak" : target === "freeze" ? "Freezes" : "Score"}
+                        Current {target === "streak" ? "Streak" : target === "freeze" ? "Freezes" : target === "wallet" ? "Wallet Balance" : "Score"}
                       </div>
                       <div style={{ fontSize: "1.25rem", fontWeight: 800, color: activeColor, marginTop: "0.15rem" }}>
-                        {icon} {Math.round(currentVal).toLocaleString()} <span style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>{unit}</span>
+                        {target === "wallet" ? `💰 ₹${Math.round(currentVal).toLocaleString()}` : `${icon} ${Math.round(currentVal).toLocaleString()} ${unit}`}
                       </div>
                     </div>
                     <div style={{ fontSize: "1.2rem", color: "var(--muted)" }}>➔</div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                        Projected {target === "streak" ? "Streak" : target === "freeze" ? "Freezes" : "Score"}
+                        Projected {target === "streak" ? "Streak" : target === "freeze" ? "Freezes" : target === "wallet" ? "Wallet Balance" : "Score"}
                       </div>
                       <div style={{ fontSize: "1.25rem", fontWeight: 800, color: projectedVal >= currentVal ? "#4ade80" : "#f87171", marginTop: "0.15rem" }}>
-                        {icon} {Math.round(projectedVal).toLocaleString()} <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>{unit}</span>
+                        {target === "wallet" ? `💰 ₹${Math.round(projectedVal).toLocaleString()}` : `${icon} ${Math.round(projectedVal).toLocaleString()} ${unit}`}
                       </div>
                     </div>
                   </div>
@@ -1942,43 +2029,51 @@ export default function AdminDashboard() {
                 borderRadius: 12,
                 border: "1px solid rgba(255, 255, 255, 0.07)",
               }}>
-                {[
-                  { id: "add", label: `➕ Add ${pointsModal.targetType === "streak" ? "Days" : pointsModal.targetType === "freeze" ? "Freezes" : "Points"}`, color: "#4ade80" },
-                  { id: "remove", label: `➖ Deduct ${pointsModal.targetType === "streak" ? "Days" : pointsModal.targetType === "freeze" ? "Freezes" : "Points"}`, color: "#f87171" },
-                  { id: "set", label: `✏️ Set Exact`, color: "#a78bfa" },
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      const target = pointsModal.targetType || "points";
-                      let curr = 0;
-                      if (target === "streak") curr = pointsModal.user?.streak || 0;
-                      else if (target === "freeze") curr = pointsModal.user?.streakFreeze || 0;
-                      else curr = Math.round(pointsModal.user?.monthlyScore || 0);
+                {(() => {
+                  const target = pointsModal.targetType || "points";
+                  const isWallet = target === "wallet";
+                  const addText = isWallet ? "➕ Credit (+₹)" : `➕ Add ${target === "streak" ? "Days" : target === "freeze" ? "Freezes" : "Points"}`;
+                  const removeText = isWallet ? "➖ Debit (-₹)" : `➖ Deduct ${target === "streak" ? "Days" : target === "freeze" ? "Freezes" : "Points"}`;
+                  const setText = isWallet ? "✏️ Set Exact Balance" : "✏️ Set Exact";
 
-                      setPointsModal(prev => ({
-                        ...prev,
-                        mode: m.id,
-                        amount: m.id === "set" ? curr : (target === "points" ? 50 : 1),
-                      }));
-                    }}
-                    style={{
-                      padding: "0.55rem 0.3rem",
-                      borderRadius: 8,
-                      fontSize: "0.76rem",
-                      fontWeight: 700,
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                      background: pointsModal.mode === m.id ? "rgba(255, 255, 255, 0.12)" : "transparent",
-                      color: pointsModal.mode === m.id ? (m.id === "add" ? "#4ade80" : m.id === "remove" ? "#f87171" : "#c4b5fd") : "var(--muted)",
-                      boxShadow: pointsModal.mode === m.id ? "0 2px 8px rgba(0, 0, 0, 0.4)" : "none",
-                    }}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+                  return [
+                    { id: "add", label: addText, color: "#4ade80" },
+                    { id: "remove", label: removeText, color: "#f87171" },
+                    { id: "set", label: setText, color: "#a78bfa" },
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        let curr = 0;
+                        if (target === "streak") curr = pointsModal.user?.streak || 0;
+                        else if (target === "freeze") curr = pointsModal.user?.streakFreeze || 0;
+                        else if (target === "wallet") curr = pointsModal.user?.walletBalance || 0;
+                        else curr = Math.round(pointsModal.user?.monthlyScore || 0);
+
+                        setPointsModal(prev => ({
+                          ...prev,
+                          mode: m.id,
+                          amount: m.id === "set" ? curr : ((target === "points" || target === "wallet") ? 50 : 1),
+                        }));
+                      }}
+                      style={{
+                        padding: "0.55rem 0.3rem",
+                        borderRadius: 8,
+                        fontSize: "0.76rem",
+                        fontWeight: 700,
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        background: pointsModal.mode === m.id ? "rgba(255, 255, 255, 0.12)" : "transparent",
+                        color: pointsModal.mode === m.id ? (m.id === "add" ? "#4ade80" : m.id === "remove" ? "#f87171" : "#c4b5fd") : "var(--muted)",
+                        boxShadow: pointsModal.mode === m.id ? "0 2px 8px rgba(0, 0, 0, 0.4)" : "none",
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ));
+                })()}
               </div>
 
               {/* Amount Input & Quick Chips */}
@@ -1986,8 +2081,8 @@ export default function AdminDashboard() {
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "var(--text)", marginBottom: "0.45rem" }}>
                   {(() => {
                     const target = pointsModal.targetType || "points";
-                    const noun = target === "streak" ? "Streak Days" : target === "freeze" ? "Streak Freeze Shields" : "Monthly Points";
-                    return pointsModal.mode === "add" ? `${noun} to Add (+)` : pointsModal.mode === "remove" ? `${noun} to Deduct (-)` : `Set Exact ${noun}`;
+                    const noun = target === "streak" ? "Streak Days" : target === "freeze" ? "Streak Freeze Shields" : target === "wallet" ? "Wallet Amount (₹)" : "Monthly Points";
+                    return pointsModal.mode === "add" ? `${noun} to Add / Credit (+)` : pointsModal.mode === "remove" ? `${noun} to Deduct / Debit (-)` : `Set Exact ${noun}`;
                   })()}
                 </label>
                 <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.65rem" }}>
@@ -1997,7 +2092,7 @@ export default function AdminDashboard() {
                     step="1"
                     value={pointsModal.amount}
                     onChange={e => setPointsModal(prev => ({ ...prev, amount: e.target.value }))}
-                    placeholder="e.g. 5"
+                    placeholder="e.g. 50"
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
@@ -2023,11 +2118,14 @@ export default function AdminDashboard() {
                       presets = pointsModal.mode === "add" ? [1, 2, 3, 5, 7, 14, 30] : pointsModal.mode === "remove" ? [1, 2, 3, 5, 7, 14] : [0, 7, 14, 30, 50, 100];
                     } else if (target === "freeze") {
                       presets = pointsModal.mode === "add" ? [1, 2, 3, 5, 10] : pointsModal.mode === "remove" ? [1, 2, 3, 5] : [0, 1, 2, 3, 5, 10];
+                    } else if (target === "wallet") {
+                      presets = pointsModal.mode === "add" ? [10, 20, 50, 100, 200, 500] : pointsModal.mode === "remove" ? [10, 20, 50, 100, 200] : [0, 50, 100, 200, 500, 1000];
                     } else {
                       presets = pointsModal.mode === "add" ? [10, 25, 50, 100, 250, 500] : pointsModal.mode === "remove" ? [10, 25, 50, 100, 200, 500] : [0, 50, 100, 500, 1000, 2000];
                     }
 
-                    const unitSuffix = target === "streak" ? "d" : target === "freeze" ? " shields" : " pts";
+                    const prefix = target === "wallet" ? "₹" : "";
+                    const suffix = target === "streak" ? "d" : target === "freeze" ? " shields" : target === "wallet" ? "" : " pts";
 
                     return presets.map(val => (
                       <button
@@ -2046,7 +2144,7 @@ export default function AdminDashboard() {
                           transition: "all 0.12s ease",
                         }}
                       >
-                        {pointsModal.mode === "add" ? `+${val}` : pointsModal.mode === "remove" ? `-${val}` : `${val}${unitSuffix}`}
+                        {pointsModal.mode === "add" ? `+${prefix}${val}` : pointsModal.mode === "remove" ? `-${prefix}${val}` : `${prefix}${val}${suffix}`}
                       </button>
                     ));
                   })()}
@@ -2121,7 +2219,11 @@ export default function AdminDashboard() {
                   boxShadow: "0 4px 14px rgba(0, 0, 0, 0.4)",
                 }}
               >
-                {savingPoints ? "Saving..." : pointsModal.mode === "remove" ? "➖ Deduct" : pointsModal.mode === "set" ? "✏️ Update Value" : "➕ Add / Award"}
+                {savingPoints
+                  ? "Saving..."
+                  : pointsModal.targetType === "wallet"
+                    ? (pointsModal.mode === "remove" ? "➖ Debit Wallet" : pointsModal.mode === "set" ? "✏️ Set Wallet Balance" : "➕ Credit Wallet")
+                    : (pointsModal.mode === "remove" ? "➖ Deduct" : pointsModal.mode === "set" ? "✏️ Update Value" : "➕ Add / Award")}
               </button>
             </div>
           </div>
@@ -3177,7 +3279,7 @@ export default function AdminDashboard() {
                           <td>
                             <span
                               className="wallet-badge-pill"
-                              onClick={() => openAdminWalletModal(u)}
+                              onClick={(e) => openAdminWalletModal(u, e)}
                               title="Click to manage student wallet balance (Credit / Debit / View History)"
                               style={{
                                 cursor: "pointer",
@@ -3221,10 +3323,11 @@ export default function AdminDashboard() {
                           <td style={{ textAlign: "right", whiteSpace: "nowrap", paddingRight: "1rem" }}>
                             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
                               <button
+                                type="button"
                                 className="act-icon-btn"
-                                onClick={() => openAdminWalletModal(u)}
+                                onClick={(e) => openAdminWalletModal(u, e)}
                                 title="Manage Student Wallet Balance (Credit / Debit / History)"
-                                style={{ color: "#4ade80", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)" }}
+                                style={{ color: "#4ade80", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", cursor: "pointer" }}
                               >
                                 <span style={{ fontSize: "0.78rem" }}>💰</span>
                               </button>
@@ -7429,25 +7532,25 @@ export default function AdminDashboard() {
                 {selectedStudent.paid ? "🟢 Paid Member" : "🔴 Unpaid"}
               </button>
 
-              {/* Wallet Management Button */}
               <button
+                type="button"
+                className="paid-toggle-btn"
+                onClick={(e) => openAdminWalletModal(selectedStudent, e)}
                 style={{
                   padding: "0.5rem 1rem",
                   fontSize: "0.82rem",
-                  fontWeight: 700,
-                  borderRadius: 10,
-                  border: "1px solid rgba(16,185,129,0.4)",
-                  background: "rgba(16,185,129,0.12)",
-                  color: "#4ade80",
+                  background: (selectedStudent.walletBalance || 0) > 0 ? "rgba(16, 185, 129, 0.18)" : "rgba(255, 255, 255, 0.05)",
+                  border: (selectedStudent.walletBalance || 0) > 0 ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.12)",
+                  color: (selectedStudent.walletBalance || 0) > 0 ? "#4ade80" : "var(--muted)",
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "0.35rem",
+                  gap: "0.4rem",
+                  fontWeight: 700,
                 }}
-                onClick={() => openAdminWalletModal(selectedStudent)}
-                title="Manage student wallet balance (Credit / Debit / View History)"
+                title="Click to manage student wallet balance (Credit / Debit / View History)"
               >
-                💰 Wallet {selectedStudent.walletBalance > 0 ? `₹${selectedStudent.walletBalance}` : ""}
+                💰 Wallet ₹{selectedStudent.walletBalance || 0}
               </button>
             </div>
           </div>
@@ -7533,6 +7636,33 @@ export default function AdminDashboard() {
                 {Math.round(selectedStudent.monthlyScore || 0).toLocaleString()} <span style={{ fontSize: "0.85rem", color: "var(--muted)", fontWeight: 600 }}>pts</span>
               </div>
               <div className="admin-kpi-sub">Accumulated points this month</div>
+            </div>
+
+            <div className="admin-kpi-card" style={{ "--kpi-accent": "#10b981" }}>
+              <div className="admin-kpi-top">
+                <span className="admin-kpi-label">WALLET BALANCE</span>
+                <button
+                  type="button"
+                  onClick={(e) => openAdminWalletModal(selectedStudent, e)}
+                  style={{
+                    background: "rgba(16, 185, 129, 0.2)",
+                    border: "1px solid rgba(16, 185, 129, 0.4)",
+                    color: "#6ee7b7",
+                    borderRadius: 6,
+                    padding: "2px 8px",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                  title="Credit, debit, or set student wallet balance"
+                >
+                  ⚙️ Adjust
+                </button>
+              </div>
+              <div className="admin-kpi-value" style={{ color: "#4ade80" }}>
+                ₹{selectedStudent.walletBalance || 0}
+              </div>
+              <div className="admin-kpi-sub">Available store &amp; reward credit</div>
             </div>
 
             <div className="admin-kpi-card" style={{ "--kpi-accent": "#4ade80" }}>
@@ -9105,9 +9235,9 @@ function ManualQuestionsPanel() {
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     className="form-input"
-                    placeholder="Enter amount (e.g. 50)"
+                    placeholder={walletActionType === "set" ? "Enter new balance (e.g. 0 or 50)" : "Enter amount (e.g. 50)"}
                     value={walletAmount}
                     onChange={e => setWalletAmount(e.target.value)}
                     style={{ width: "100%", fontSize: "0.95rem", fontWeight: 700 }}
@@ -9131,7 +9261,7 @@ function ManualQuestionsPanel() {
                 <button
                   type="button"
                   onClick={handleAdminAdjustWallet}
-                  disabled={walletLoading || !walletAmount}
+                  disabled={walletLoading || walletAmount === ""}
                   style={{
                     width: "100%",
                     background: walletActionType === "credit"
@@ -9145,12 +9275,16 @@ function ManualQuestionsPanel() {
                     padding: "0.75rem 1.25rem",
                     fontSize: "0.9rem",
                     fontWeight: 800,
-                    cursor: (walletLoading || !walletAmount) ? "not-allowed" : "pointer",
+                    cursor: (walletLoading || walletAmount === "") ? "not-allowed" : "pointer",
                     boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
                     marginTop: "0.25rem",
                   }}
                 >
-                  {walletLoading ? "Processing..." : `Confirm ${walletActionType.toUpperCase()} of ₹${walletAmount || 0}`}
+                  {walletLoading
+                    ? "Processing..."
+                    : walletActionType === "set"
+                      ? `Confirm SET Balance to ₹${walletAmount !== "" ? walletAmount : 0}`
+                      : `Confirm ${walletActionType.toUpperCase()} of ₹${walletAmount || 0}`}
                 </button>
               </div>
             </div>
