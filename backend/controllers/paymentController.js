@@ -40,6 +40,13 @@ async function findUserByPhone(phone) {
     if (user) return user;
   }
 
+  // Last resort: match userId containing the bare 10-digit number anywhere before @
+  const bare = String(phone).replace(/\D/g, "").replace(/^91/, "").slice(-10);
+  if (bare.length === 10) {
+    const user = await User.findOne({ userId: { $regex: `^(91)?${escapeRegex(bare)}(@|:)` } });
+    if (user) return user;
+  }
+
   return null;
 }
 
@@ -436,7 +443,7 @@ export async function adminAdjustWallet(req, res) {
       return res.status(400).json({ error: "Invalid actionType. Must be 'credit', 'debit', or 'set'" });
     }
 
-    const user = await findUserByPhone(cleanPhone);
+    let user = await findUserByPhone(cleanPhone);
     if (!user) return res.status(404).json({ error: "Student user record not found" });
 
     const currentBalance = Number(user.walletBalance) || 0;
@@ -492,7 +499,7 @@ export async function adminGetStudentWallet(req, res) {
     const cleanPhone = getRequestPhone(req.params.phone);
     if (!cleanPhone) return res.status(400).json({ error: "Phone number required" });
 
-    const user = await findUserByPhone(cleanPhone);
+    let user = await findUserByPhone(cleanPhone);
     if (!user) return res.status(404).json({ error: "Student user record not found" });
 
     return res.json({

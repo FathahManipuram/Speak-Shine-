@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout.jsx";
 import StatCard from "../components/StatCard.jsx";
@@ -485,6 +486,7 @@ export default function AdminDashboard() {
   const [walletHistoryList, setWalletHistoryList] = useState([]);
 
   const openAdminWalletModal = async (u) => {
+    console.log("[WalletModal] Opening for:", u?.phone, u?.registeredName || u?.name);
     setWalletModalUser(u);
     setWalletActionType("credit");
     setWalletAmount("");
@@ -497,6 +499,7 @@ export default function AdminDashboard() {
         setWalletHistoryList(res.data.walletHistory || []);
         if (res.data.user?.walletBalance != null) {
           setUsers(prev => prev.map(usr => usr.phone === u.phone ? { ...usr, walletBalance: res.data.user.walletBalance } : usr));
+          setSelectedStudent(prev => prev?.phone === u.phone ? { ...prev, walletBalance: res.data.user.walletBalance } : prev);
         }
       }
     } catch (err) {
@@ -526,6 +529,7 @@ export default function AdminDashboard() {
         setWalletHistoryList(res.data.walletHistory || []);
         setWalletModalUser(prev => prev ? { ...prev, walletBalance: res.data.walletBalance } : null);
         setUsers(prev => prev.map(u => u.phone === walletModalUser.phone ? { ...u, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : u));
+        setSelectedStudent(prev => prev?.phone === walletModalUser.phone ? { ...prev, walletBalance: res.data.walletBalance } : prev);
         setWalletAmount("");
         setWalletReason("");
       }
@@ -7415,14 +7419,35 @@ export default function AdminDashboard() {
                 style={{ padding: "0.5rem 1rem", fontSize: "0.82rem" }}
                 onClick={async () => {
                   try {
-                    const res = await api.patch(`/users/${selectedStudent.phone}/toggle-paid`);
-                    setSelectedStudent(s => ({ ...s, paid: res.data.paid }));
-                    setUsers(prev => prev.map(u => u.phone === selectedStudent.phone ? { ...u, paid: res.data.paid } : u));
+                    const res = await api.patch(`/payments/admin/toggle-paid/${encodeURIComponent(selectedStudent.phone)}`);
+                    setSelectedStudent(s => ({ ...s, paid: res.data.paid, paidAt: res.data.paidAt }));
+                    setUsers(prev => prev.map(u => u.phone === selectedStudent.phone ? { ...u, paid: res.data.paid, paidAt: res.data.paidAt } : u));
                     msg(res.data.paid ? "Marked as Paid" : "Marked as Unpaid");
                   } catch (e) { msg(e?.response?.data?.error || "Failed", "danger"); }
                 }}
               >
                 {selectedStudent.paid ? "🟢 Paid Member" : "🔴 Unpaid"}
+              </button>
+
+              {/* Wallet Management Button */}
+              <button
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  border: "1px solid rgba(16,185,129,0.4)",
+                  background: "rgba(16,185,129,0.12)",
+                  color: "#4ade80",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                }}
+                onClick={() => openAdminWalletModal(selectedStudent)}
+                title="Manage student wallet balance (Credit / Debit / View History)"
+              >
+                💰 Wallet {selectedStudent.walletBalance > 0 ? `₹${selectedStudent.walletBalance}` : ""}
               </button>
             </div>
           </div>
@@ -8981,7 +9006,7 @@ function ManualQuestionsPanel() {
       )}
 
       {/* ── Admin Student Wallet Management Modal ── */}
-      {walletModalUser && (
+      {walletModalUser && createPortal(
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
           background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)",
@@ -9171,7 +9196,7 @@ function ManualQuestionsPanel() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
