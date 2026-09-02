@@ -1743,36 +1743,25 @@ export default function UserDashboard() {
                     margin: "0 -0.1rem",
                   } : {}}
                 >
+                  {/* rank + name always on the same line, name gets all remaining space */}
                   <span className="streak-rank">{["🥇", "🥈", "🥉"][i] || `${i + 1}.`}</span>
                   <span className="streak-name" style={isMe ? { color: "#a78bfa", fontWeight: 700 } : {}}>
                     {u.name || u.userId?.split("@")[0]}
                     {u.currentBadge && <StreakBadge badge={u.currentBadge} compact />}
                     {isMe && <span style={{ fontSize: "0.62rem", color: "#7c6fff", marginLeft: "0.3rem", opacity: 0.85 }}>(you)</span>}
                   </span>
-                  <span className="streak-val">🔥 {u.streak} days</span>
+                  {/* stats row — wraps below name on very small screens */}
+                  <span className="streak-val">🔥 {u.streak}d</span>
                   <span className="streak-sub">{u.weeklySubmissions}/7</span>
-                  {/* Monthly score — shown if user has any score this month */}
                   {u.monthlyScore > 0 ? (
-                    <span style={{
-                      fontSize: "0.78rem", fontWeight: 700,
-                      padding: "0.2rem 0.55rem", borderRadius: 20,
-                      background: "rgba(124,111,255,0.18)",
-                      color: "#c4b5fd",
-                      whiteSpace: "nowrap",
-                    }}>
-                      {Math.round(u.monthlyScore)} pts
+                    <span className="streak-pts">
+                      {Math.round(u.monthlyScore)}pts
                     </span>
                   ) : (
-                    <span style={{ width: "4rem" }} />
+                    <span className="streak-pts-placeholder" />
                   )}
-                  <span style={{
-                    marginLeft: "0.4rem", fontSize: "0.75rem", fontWeight: 600,
-                    padding: "0.2rem 0.6rem", borderRadius: 20,
-                    background: u.completed ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.12)",
-                    color: u.completed ? "#4ade80" : "#f87171",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {u.completed ? "✅ Done" : "⏳ Pending"}
+                  <span className={u.completed ? "streak-badge streak-badge--done" : "streak-badge streak-badge--pending"}>
+                    {u.completed ? "✅" : "⏳"}
                   </span>
                 </div>
               );
@@ -1798,31 +1787,21 @@ export default function UserDashboard() {
               }}>
                 <span className="streak-rank" style={{ color: "#a78bfa", minWidth: 28 }}>#{data.myStreakEntry.rank}</span>
                 <span className="streak-name" style={{ color: "#a78bfa", fontWeight: 700 }}>
-                  {data.myStreakEntry.name || "You"} {data.myStreakEntry.currentBadge && <StreakBadge badge={data.myStreakEntry.currentBadge} compact />} <span style={{ fontSize: "0.65rem", opacity: 0.7 }}>(you)</span>
+                  {data.myStreakEntry.name || "You"}
+                  {data.myStreakEntry.currentBadge && <StreakBadge badge={data.myStreakEntry.currentBadge} compact />}
+                  <span style={{ fontSize: "0.65rem", opacity: 0.7 }}> (you)</span>
                 </span>
-                <span className="streak-val">🔥 {data.myStreakEntry.streak} days</span>
+                <span className="streak-val">🔥 {data.myStreakEntry.streak}d</span>
                 <span className="streak-sub">{data.myStreakEntry.weeklySubmissions}/7</span>
                 {data.myStreakEntry.monthlyScore > 0 ? (
-                  <span style={{
-                    fontSize: "0.78rem", fontWeight: 700,
-                    padding: "0.2rem 0.55rem", borderRadius: 20,
-                    background: "rgba(124,111,255,0.18)",
-                    color: "#c4b5fd",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {Math.round(data.myStreakEntry.monthlyScore)} pts
+                  <span className="streak-pts">
+                    {Math.round(data.myStreakEntry.monthlyScore)}pts
                   </span>
                 ) : (
-                  <span style={{ width: "4rem" }} />
+                  <span className="streak-pts-placeholder" />
                 )}
-                <span style={{
-                  marginLeft: "0.4rem", fontSize: "0.75rem", fontWeight: 600,
-                  padding: "0.2rem 0.6rem", borderRadius: 20,
-                  background: data.myStreakEntry.completed ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.12)",
-                  color: data.myStreakEntry.completed ? "#4ade80" : "#f87171",
-                  whiteSpace: "nowrap",
-                }}>
-                  {data.myStreakEntry.completed ? "✅ Done" : "⏳ Pending"}
+                <span className={data.myStreakEntry.completed ? "streak-badge streak-badge--done" : "streak-badge streak-badge--pending"}>
+                  {data.myStreakEntry.completed ? "✅" : "⏳"}
                 </span>
               </div>
             </>
