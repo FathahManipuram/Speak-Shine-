@@ -2644,9 +2644,9 @@ export default function UserDashboard() {
                       </span>
                     )}
                   </span>
-                  <span className="streak-val">🔥 {u.streak} days</span>
+                  {/* stats row — wraps below name on very small screens */}
+                  <span className="streak-val">🔥 {u.streak}d</span>
                   <span className="streak-sub">{u.weeklySubmissions}/7</span>
-                  {/* Monthly score — shown if user has any score this month */}
                   {u.monthlyScore > 0 ? (
                     <span
                       style={{
@@ -2662,7 +2662,7 @@ export default function UserDashboard() {
                       {Math.round(u.monthlyScore)} pts
                     </span>
                   ) : (
-                    <span style={{ width: "4rem" }} />
+                    <span className="streak-pts-placeholder" />
                   )}
                   <span
                     style={{
@@ -2762,7 +2762,7 @@ export default function UserDashboard() {
                     {Math.round(data.myStreakEntry.monthlyScore)} pts
                   </span>
                 ) : (
-                  <span style={{ width: "4rem" }} />
+                  <span className="streak-pts-placeholder" />
                 )}
                 <span
                   style={{
