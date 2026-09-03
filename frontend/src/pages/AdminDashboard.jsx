@@ -477,12 +477,7 @@ export default function AdminDashboard() {
   const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
   const [paymentSortOrder, setPaymentSortOrder] = useState("desc"); // "desc" | "asc" | "amount_desc" | "amount_asc"
 
-  // Admin Wallet Modal State
-  const [walletModalUser, setWalletModalUser] = useState(null);
-  const [walletActionType, setWalletActionType] = useState("credit"); // "credit" | "debit" | "set"
-  const [walletAmount, setWalletAmount] = useState("");
-  const [walletReason, setWalletReason] = useState("");
-  const [walletLoading, setWalletLoading] = useState(false);
+  // Admin Wallet History State (used in unified Points/Wallet adjustment modal)
   const [walletHistoryList, setWalletHistoryList] = useState([]);
 
   const openAdminWalletModal = (u, e) => {
@@ -491,46 +486,6 @@ export default function AdminDashboard() {
       if (typeof e.preventDefault === "function") e.preventDefault();
     }
     openPointsModal(u, "add", "wallet");
-  };
-
-  const handleAdminAdjustWallet = async () => {
-    if (!walletModalUser || !walletModalUser.phone) return;
-    const amt = Number(walletAmount);
-    if (walletActionType === "set") {
-      if (isNaN(amt) || amt < 0) {
-        msg("Please enter a valid balance amount (₹0 or greater)", "danger");
-        return;
-      }
-    } else {
-      if (isNaN(amt) || amt <= 0) {
-        msg("Please enter a valid positive amount in ₹", "danger");
-        return;
-      }
-    }
-
-    try {
-      setWalletLoading(true);
-      const res = await api.post("/payments/admin/wallet-adjust", {
-        phone: walletModalUser.phone,
-        actionType: walletActionType,
-        amount: amt,
-        reason: walletReason,
-      });
-
-      if (res.data?.success) {
-        msg(`✅ Wallet ${walletActionType}ed successfully! New balance: ₹${res.data.walletBalance}`, "success");
-        setWalletHistoryList(res.data.walletHistory || []);
-        setWalletModalUser(prev => prev ? { ...prev, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : null);
-        setUsers(prev => prev.map(u => u.phone === walletModalUser.phone ? { ...u, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : u));
-        setSelectedStudent(s => (s && s.phone === walletModalUser.phone) ? { ...s, walletBalance: res.data.walletBalance, walletHistory: res.data.walletHistory } : s);
-        setWalletAmount("");
-        setWalletReason("");
-      }
-    } catch (err) {
-      msg(err.response?.data?.error || "Failed to adjust wallet balance", "danger");
-    } finally {
-      setWalletLoading(false);
-    }
   };
 
   const ribbonRef = useRef(null);
@@ -1920,11 +1875,14 @@ export default function AdminDashboard() {
                       if (cat.id === "wallet" && pointsModal.user?.phone) {
                         api.get(`/payments/admin/wallet-history/${encodeURIComponent(pointsModal.user.phone)}`)
                           .then(res => {
-                            if (res.data?.success && res.data.user?.walletBalance != null) {
-                              setPointsModal(p => p ? {
-                                ...p,
-                                user: { ...p.user, walletBalance: res.data.user.walletBalance, walletHistory: res.data.walletHistory }
-                              } : null);
+                            if (res.data?.success) {
+                              setWalletHistoryList(res.data.walletHistory || []);
+                              if (res.data.user?.walletBalance != null) {
+                                setPointsModal(p => p ? {
+                                  ...p,
+                                  user: { ...p.user, walletBalance: res.data.user.walletBalance, walletHistory: res.data.walletHistory }
+                                } : null);
+                              }
                             }
                           })
                           .catch(() => {});
@@ -2174,6 +2132,55 @@ export default function AdminDashboard() {
                   }}
                 />
               </div>
+
+              {/* Student Wallet Transaction History (when Wallet tab is active) */}
+              {pointsModal.targetType === "wallet" && (
+                <div style={{
+                  marginTop: "0.25rem",
+                  background: "rgba(0, 0, 0, 0.25)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 12,
+                  padding: "0.85rem 1rem",
+                }}>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#ffffff", marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span>📜 Student Wallet Transaction History</span>
+                    <span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{walletHistoryList.length} records</span>
+                  </div>
+                  {walletHistoryList.length === 0 ? (
+                    <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "0.76rem", padding: "0.4rem 0", margin: 0 }}>
+                      No wallet transactions recorded yet.
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", maxHeight: 150, overflowY: "auto", paddingRight: "0.2rem" }}>
+                      {[...walletHistoryList].reverse().map((tx, idx) => (
+                        <div key={idx} style={{
+                          background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.06)",
+                          borderRadius: 8, padding: "0.45rem 0.65rem", display: "flex", justifyContent: "space-between", alignItems: "center",
+                        }}>
+                          <div>
+                            <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#ffffff", marginBottom: "0.1rem" }}>
+                              {tx.reason || "Wallet Adjustment"}
+                            </div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--muted)" }}>
+                              {new Date(tx.date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              {" · "}Balance: ₹{tx.balanceAfter}
+                            </div>
+                          </div>
+                          <div style={{
+                            fontWeight: 800, fontSize: "0.8rem",
+                            color: tx.type === "credit" ? "#4ade80" : "#f87171",
+                            background: tx.type === "credit" ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
+                            padding: "0.15rem 0.45rem", borderRadius: 6,
+                            border: `1px solid ${tx.type === "credit" ? "rgba(74, 222, 128, 0.3)" : "rgba(248, 113, 113, 0.3)"}`,
+                          }}>
+                            {tx.type === "credit" ? `+₹${tx.amount}` : `-₹${tx.amount}`}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
             </div>
 
@@ -9134,203 +9141,6 @@ function ManualQuestionsPanel() {
           )}
         </>
       )}
-
-      {/* ── Admin Student Wallet Management Modal ── */}
-      {walletModalUser && createPortal(
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)",
-          zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
-          padding: "1rem",
-        }}>
-          <div style={{
-            background: "#0f172a", border: "1px solid rgba(255, 255, 255, 0.15)",
-            borderRadius: 20, width: "100%", maxWidth: 560, maxHeight: "85vh",
-            overflowY: "auto", padding: "1.75rem", boxShadow: "0 25px 60px rgba(0,0,0,0.8)",
-          }}>
-            {/* Modal Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid rgba(255, 255, 255, 0.1)", paddingBottom: "0.85rem" }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#ffffff", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span>💰</span> Admin Wallet Management
-                </h3>
-                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: "0.25rem" }}>
-                  Student: <strong style={{ color: "#38bdf8" }}>{walletModalUser.registeredName || walletModalUser.name || "Student"}</strong> ({walletModalUser.phone})
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setWalletModalUser(null)}
-                style={{
-                  background: "rgba(255, 255, 255, 0.1)", border: "none", color: "#fff",
-                  borderRadius: "50%", width: 32, height: 32, fontSize: "1rem", cursor: "pointer",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Current Balance Display Card */}
-            <div style={{
-              background: "linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.1) 100%)",
-              border: "1px solid rgba(16, 185, 129, 0.4)",
-              borderRadius: 16,
-              padding: "1.1rem 1.25rem",
-              marginBottom: "1.25rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}>
-              <div>
-                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Current Student Wallet Balance
-                </div>
-                <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#ffffff", marginTop: "0.15rem" }}>
-                  ₹{walletModalUser.walletBalance || 0}
-                </div>
-              </div>
-              <div style={{ fontSize: "2.5rem" }}>💰</div>
-            </div>
-
-            {/* Wallet Action Controls */}
-            <div style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 16, padding: "1.25rem", marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#ffffff", marginBottom: "0.75rem" }}>
-                ⚙️ Adjust Student Wallet Balance
-              </div>
-
-              {/* Action Type Tabs */}
-              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                {[
-                  { id: "credit", label: "➕ Credit (+₹)", color: "#4ade80", bg: "rgba(74, 222, 128, 0.2)" },
-                  { id: "debit", label: "➖ Debit (-₹)", color: "#f87171", bg: "rgba(248, 113, 113, 0.2)" },
-                  { id: "set", label: "✏️ Set Exact Balance", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.2)" },
-                ].map(act => (
-                  <button
-                    key={act.id}
-                    type="button"
-                    onClick={() => setWalletActionType(act.id)}
-                    style={{
-                      flex: 1,
-                      padding: "0.5rem 0.65rem",
-                      borderRadius: 10,
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      background: walletActionType === act.id ? act.bg : "rgba(255, 255, 255, 0.04)",
-                      border: walletActionType === act.id ? `1px solid ${act.color}` : "1px solid rgba(255, 255, 255, 0.1)",
-                      color: walletActionType === act.id ? act.color : "var(--muted)",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {act.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Amount & Reason Form */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: "0.3rem" }}>
-                    {walletActionType === "set" ? "New Total Wallet Balance (₹)" : "Amount in ₹"}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="form-input"
-                    placeholder={walletActionType === "set" ? "Enter new balance (e.g. 0 or 50)" : "Enter amount (e.g. 50)"}
-                    value={walletAmount}
-                    onChange={e => setWalletAmount(e.target.value)}
-                    style={{ width: "100%", fontSize: "0.95rem", fontWeight: 700 }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: "0.3rem" }}>
-                    Reason / Note (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Manual Prize Reward, Refund, Correction"
-                    value={walletReason}
-                    onChange={e => setWalletReason(e.target.value)}
-                    style={{ width: "100%", fontSize: "0.85rem" }}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAdminAdjustWallet}
-                  disabled={walletLoading || walletAmount === ""}
-                  style={{
-                    width: "100%",
-                    background: walletActionType === "credit"
-                      ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                      : walletActionType === "debit"
-                        ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
-                        : "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: 12,
-                    padding: "0.75rem 1.25rem",
-                    fontSize: "0.9rem",
-                    fontWeight: 800,
-                    cursor: (walletLoading || walletAmount === "") ? "not-allowed" : "pointer",
-                    boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  {walletLoading
-                    ? "Processing..."
-                    : walletActionType === "set"
-                      ? `Confirm SET Balance to ₹${walletAmount !== "" ? walletAmount : 0}`
-                      : `Confirm ${walletActionType.toUpperCase()} of ₹${walletAmount || 0}`}
-                </button>
-              </div>
-            </div>
-
-            {/* Wallet History Table */}
-            <div>
-              <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#ffffff", marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span>📜 Student Wallet Transaction History</span>
-                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{walletHistoryList.length} records</span>
-              </div>
-
-              {walletHistoryList.length === 0 ? (
-                <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "0.82rem", padding: "1rem" }}>No wallet transactions found for this student.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: 220, overflowY: "auto", paddingRight: "0.3rem" }}>
-                  {[...walletHistoryList].reverse().map((tx, idx) => (
-                    <div key={idx} style={{
-                      background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.07)",
-                      borderRadius: 10, padding: "0.65rem 0.85rem", display: "flex", justifyContent: "space-between", alignItems: "center",
-                    }}>
-                      <div>
-                        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#ffffff", marginBottom: "0.15rem" }}>
-                          {tx.reason}
-                        </div>
-                        <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-                          {new Date(tx.date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          {" · "}After: ₹{tx.balanceAfter}
-                        </div>
-                      </div>
-                      <div style={{
-                        fontWeight: 900, fontSize: "0.88rem",
-                        color: tx.type === "credit" ? "#4ade80" : "#f87171",
-                        background: tx.type === "credit" ? "rgba(74, 222, 128, 0.12)" : "rgba(248, 113, 113, 0.12)",
-                        padding: "0.2rem 0.55rem", borderRadius: 8,
-                        border: `1px solid ${tx.type === "credit" ? "rgba(74, 222, 128, 0.3)" : "rgba(248, 113, 113, 0.3)"}`,
-                      }}>
-                        {tx.type === "credit" ? `+₹${tx.amount}` : `-₹${tx.amount}`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      , document.body)}
     </div>
   );
 }
